@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<style>
+* {
+  box-sizing: border-box;
+  font-family: "Trebuchet MS", Helvetica, sans-serif;
+}
+
+.highlight {
+  background: #DDD !important;
+}
+
+#control {
+  background: #BBB;
+  width: 480px;
+  height: 150px;
+  padding: 5px 20px;
+}
+  #control .row {
+    padding: 3px;
+    display: flex;
+    justify-content: space-between;
+  }
+    #control .row .button {
+      background: #AAA;
+      color: #FFF;
+      width: 40px;
+      height: 40px;
+      text-align: center;
+      line-height: 40px;
+    }
+      #control .row .button:hover {
+        background: #777;
+        cursor: pointer;
+      }
+
+#type, #url, #dataType {
+  display: block;
+  background: #CCC; /*#D9E68F;*/
+  color: #555;
+  width: 480px;
+  height: 25px;
+  font-size: 15px;
+  border: none;
+  outline-width: 0;
+  padding-left: 10px
+}
+  #type:hover, #url:hover, #dataType:hover {
+    background: #DDD;
+    cursor: text;
+  }
+
+
+#request {
+  background: #CCC; /*#97619b;*/
+  width: 480px;
+  height: 75px;
+}
+  #request:hover {
+    background: #DDD; /*#bf7cc4;*/
+    cursor: pointer;
+  }
+  #request .progress {
+    position: absolute;
+    background: #555;
+    width: 10px;
+    height: inherit;
+  }
+  #request .button_text {
+    position: absolute;
+    width: inherit;
+    height: inherit;
+    text-align: center;
+    line-height: 75px;
+    color: #FFF;
+    font-size: 40px;
+  }
+</style>
+
+<html>
+  <head>
+    <!-- JQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+  </head>
+  <body>
+     <div style="display:block">
+      <div id="control">
+        <div class="row">
+          <div class="button" value="1" onclick="setBatch(1)">
+            1
+          </div>
+          <div class="button" value="2" onclick="setBatch(2)">
+            2
+          </div>
+          <div class="button" value="3" onclick="setBatch(3)">
+            3
+          </div>
+          <div class="button" value="4" onclick="setBatch(4)">
+            4
+          </div>
+        </div>
+        <div class="row">
+          <div class="button" value="5" onclick="setBatch(5)">
+            5
+          </div>
+          <div class="button" value="10" onclick="setBatch(10)">
+            10
+          </div>
+          <div class="button" value="15" onclick="setBatch(15)">
+            15
+          </div>
+          <div class="button" value="20" onclick="setBatch(20)">
+            20
+          </div>
+        </div>
+        <div class="row">
+          <div class="button" value="25" onclick="setBatch(25)">
+            25
+          </div>
+          <div class="button" value="50" onclick="setBatch(50)">
+            50
+          </div>
+          <div class="button" value="75" onclick="setBatch(75)">
+            75
+          </div>
+          <div class="button" value="100" onclick="setBatch(100)">
+            100
+          </div>
+        </div><!-- row -->
+      </div><!-- control -->
+    </div><!-- display:block -->
+
+    <div style="display:block"> 
+      <div>
+        <input id="type" placeholder="type (e.g GET/POST)"></input>
+        <input id="url" placeholder="url (e.g http://f.wishabi.ca.s3.amazonaws.com/myJsonFile.json)"></input>
+        <input id="dataType" placeholder="datatype (e.g json)"></input>
+      </div>
+      <div id="request" onclick="sendRequest()">
+        <!-- <div class="progress"></div> -->
+        <div class="button_text"> REQUEST </div> 
+      </div>
+    </div><!-- display:block -->
+    <div id="results" style="position: absolute; top: 400px">
+    </div>
+    <div id="imgs" style="position:absolute; top: 500px"></div>
+  </body>
+</html>
+
+<script>
+var batch_size = 0;
+var total_batch_size = 0;
+var total_total_time = 0;
+
+// $('#url').on('click',function() {
+//   total_batch_size = 0;
+//   total_total_time = 0;
+//   $(this).toggleClass('highlight');
+// });
+
+function setBatch(amount) {
+  $('.button').each(
+    function(){
+      if ($(this).attr("value") == batch_size)
+        $(this).css("background","#AAA");
+      else if ($(this).attr("value") == amount)
+        $(this).css("background","#555");
+    });
+  
+  batch_size = amount;
+}
+
+function sendRequest() {
+  var start_time = $.now();
+  var end_to_end_time = start_time;
+  var total_time = 0;
+  var type = $('#type').val();
+  var url = $('#url').val();
+  var data_type = $('#dataType').val();
+
+  // Clear imgs
+  $('#imgs').html("");
+
+  for(var i = 0; i < batch_size; i++) {
+    var request = $.ajax({
+      'type' : type.toUpperCase(),
+      'url' : url,
+      'dataType' : data_type,
+      'cache' : false,
+      'async' : false,
+      'xhrFields' : function() {
+        var xhr = $.ajaxSettings.xhr();
+        // Upload progress
+        xhr.upload.onprogress = function(evt){
+          if (evt.lengthComputable) {
+            var width = evt.loaded * 480 / evt.total;
+            $('#request .progress').css('width', width + 'px');
+          }
+        };
+        xhr.download.onprogress = function(evt){
+          if (evt.lengthComputable) {
+            var width = evt.loaded * 480 / evt.total;
+            $('#request .progress').css('width', width + 'px');
+          }
+        };
+        return xhr;
+      },
+      'success' : function(msg) {        
+        total_time += $.now() - start_time;
+        start_time = $.now();
+      },
+      'error' : function(msg) {
+        alert('FAILED: ' + msg);
+      }
+    });
+  }
+
+  // We only need one request to render
+  // $.each(request.responseJSON, function(key, value){
+  //   $.each(value, function(sku, info) {
+  //     $('#imgs').append(
+  //       "<img src='"+ info.imageMedium+"'/><p>"
+  //     );
+  //   });
+  // });
+
+  total_batch_size += batch_size;
+  total_total_time += total_time;
+  $('#results').html(
+    "AVG JSON TIME: " + (total_time/batch_size) + "ms<br/>" + 
+    "RUNNING AVG: " + (total_total_time/total_batch_size) + "ms<br/>" + 
+    "END-TO-END TIME: " + ($.now() - end_to_end_time) + "ms"
+  );
+}
+</script>

@@ -23,4 +23,4 @@ end
 # WALMART LINKS
 
 "http://partneruat4.circularhub.com/hosted_services/walmart?type=1&locale=en-US&postal_code=92011&store_code=5886&flyer_type_name=circular&flyer_run_id=32003"
-"http://partneruat4.circularhub.com/hosted_services/walmart?type=1&locale=en-US&postal_code=92011&store_code=5886&flyer_type_name=grocery&flyer_run_id=32062"
+"http://partneruat4.circularhub.com/hosted_services/walmart?type=1&locale=en-US&postal_code=92011&store_code=5886&flyer_type_name=grocery&flyer_run_id=32062

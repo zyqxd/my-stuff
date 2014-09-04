@@ -26,11 +26,13 @@ export DYLD_LIBRARY_PATH="/usr/local/mysql/lib:$DYLD_LIBRARY_PATH"
 # \w - Path
 # \W - Full path
 # \n - New line
+source ~/.git-prompt.sh
 RED="\[\e[1;31m\]"
 BLUE="\[\e[1;34m\]"
 GREEN="\[\e[1;32m\]"
 WHITE="\[\e[1;37m\]"
-export PS1="$RED[\j] $BLUE[\d \t] $GREEN\u@ \w\n>>>$WHITE "
+MAGENTA="\[\e[1;35m\]"
+export PS1="$RED[\j] $BLUE[\d \t] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
 [[ -s /Users/ezdz/.rvm/scripts/rvm ]] && . /Users/ezdz/.rvm/scripts/rvm
 
 ###ALIAS

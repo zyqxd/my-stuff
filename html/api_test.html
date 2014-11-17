@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<style>
+* {
+  box-sizing: border-box;
+  font-family: "Trebuchet MS", Helvetica, sans-serif;
+}
+
+.highlight {
+  background: #DDD !important;
+}
+
+#control {
+  background: #BBB;
+  width: 480px;
+  height: 150px;
+  padding: 5px 20px;
+}
+  #control .row {
+    padding: 3px;
+    display: flex;
+    justify-content: space-between;
+  }
+    #control .row .button {
+      background: #AAA;
+      color: #FFF;
+      width: 40px;
+      height: 40px;
+      text-align: center;
+      line-height: 40px;
+    }
+      #control .row .button:hover {
+        background: #777;
+        cursor: pointer;
+      }
+
+#type, #name, #dataType {
+  display: block;
+  background: #CCC; /*#D9E68F;*/
+  color: #555;
+  width: 480px;
+  height: 25px;
+  font-size: 15px;
+  border: none;
+  outline-width: 0;
+  padding-left: 10px
+}
+  #type:hover, #url:hover, #dataType:hover {
+    background: #DDD;
+    cursor: text;
+  }
+
+
+#request {
+  background: #CCC; /*#97619b;*/
+  width: 480px;
+  height: 75px;
+}
+  #request:hover {
+    background: #DDD; /*#bf7cc4;*/
+    cursor: pointer;
+  }
+  #request .progress {
+    position: absolute;
+    background: #555;
+    width: 10px;
+    height: inherit;
+  }
+  #request .button_text {
+    position: absolute;
+    width: inherit;
+    height: inherit;
+    text-align: center;
+    line-height: 75px;
+    color: #FFF;
+    font-size: 40px;
+  }
+</style>
+
+<html>
+  <head>
+    <script src='http://code.jquery.com/jquery-1.7.2.min.js' type='text/javascript' charset='utf-8'></script>
+    <script src='http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js'></script>
+    <title>Instagram Search</title>
+  </head>
+  <body>
+    <div style="display:block">
+      <div>
+        <input id="type" placeholder="type (e.g User/Media/Tag)"></input>
+        <input id="name" placeholder="name (e.g Cats)"></input>
+      </div>
+      <div id="request" onclick="sendRequest()">
+        <div class="button_text"> REQUEST </div>
+      </div>
+    </div><!-- display:block -->
+  </body>
+</html>
+<script>
+// Instantiate an empty object.
+var Instagram = {};
+
+// Small object for holding important configuration data.
+Instagram.Config = {
+  clientID: '9eea924123b24e2f89f4e30e2eb69d8f',
+  clientSecret: 'b1931aa24d004512be7682051daa8d6b',
+  userSearch: 'https://api.instagram.com/v1/users/search?callback=?&q=',
+  mediaPopular: 'https://api.instagram.com/v1/media/popular?callback=?',
+  tagSearch: 'https://api.instagram.com/v1/tags/' //+/media/recent
+};
+
+function sendRequest() {
+  var type = $('#type').val();
+  var name = $('#name').val();
+
+  // Clear imgs
+  $('#imgs').html("");
+
+  search(type, name);
+}
+
+function search(type, name){
+  var config = Instagram.Config, url;
+
+  if(!typeof type === 'undefined' && !typeof name === 'undefined'){
+    if(type.toLowerCase() === 'media') {
+      url = config.mediaPopular + "&client_id=" + config.clientID;
+    } else if (type.toLowerCase === 'user') {
+      url = config.userSearch + name + "&client_id=" + config.clientID;
+    } else if (type.toLowerCase === 'tag') {
+      url = config.tagSearch + name + "/media/recent?callback=?&client_id=" + config.clientID;
+    }
+  }
+
+
+  $.getJSON(url), function(photo){
+    console.log("HI")
+    $.each(photos.data, function(index, photo){
+      console.log("photo")
+    });
+    //$('div#photos-wrap').append(photos_html);
+  });
+}
+</script>

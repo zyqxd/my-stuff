@@ -139,10 +139,291 @@ def create_data
   data.to_json
 end
 
+#outfit picker v2
+gender_array = [{
+  :gender => 'Men',
+  :types => []
+}, {
+  :gender => 'Women',
+  :types => []
+}, {
+  :gender => 'Boys',
+  :types => []
+}, {
+  :gender => 'Girls',
+  :types => []
+}]
+categories_array = [{
+  :category => 'Winter Trip',
+  :genders => gender_array.deep_dup
+}, {
+  :category => 'Christmas Morning',
+  :genders => gender_array.deep_dup
+}, {
+  :category => 'Holiday Party',
+  :genders => gender_array.deep_dup
+}, {
+  :category => 'Family Dinner',
+  :genders => gender_array.deep_dup
+}]
+current_category_name = ""
+current_category_count = -1
+w = WatirFetcher.new
+CSV.foreach('outfits.csv') do |row|
+  if current_category_name != row[0]
+    puts "Starting #{row[0]}"
+    current_category_name = row[0]
+    current_category_count += 1
+  end
+
+  current_category = categories_array[current_category_count]
+  row[2..row.length].each_slice(5).with_index do |slice, index|
+    if row[1] =~ /URL/
+      # Data pipe and update the items hash array with new info
+      slice.reject(&:blank?).each_with_index do |item, slice_index|
+        if item.blank?
+          puts "MISSING ITEM: #{item}"
+          next
+        elsif !item.strip.match(/^http:\/\/www.walmart.com\/ip\/.*\/\d+$/i)
+          puts "BAD URL: #{item}"
+          next
+        end
+        begin
+          w.goto_url item.strip
+          w.fetch_page
+        rescue Timeout::Error
+          puts "RETRY"
+          retry
+        end
+
+        current_item = current_category[:genders][index][:types].last[:items][slice_index]
+        puts "Fetching #{current_item[:name]}"
+        current_item[:url] = item.strip
+        description = w.xpath(".//section[@class='product-about js-about-item']/div[@class='js-ellipsis module']/p[1]").try(:inner_text).try(:strip)
+        description = w.xpath(".//div[1]/span[@class='ql-details-short-desc']/p").try(:inner_text).try(:strip) unless description.present?
+        current_item[:description] = description.present? ? description : nil
+        price = w.xpath(".//div[@class='js-price-display price price-display']").try(:inner_text).try(:strip)
+        price = w.xpath(".//div[@id='WM_PRICE']/div[@class='PricingInfo clearfix']/div/span[@class='clearfix camelPrice ']").try(:inner_text).try(:strip) unless price.present?
+        current_item[:price] = price.present? ? price : nil
+        image = w.xpath(".//img[@class='product-image js-product-image js-product-primary-image']/@src").try(:inner_text).try(:strip)
+        image = w.xpath(".//a[@id='Zoomer']/@href").try(:inner_text).try(:strip) unless image.present?
+        current_item[:image] = image.present? ? image : nil
+        rating = w.xpath(".//div[@class='stars']/span").try(:inner_text).gsub(/\s+stars/,'')
+        rating = w.xpath(".//div[@id='BVRRRatingOverall_Rating_Summary_1']/div[@class='BVRRRatingNormalImage']/img[@class='BVImgOrSprite']/@alt").try(:inner_text).try(:strip).split(" ")[0] unless rating.present?
+        current_item[:rating] = rating.present? ? rating : nil
+      end
+    else
+      next if slice.blank?
+      # Insert each name as hashes
+      current_type = {
+        :type => row[1],
+        :items => []
+      }
+      slice.reject(&:blank?).each do |item|
+        puts item
+        current_type[:items] << {
+          :name => item.gsub(/\s+/,' ')
+        }
+      end
+      current_category[:genders][index][:types] << current_type
+    end
+  end
+end
+
+
+categories_array = [{
+  :category => 'Winter Trip',
+  :genders => [{
+    :gender => 'Men',
+    :types => [{:type => 'Top'}, {:type => 'Outerwear'}, {:type => 'Bottoms'}, {:type => 'Shoes'}, {:type => 'Accessory'}]
+  }, {
+    :gender => 'Women',
+    :types => [{:type => 'Top'}, {:type => 'Outerwear'}, {:type => 'Bottoms'}, {:type => 'Shoes'}, {:type => 'Accessory'}]
+  }, {
+    :gender => 'Boys',
+    :types => [{:type => 'Top'}, {:type => 'Outerwear'}, {:type => 'Bottoms'}, {:type => 'Shoes'}, {:type => 'Accessory'}]
+  }, {
+    :gender => 'Girls',
+    :types => [{:type => 'Top'}, {:type => 'Outerwear'}, {:type => 'Bottoms'}, {:type => 'Shoes'}, {:type => 'Accessory'}]
+  }]
+}, {
+  :category => 'Christmas Morning',
+  :genders => [{
+    :gender => 'Men',
+    :types => [{:type => 'Top'}, {:type => 'Bottom'}, {:type => 'Shoes'}, {:type => 'Sets'}]
+  }, {
+    :gender => 'Women',
+    :types => [{:type => 'Top'}, {:type => 'Bottom'}, {:type => 'Shoes'}, {:type => 'Sets'}]
+  }, {
+    :gender => 'Boys',
+    :types => [{:type => 'Top'}, {:type => 'Bottom'}, {:type => 'Shoes'}, {:type => 'Sets'}]
+  }, {
+    :gender => 'Girls',
+    :types => [{:type => 'Top'}, {:type => 'Bottom'}, {:type => 'Shoes'}, {:type => 'Sets'}]
+  }]
+}, {
+  :category => 'Holiday Party',
+  :genders => [{
+    :gender => 'Men',
+    :types => [{:type => 'Top'}, {:type => 'Outerwear'}, {:type => 'Accessory'}, {:type => 'Shoes'}, {:type => 'Bottoms'}]
+  }, {
+    :gender => 'Women',
+    :types => [{:type => 'Top'}, {:type => 'Outerwear'}, {:type => 'Accessory'}, {:type => 'Shoes'}, {:type => 'Bottoms'}]
+  }, {
+    :gender => 'Boys',
+    :types => [{:type => 'Top'}, {:type => 'Outerwear'}, {:type => 'Accessory'}, {:type => 'Shoes'}, {:type => 'Bottoms'}]
+  }, {
+    :gender => 'Girls',
+    :types => [{:type => 'Top'}, {:type => 'Outerwear'}, {:type => 'Accessory'}, {:type => 'Shoes'}, {:type => 'Bottoms'}]
+  }]
+}, {
+  :category => 'Family Dinner',
+  :genders => [{
+    :gender => 'Men',
+    :types => [{:type => 'Top'}, {:type => 'Bottom'}, {:type => 'Accessory'}, {:type => 'Shoes'}]
+  }, {
+    :gender => 'Women',
+    :types => [{:type => 'Top'}, {:type => 'Bottom'}, {:type => 'Accessory'}, {:type => 'Shoes'}]
+  }, {
+    :gender => 'Boys',
+    :types => [{:type => 'Top'}, {:type => 'Bottom'}, {:type => 'Accessory'}, {:type => 'Shoes'}]
+  }, {
+    :gender => 'Girls',
+    :types => [{:type => 'Top'}, {:type => 'Bottom'}, {:type => 'Accessory'}, {:type => 'Shoes'}]
+  }]
+}]
+
+headers = []
+w = WatirFetcher.new
+CSV.foreach('outfit_final.csv') do |row|
+  if headers.blank?
+    headers = row
+    next
+  end
+
+  gender_index = get_gender row[0]
+  row[1..row.length].each_slice(2).with_index do |slice, index|
+    next if slice.reject(&:blank?).blank?
+    category_index = get_category index
+    type_index = get_type index
+
+    puts "Inserting into #{gender_index} #{category_index} for #{type_index}"
+    begin
+      w.goto_url slice[1].strip
+      w.fetch_page
+    rescue Timeout::Error
+      puts "RETRY"
+      retry
+    end
+    current_item = {}
+    current_item[:name] = slice[0].strip
+    current_item[:url] = slice[1].strip
+    description = w.xpath(".//section[@class='product-about js-about-item']/div[@class='js-ellipsis module']/p[1]").try(:inner_text).try(:strip)
+    description = w.xpath(".//div[1]/span[@class='ql-details-short-desc']/p").try(:inner_text).try(:strip) unless description.present?
+    current_item[:description] = description.present? ? description : nil
+    price = w.xpath(".//div[@class='js-price-display price price-display']").try(:inner_text).try(:strip)
+    price = w.xpath(".//div[@id='WM_PRICE']/div[@class='PricingInfo clearfix']/div/span[@class='clearfix camelPrice ']").try(:inner_text).try(:strip) unless price.present?
+    current_item[:price] = price.present? ? price : nil
+    image = w.xpath(".//img[@class='product-image js-product-image js-product-primary-image']/@src").try(:inner_text).try(:strip)
+    image = w.xpath(".//a[@id='Zoomer']/@href").try(:inner_text).try(:strip) unless image.present?
+    current_item[:image] = image.present? ? image : nil
+    rating = w.xpath(".//div[@class='stars']/span").try(:inner_text).gsub(/\s+stars/,'')
+    rating = w.xpath(".//div[@id='BVRRRatingOverall_Rating_Summary_1']/div[@class='BVRRRatingNormalImage']/img[@class='BVImgOrSprite']/@alt").try(:inner_text).try(:strip).split(" ")[0] unless rating.present?
+    current_item[:rating] = rating.present? ? rating : nil
+
+    categories_array[category_index][:genders][gender_index][:types][type_index][:items] ||= []
+    categories_array[category_index][:genders][gender_index][:types][type_index][:items] << current_item
+  end
+end
+
+def get_gender( name )
+  if name =~ /Male/
+    0
+  elsif name =~ /Female/
+    1
+  elsif name =~ /Boys/
+    2
+  elsif name =~ /Girls/
+    3
+  end
+end
+
+def get_category( index )
+  temp = index * 2 + 1
+  if temp > 0 && temp < 11
+    0
+  elsif temp > 10 && temp < 19
+    1
+  elsif temp > 18 && temp < 29
+    2
+  elsif temp > 28 && temp < 37
+    3
+  end
+end
+
+def get_type( index )
+  if index < 5
+    index
+  elsif index < 9
+    index - 5
+  elsif index < 14
+    index - 9
+  elsif index < 19
+    index - 14
+  end
+end
 
 
 
 
+
+
+
+# Create holiday countdown
+w = WatirFetcher.new()
+category = ""
+types = ['mens','ladies','kids']
+arr = []
+cat_hash = {}
+CSV.foreach("countdown.csv",:headers => true) do |row|
+  if category != row[0]
+    arr << cat_hash
+
+    # reset
+    category = row[0]
+    cat_hash = {
+      :name => "category",
+      :mens => [],
+      :ladies => [],
+      :kids => []
+    }
+  end
+
+  row.fields[1..row.length].each_slice(2).with_index do |item, index|
+    w.goto_url item[1]
+    w.fetch_page
+    puts "Fetched page for #{item[0]}"
+    current_item = {:name => item[0]}
+    puts "Fetching #{current_item[:name]}"
+        current_item[:url] = item.strip
+        description = w.xpath(".//section[@class='product-about js-about-item']/div[@class='js-ellipsis module']/p[1]").try(:inner_text).try(:strip)
+        description = w.xpath(".//div[1]/span[@class='ql-details-short-desc']/p").try(:inner_text).try(:strip) unless description.present?
+        current_item[:description] = description.present? ? description : nil
+
+        price = w.xpath(".//div[@class='js-price-display price price-display']").try(:inner_text).try(:strip)
+        price = w.xpath(".//div[@id='WM_PRICE']/div[@class='PricingInfo clearfix']/div/span[@class='clearfix camelPrice ']").try(:inner_text).try(:strip) unless price.present?
+        current_item[:price] = price.present? ? price : nil
+
+        image = w.xpath(".//img[@class='product-image js-product-image js-product-primary-image']/@src").try(:inner_text).try(:strip)
+        image = w.xpath(".//a[@id='Zoomer']/@href").try(:inner_text).try(:strip) unless image.present?
+        current_item[:image] = image.present? ? image : nil
+
+        rating = w.xpath(".//div[@class='stars']/span").try(:inner_text).gsub(/\s+stars/,'')
+        rating = w.xpath(".//div[@id='BVRRRatingOverall_Rating_Summary_1']/div[@class='BVRRRatingNormalImage']/img[@class='BVImgOrSprite']/@alt").try(:inner_text).try(:strip).split(" ")[0] unless rating.present?
+        current_item[:rating] = rating.present? ? rating : nil
+    cat_hash[cat_hash.keys[index+1]] << item
+  end
+end
 
 
 

@@ -133,7 +133,7 @@
       <div>
         <input id="type" placeholder="type (e.g GET/POST)"></input>
         <input id="url" placeholder="url (e.g http://f.wishabi.ca.s3.amazonaws.com/myJsonFile.json)"></input>
-        <input id="dataType" placeholder="datatype (e.g json)"></input>
+        <input id="dataType" type="file"></input>
       </div>
       <div id="request" onclick="sendRequest()">
         <!-- <div class="progress"></div> -->
@@ -181,37 +181,47 @@ function sendRequest() {
   $('#imgs').html("");
 
   for(var i = 0; i < batch_size; i++) {
-    var request = $.ajax({
-      'type' : type.toUpperCase(),
-      'url' : url,
-      'dataType' : data_type,
-      'cache' : false,
-      'async' : false,
-      'xhrFields' : function() {
-        var xhr = $.ajaxSettings.xhr();
-        // Upload progress
-        xhr.upload.onprogress = function(evt){
-          if (evt.lengthComputable) {
-            var width = evt.loaded * 480 / evt.total;
-            $('#request .progress').css('width', width + 'px');
-          }
-        };
-        xhr.download.onprogress = function(evt){
-          if (evt.lengthComputable) {
-            var width = evt.loaded * 480 / evt.total;
-            $('#request .progress').css('width', width + 'px');
-          }
-        };
-        return xhr;
-      },
-      'success' : function(msg) {        
-        total_time += $.now() - start_time;
-        start_time = $.now();
-      },
-      'error' : function(msg) {
-        alert('FAILED: ' + msg);
-      }
+    formData = new FormData
+    formData.append('file',$('#dataType')[0].files[0]);
+    $.ajax({
+      type: type.toUpperCase(),
+      url: url,
+      data: formData,
+      dataType: "jsonp",
+      processData: false,
+      contentType: false,
     });
+//    var request = $.ajax({
+//      'type' : type.toUpperCase(),
+//      'url' : url,
+//      'dataType' : data_type,
+//      'cache' : false,
+//      'async' : false,
+//      'xhrFields' : function() {
+//        var xhr = $.ajaxSettings.xhr();
+//        // Upload progress
+//        xhr.upload.onprogress = function(evt){
+//          if (evt.lengthComputable) {
+//            var width = evt.loaded * 480 / evt.total;
+//            $('#request .progress').css('width', width + 'px');
+//          }
+//        };
+//        xhr.download.onprogress = function(evt){
+//          if (evt.lengthComputable) {
+//            var width = evt.loaded * 480 / evt.total;
+//            $('#request .progress').css('width', width + 'px');
+//          }
+//        };
+//        return xhr;
+//      },
+//      'success' : function(msg) {
+//        total_time += $.now() - start_time;
+//        start_time = $.now();
+//      },
+//      'error' : function(msg) {
+//        alert('FAILED: ' + msg);
+//      }
+//    });
   }
 
   // We only need one request to render

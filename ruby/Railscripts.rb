@@ -184,9 +184,9 @@ fr = FlyerRun.find 37037
 dc_page_number = 1
 dc_options = {
   "name" => "Holiday Basket",
-  "handle_url" => "http://f.wishabi.ca/dynamic_content/prod/merchants/biglots/PS-805-GiftBasket/tab.html",
-  "frame_url" => "http://f.wishabi.ca/dynamic_content/prod/merchants/biglots/PS-805-GiftBasket/gift-basket.html",
-  "frame_mobile_url" => "http://f.wishabi.ca/dynamic_content/prod/merchants/biglots/PS-805-GiftBasket/gift-basket-mob.html",
+  "handle_url" => "https://f.wishabi.net/dynamic_content/prod/merchants/biglots/PS-805-GiftBasket-bust01/tab.html",
+  "frame_url" => "https://f.wishabi.net/dynamic_content/prod/merchants/biglots/PS-805-GiftBasket-bust01/gift-basket.html",
+  "frame_mobile_url" => "https://f.wishabi.net/dynamic_content/prod/merchants/biglots/PS-805-GiftBasket-bust01/gift-basket-mob.html",
   "loading_image" => "",
   "loading_image_mobile" => "",
 }
@@ -195,7 +195,7 @@ fr.flyers.each do |f|
     :flyer_id => f.id,
     :page_number => dc_page_number,
     :options => dc_options,
-    :starts_open => false,
+    :starts_open => true,
     :toggleable => true,
     :shift => 0,
   )
@@ -752,20 +752,46 @@ list.each do |mid|
 end
 
 
-CSV.foreach('sports.csv', :headers => true) do |row|
+CSV.foreach('nov16.csv', :headers => true) do |row|
   next if row[1].blank?
   fi = FlyerItem.find row[0]
   pi = fi.page_item
-  pi.keywords = row[1].gsub(",","")
+  pi.keywords = row[1]
   pi.save!
   pi.push_to_flyers
   pi.siblings.each do |i|
-    i.keywords = row[1].gsub(",","")
+    i.keywords = row[1]
     i.save!
     i.push_to_flyers
   end
 end
 
+hash = {}
+items.each do |i|
+  hash[i.keywords] ||= {}
+  hash[i.keywords]['count'] ||= 0
+  hash[i.keywords]['count'] += 1
+  hash[i.keywords]['items'] ||= []
+  hash[i.keywords]['items'] << i.name
+end
+
+
+
+report = {}
+dcs = Dc::App::FlyerRun.all
+dcs.each do |dc|
+  fr = FlyerRun.find dc.flyer_run_id
+  m = fr.merchant
+  report[m.name_identifier] ||= []
+  report[m.name_identifier] << {
+    :frame_url => dc.frame_url,
+    :frame_mobile_url => dc.frame_mobile_url,
+    :id => dc.id
+  }
+end
+
+
+fr = FlyerRun.find
 
 
 

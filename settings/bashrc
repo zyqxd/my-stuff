@@ -10,9 +10,18 @@
 export PATH=$HOME/local/bin:$PATH
 export PATH="/usr/local/heroku/bin:$PATH"
 export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
-export PATH="/Applications/Postgres.app/Contents/MacOS/bin:$PATH"
+export PATH="/Applications/Postgres.app/Contents/Versions/9.3/bin:$PATH"
 export PATH="/usr/local/mysql/bin":$PATH
 export DYLD_LIBRARY_PATH="/usr/local/mysql/lib:$DYLD_LIBRARY_PATH"
+export MANPATH=/opt/local/share/man:$MANPATH
+export PATH=/opt/local/bin:/opt/local/sbin:$PATH
+
+### Added by the Heroku Toolbelt
+export PATH="/usr/local/heroku/bin:$PATH"
+
+# ask Josh and Sarim
+export PATH=/usr/local/bin:$PATH
+export MACOSX_DEPLOYMENT_TARGET=10.9
 
 ###PROMPT
 # Styles: 00=none 01=bold 04=underscore 05=blink 07=reverse 08=concealed
@@ -27,11 +36,11 @@ export DYLD_LIBRARY_PATH="/usr/local/mysql/lib:$DYLD_LIBRARY_PATH"
 # \W - Full path
 # \n - New line
 source ~/.git-prompt.sh
-RED="\[\e[1;31m\]"
+RED="\[\e[0;31m\]"
 BLUE="\[\e[1;34m\]"
-GREEN="\[\e[1;32m\]"
-WHITE="\[\e[1;37m\]"
-MAGENTA="\[\e[1;35m\]"
+GREEN="\[\e[0;32m\]"
+WHITE="\[\e[0;37m\]"
+MAGENTA="\[\e[0;35m\]"
 export PS1="$RED[\j] $BLUE[\d \t] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
 [[ -s /Users/ezdz/.rvm/scripts/rvm ]] && . /Users/ezdz/.rvm/scripts/rvm
 
@@ -42,8 +51,9 @@ alias fadmin='cd ~/Workspace/fadmin'
 alias dynamic='cd ~/Workspace/dynamic-content'
 alias tools='cd ~/Workspace/Tools'
 alias rubytools='cd ~/Workspace/Tools'
-
-set -o vi
+alias df='/Applications/Macnewbie/Dwarf\ Fortress/dfhack ; exit;'
+alias market='cd ~/Workspace/marketplace'
+alias gitlog='git log --pretty=oneline --abbrev-commit'
 
 function alias_completion {
     local namespace="alias_completion"
@@ -95,8 +105,4 @@ function alias_completion {
     done < <(alias -p | sed -Ene "s/$alias_regex/\1 '\2' '\3'/p")
     source "$tmp_file" && rm -f "$tmp_file"
 }; alias_completion
-
-
-export AWS_ACCESS_KEY_ID=17ZRYJ3QQHH4B7TAMV82
-export AWS_SECRET_ACCESS_KEY=bzHQTsfMW7DUzQK+W8JC/3llarkMQf2ScFDxOw5j
 

@@ -1,0 +1,20 @@
+{
+  "editor.fontFamily": "'Operator Mono', monospace",
+  "editor.fontSize": 15,
+  "editor.fontWeight": "200",
+  "editor.fontLigatures": true,
+  "editor.renderLineHighlight": "all",
+  "editor.renderIndentGuides": true,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": true,
+  "editor.formatOnSave": false,
+  "editor.wordWrap": "on",
+  "editor.wordWrapColumn": 80,
+  "workbench.editor.showIcons": true,
+  "workbench.iconTheme": "material-icon-theme",
+  "vscode_custom_css.imports": [
+    "file:///Users/ezdz/Workspace/Tools/css/vscode.css"
+  ],
+  "workbench.colorTheme": "Firewatch Theme"
+}

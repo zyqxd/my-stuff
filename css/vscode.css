@@ -1,9 +1,9 @@
 .editor-container .storage.type.function.arrow,
-.editor-container .storage.type.function.arrow,
-.editor-container .storage.type.function.arrow,
 .editor-container .keyword.operator.comparison,
 .editor-container .keyword.operator.relational,
-.editor-container .keyword.operator.logical{
+.editor-container .keyword.operator.logical,
+.editor-container .keyword.operator {
+    color: white !important;
     font-family: 'Fira Code' !important;
 }
 .editor-container .entity.name,

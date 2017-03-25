@@ -1,12 +1,3 @@
-.editor-container .storage.type.function.arrow,
-.editor-container .keyword.operator.comparison,
-.editor-container .keyword.operator.relational,
-.editor-container .keyword.operator.logical,
-.editor-container .keyword.operator {
-    color: white !important;
+.editor-container .mtk14  {
     font-family: 'Fira Code' !important;
-}
-.editor-container .entity.name,
-.editor-container .entity.name {
-    font-weight: 500
 }

@@ -1,0 +1,42 @@
+########################
+#                      #
+#  DAVID ZHANG'S BASH  #
+#                      #
+########################
+
+#!/bin/bash
+
+###PROMPT
+# Styles: 00=none 01=bold 04=underscore 05=blink 07=reverse 08=concealed
+# Colors: 30=black 31=red 32=green 33=yellow 34=blue 35=magenta 36=cyan 37=white
+# Bkgrds: 40=black 41=red 42=green 43=yellow 44=blue 45=magenta 46=cyan 47=white
+# \t - Time
+# \d - Date
+# \u - User
+# \h - Host
+# \j - Jobs
+# \w - Path
+# \W - Full path
+# \n - New line
+source ~/.git-prompt.sh
+RED="\[\e[0;31m\]"
+BLUE="\[\e[1;34m\]"
+GREEN="\[\e[0;32m\]"
+WHITE="\[\e[0;37m\]"
+MAGENTA="\[\e[0;35m\]"
+export PS1="$RED[\j] $BLUE[\d \t] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
+[[ -s /Users/ezdz/.rvm/scripts/rvm ]] && . /Users/ezdz/.rvm/scripts/rvm
+
+# Set docker machine to this
+eval $(docker-machine env dev)
+
+# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
+export PATH="$PATH:$HOME/.rvm/bin"
+
+# Alias
+alias gitshow="git show --pretty='' --name-only"
+alias gitlog="git log --pretty=oneline --abbrev-commit"
+alias drails="docker exec -it hco_rails bash -l"
+alias dbi="docker exec -it hco_bi bash -l"
+alias cdr="cd ~/Workspace/hco_docker/hco_rails"
+alias cdb="cd ~/Workspace/hco_docker/hco_bi"

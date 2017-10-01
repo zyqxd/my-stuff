@@ -1,0 +1,48 @@
+########################
+#                      #
+#  DAVID ZHANG'S BASH  #
+#                      #
+########################
+
+#!/bin/bash
+
+###PROMPT
+# Styles: 00=none 01=bold 04=underscore 05=blink 07=reverse 08=concealed
+# Colors: 30=black 31=red 32=green 33=yellow 34=blue 35=magenta 36=cyan 37=white
+# Bkgrds: 40=black 41=red 42=green 43=yellow 44=blue 45=magenta 46=cyan 47=white
+# \t - Time
+# \d - Date
+# \u - User
+# \h - Host
+# \j - Jobs
+# \w - Path
+# \W - Full path
+# \n - New line
+source ~/.git-prompt.sh
+RED="\[\e[0;31m\]"
+BLUE="\[\e[1;34m\]"
+GREEN="\[\e[0;32m\]"
+WHITE="\[\e[0;37m\]"
+MAGENTA="\[\e[0;35m\]"
+export PS1="$RED[\j] $BLUE[\d \t] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
+
+# Set docker machine to this
+eval $(docker-machine env dev)
+
+# Alias
+alias gs="git status"
+alias gsf="git show --pretty='' --name-only"
+alias gsh="git show --pretty=''"
+alias gl="git log --pretty=oneline --abbrev-commit"
+alias gl5="gitlog -n 5"
+alias dr="docker exec -it hco_rails bash -l"
+alias db="docker exec -it hco_bi bash -l"
+alias cdr="cd ~/Workspace/hco_docker/hco_rails"
+alias cdb="cd ~/Workspace/hco_docker/hco_bi"
+
+# rbenv
+export PATH="$HOME/.rbenv/bin:$PATH"
+eval "$(rbenv init -)"
+
+export AWS_ACCESS_KEY_ID=AKIAJORPJTQ3BUCMMHNA
+export AWS_SECRET_ACCESS_KEY=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

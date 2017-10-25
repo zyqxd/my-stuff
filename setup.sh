@@ -5,3 +5,6 @@ defaults write -g ApplePressAndHoldEnabled -bool false
 ln -s settings/bash_profile ~/.bash_profile
 ln -s settings/git-prompt.sh ~/.git-prompt.sh
 . ~/.bash_profile
+ln -s settings/global_gitignore ~/.gitignore
+
+git config --global core.excludesfile ~/.gitignore

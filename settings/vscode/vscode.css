@@ -1,4 +1,6 @@
-.editor-container .mtk14  {
+.editor-container .mtk4,      /* 0x */
+.editor-container .mtk13      /* |>, ==, =>, ===, -> */
+{
     font-family: 'Fira Code' !important;
     letter-spacing: -0.75px !important
 }

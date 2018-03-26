@@ -33,12 +33,10 @@ eval $(docker-machine env dev)
 alias gs="git status"
 alias gsf="git show --pretty='' --name-only"
 alias gsh="git show --pretty=''"
+alias gco="git checkout"
 alias gl="git log --pretty=oneline --abbrev-commit"
-alias gl5="gitlog -n 5"
-alias dr="docker exec -it hco_rails bash -l"
-alias db="docker exec -it hco_bi bash -l"
-alias cdr="cd ~/Workspace/hco_docker/hco_rails"
-alias cdb="cd ~/Workspace/hco_docker/hco_bi"
+alias gl5="git log -n 5"
+alias dc="docker-compose"
 
 # rbenv
 export PATH="$HOME/.rbenv/bin:$PATH"

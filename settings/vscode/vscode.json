@@ -1,20 +1,73 @@
 {
   "editor.fontFamily": "'Operator Mono', monospace",
-  "editor.fontSize": 15,
-  "editor.fontWeight": "200",
+  "editor.fontSize": 14,
+  "editor.fontWeight": "400",
   "editor.fontLigatures": true,
-  "editor.renderLineHighlight": "all",
+  "editor.renderLineHighlight": "line",
   "editor.renderIndentGuides": true,
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
-  "editor.detectIndentation": true,
   "editor.formatOnSave": false,
-  "editor.wordWrap": "on",
-  "editor.wordWrapColumn": 80,
+  "editor.wordWrapColumn": 120,
+  "editor.wordWrap": "off",
+  "editor.rulers": [80, 120],
+  "editor.minimap.enabled": false,
+  "editor.cursorStyle": "line",
   "workbench.editor.showIcons": true,
-  "workbench.iconTheme": "material-icon-theme",
+  "workbench.iconTheme": "eq-material-theme-icons",
+  "workbench.activityBar.visible": false,
+  "workbench.statusBar.visible": false,
+  "window.zoomLevel": 0,
+  "extensions.ignoreRecommendations": false,
+  "files.trimTrailingWhitespace": true,
+  "[markdown]": {
+      "files.trimTrailingWhitespace": false,
+      "editor.wordWrap": "off"
+  },
   "vscode_custom_css.imports": [
-    "file:///Users/ezdz/Workspace/Tools/css/vscode.css"
+    "file:///Users/deezy/.vscode.css"
   ],
-  "workbench.colorTheme": "Firewatch Theme"
+  "zenMode.fullScreen": false,
+  "python.linting.lintOnSave": true,
+  "vim.disableAnnoyingNeovimMessage": true,
+  "vim.easymotion": true,
+  "vim.textwidth": 120,
+  "vim.cursorStylePerMode" : {
+    "normal": "underline",
+    "insert": "line-thin",
+    "replace": "block-outline"
+  },
+  "search.exclude": {
+    "**/.git": true,
+    "**/_build": true,
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/deps": true
+  },
+  "files.exclude": {
+    "**/node_modules/": true
+  },
+  "explorer.confirmDragAndDrop": false,
+  "workbench.colorTheme": "Arc Dark",
+  "workbench.colorCustomizations": {
+    "activityBarBadge.background": "#C6FF00",
+    "list.activeSelectionForeground": "#C6FF00",
+    "list.inactiveSelectionForeground": "#C6FF00",
+    "list.highlightForeground": "#C6FF00",
+    "scrollbarSlider.activeBackground": "#C6FF0050",
+    "editorSuggestWidget.highlightForeground": "#C6FF00",
+    "textLink.foreground": "#C6FF00",
+    "progressBar.background": "#C6FF00",
+    "pickerGroup.foreground": "#C6FF00",
+    "tab.activeBorder": "#C6FF00",
+    "notificationLink.foreground": "#C6FF00"
+  },
+  "materialTheme.cache.workbench.settings": {
+    "themeColours": "Palenight",
+    "accentPrevious": "Breaking Bad",
+    "accent": "Acid Lime"
+  },
+  "explorer.confirmDelete": false,
+  "editor.detectIndentation": true,
+  "extensions.autoUpdate": false
 }

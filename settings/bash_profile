@@ -26,9 +26,6 @@ WHITE="\[\e[0;37m\]"
 MAGENTA="\[\e[0;35m\]"
 export PS1="$RED[\j] $BLUE[\d \t] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
 
-# Set docker machine to this
-eval $(docker-machine env dev)
-
 # Alias
 alias gs="git status -s"
 alias gsf="git show --pretty='' --name-only"

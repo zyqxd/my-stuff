@@ -4,15 +4,14 @@ defaults write -g InitialKeyRepeat -int 15
 defaults write -g KeyRepeat -int 2
 
 # setup bash profile
-sudo ln -sf ~/Workspace/Tools/settings/bashrc ~/.bashrc
-sudo ln -sf ~/Workspace/Tools/settings/git-prompt.sh ~/.git-prompt.sh
-sudo ln -sf ~/Workspace/Tools/settings/gitignore ~/.gitignore
-sudo ln -sf ~/Workspace/Tools/settings/inputrc ~/.inputrc
+ln -sf ~/Workspace/Tools/settings/bash_profile ~/.bash_profile
+ln -sf ~/Workspace/Tools/settings/git-prompt.sh ~/.git-prompt.sh
+ln -sf ~/Workspace/Tools/settings/gitignore ~/.gitignore
 
 # Setup vscode
-sudo ln -sf ~/Workspace/Tools/settings/vscode/vscode.css ~/.vscode.css
-sudo ln -sf ~/Workspace/Tools/settings/vscode/vscode.json $HOME/Library/Application\ Support/Code/User/settings.json
+ln -sf ~/Workspace/Tools/settings/vscode/vscode.css ~/.vscode.css
+ln -sf ~/Workspace/Tools/settings/vscode/vscode.json $HOME/Library/Application\ Support/Code/User/settings.json
 
-source ~/.bashrc
+source ~/.bash_profile
 
 git config --global core.excludesfile ~/.gitignore

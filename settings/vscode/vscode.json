@@ -1,7 +1,7 @@
 {
-  "editor.fontFamily": "'Operator Mono', monospace",
-  "editor.fontSize": 14,
-  "editor.fontWeight": "400",
+  "editor.fontFamily": "'Fira Code', monospace",
+  "editor.fontSize": 13,
+  "editor.fontWeight": "100",
   "editor.fontLigatures": true,
   "editor.renderLineHighlight": "line",
   "editor.renderIndentGuides": true,
@@ -14,7 +14,6 @@
   "editor.minimap.enabled": false,
   "editor.cursorStyle": "line",
   "workbench.editor.showIcons": true,
-  "workbench.iconTheme": "eq-material-theme-icons",
   "workbench.activityBar.visible": false,
   "workbench.statusBar.visible": false,
   "window.zoomLevel": 0,
@@ -48,7 +47,7 @@
     "**/node_modules/": true
   },
   "explorer.confirmDragAndDrop": false,
-  "workbench.colorTheme": "Arc Dark",
+  "workbench.colorTheme": "Material Theme Palenight High Contrast",
   "workbench.colorCustomizations": {
     "activityBarBadge.background": "#C6FF00",
     "list.activeSelectionForeground": "#C6FF00",
@@ -69,5 +68,8 @@
   },
   "explorer.confirmDelete": false,
   "editor.detectIndentation": true,
-  "extensions.autoUpdate": false
+  "extensions.autoUpdate": false,
+  "materialTheme.fixIconsRunning": false,
+  "workbench.iconTheme": "eq-material-theme-icons-palenight",
+  "material-icon-theme.folders.color": "#26a69a"
 }

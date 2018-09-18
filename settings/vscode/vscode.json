@@ -71,5 +71,6 @@
   "extensions.autoUpdate": false,
   "materialTheme.fixIconsRunning": false,
   "workbench.iconTheme": "eq-material-theme-icons-palenight",
-  "material-icon-theme.folders.color": "#26a69a"
+  "material-icon-theme.folders.color": "#26a69a",
+  "update.channel": "none"
 }

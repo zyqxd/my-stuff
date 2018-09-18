@@ -35,6 +35,7 @@ alias gpu="git pull upstream master"
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 alias gl5="git log -n 5"
 alias dc="docker-compose"
+alias wineit="test \"$?BASH_VERSION\" = \"0\" || eval 'setenv() { export \"$1=$2\"; }';                setenv PATH \"/Applications/Wine Devel.app/Contents/Resources/start/bin:/Applications/Wine Devel.app/Contents/Resources/wine/bin:$PATH\"; winehelp --clear"
 
 # rbenv
 export PATH="$HOME/.rbenv/bin:$PATH"

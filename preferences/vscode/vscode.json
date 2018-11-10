@@ -72,5 +72,6 @@
   "materialTheme.fixIconsRunning": false,
   "workbench.iconTheme": "eq-material-theme-icons-palenight",
   "material-icon-theme.folders.color": "#26a69a",
-  "update.channel": "none"
+  "update.channel": "none",
+  "gitlens.codeLens.authors.enabled": false,
 }

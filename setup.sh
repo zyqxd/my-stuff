@@ -12,7 +12,8 @@ ln -sf ~/Workspace/my-stuff/preferences/gitignore ~/.gitignore
 
 # Setup vscode
 ln -sf ~/Workspace/my-stuff/preferences/vscode/vscode.css ~/.vscode.css
-ln -sf ~/Workspace/my-stuff/preferences/vscode/vscode.json $HOME/Library/Application\ Support/Code/User/settings.json
+ln -sf ~/Workspace/my-stuff/preferences/vscode/settings.json $HOME/Library/Application\ Support/Code/User/settings.json
+ln -sf ~/Workspace/my-stuff/preferences/vscode/keybindings.json $HOME/Library/Application\ Support/Code/User/keybindings.json
 
 source ~/.bash_profile
 

@@ -1,0 +1,9 @@
+// Place your key bindings in this file to overwrite the defaults
+[
+  {
+    "key": "cmd+e","command": "expand_region", "when": "editorTextFocus"
+  },
+  {
+    "key": "cmd+shift+e","command": "undo_expand_region", "when": "editorTextFocus && editorHasSelection"
+  }
+]

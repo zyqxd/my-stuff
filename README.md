@@ -26,6 +26,7 @@ code to look like this:
 
 ##### Syntax and styling
 ```
+Bracket Pair Colorizer
 Custom CSS and JS Loader
 Markdown Preview Enhanced
 Material Icon Theme
@@ -37,7 +38,7 @@ Rainbow CSV
 ```
 Docker
 GraphQL for VSCode
-Rails
+Ruby
 vscode-elixir
 vscode-styled-components
 ```
@@ -46,6 +47,7 @@ vscode-styled-components
 ```
 GitLens — Git supercharged
 Vim
+expand-region
 ```
 
 ## TODO

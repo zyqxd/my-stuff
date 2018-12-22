@@ -6,7 +6,6 @@
 
 #!/bin/bash
 
-###PROMPT
 # Styles: 00=none 01=bold 04=underscore 05=blink 07=reverse 08=concealed
 # Colors: 30=black 31=red 32=green 33=yellow 34=blue 35=magenta 36=cyan 37=white
 # Bkgrds: 40=black 41=red 42=green 43=yellow 44=blue 45=magenta 46=cyan 47=white
@@ -18,15 +17,27 @@
 # \w - Path
 # \W - Full path
 # \n - New line
-source ~/.git-prompt.sh
 RED="\[\e[0;31m\]"
-BLUE="\[\e[1;34m\]"
 GREEN="\[\e[0;32m\]"
-WHITE="\[\e[0;37m\]"
+YELLOW="\[\e[0;33m\]"
+BLUE="\[\e[1;34m\]"
 MAGENTA="\[\e[0;35m\]"
+WHITE="\[\e[0;37m\]"
+
+# GIT BRANCH PROMPT
+if [ -f ~/.git-prompt.sh ]; then
+  source ~/.git-prompt.sh
+fi
+
+# GIT AUTOCOMPLETE BRANCHES
+if [ -f ~/.git-autocomplete.bash ]; then
+  source ~/.git-autocomplete.bash
+fi
+
 export PS1="$RED[\j] $BLUE[\d \t] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
 
 # Alias
+alias gb="git branch"
 alias gs="git status -s"
 alias gsf="git show --pretty='' --name-only"
 alias gsh="git show --pretty=''"
@@ -43,3 +54,6 @@ eval "$(rbenv init -)"
 
 export NVM_DIR="/Users/Mahou/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
+export PATH="/usr/local/opt/postgresql@9.6/bin:$PATH"
+
+export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"

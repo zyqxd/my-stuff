@@ -4,11 +4,13 @@ defaults write -g InitialKeyRepeat -int 15
 defaults write -g KeyRepeat -int 2
 
 # setup bash profile
-ln -sf ~/Workspace/my-stuff/preferences/bash/bash_profile ~/.bash_profile
-ln -sf ~/Workspace/my-stuff/preferences/bash/git-prompt.sh ~/.git-prompt.sh
+ln -sf ~/Workspace/my-stuff/preferences/bash/profile ~/.bash_profile
 
 # setup git
-ln -sf ~/Workspace/my-stuff/preferences/gitignore ~/.gitignore
+ln -sf ~/Workspace/my-stuff/preferences/git/prompt.sh ~/.git-prompt.sh
+ln -sf ~/Workspace/my-stuff/preferences/git/autocomplete.bash ~/.git-autocomplete.bash
+ln -sf ~/Workspace/my-stuff/preferences/git/ignore ~/.gitignore
+ln -sf ~/Workspace/my-stuff/preferences/git/config ~/.gitconfig
 
 # Setup vscode
 ln -sf ~/Workspace/my-stuff/preferences/vscode/vscode.css ~/.vscode.css

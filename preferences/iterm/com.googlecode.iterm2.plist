@@ -711,7 +711,7 @@
 	<key>LoadPrefsFromCustomFolder</key>
 	<true/>
 	<key>NSNavLastRootDirectory</key>
-	<string>~/Workspace/Tools/settings/iterm</string>
+	<string>~/Documents</string>
 	<key>NSNavPanelExpandedSizeForOpenMode</key>
 	<string>{712, 448}</string>
 	<key>NSQuotedKeystrokeBinding</key>
@@ -755,9 +755,9 @@
 	<key>NSWindow Frame Preferences</key>
 	<string>747 244 606 456 0 0 1440 877 </string>
 	<key>NSWindow Frame SessionsPreferences</key>
-	<string>306 476 609 401 0 0 1440 877 </string>
+	<string>306 476 609 401 0 0 1440 900 </string>
 	<key>NSWindow Frame SharedPreferences</key>
-	<string>177 354 796 486 0 0 1440 877 </string>
+	<string>177 446 928 394 0 0 1440 877 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
 	<string>0 473 1440 404 0 0 1440 877 </string>
 	<key>New Bookmarks</key>
@@ -927,12 +927,16 @@
 			<true/>
 			<key>Background Color</key>
 			<dict>
+				<key>Alpha Component</key>
+				<real>1</real>
 				<key>Blue Component</key>
-				<real>0.1283406391402715</real>
+				<real>0.0</real>
+				<key>Color Space</key>
+				<string>sRGB</string>
 				<key>Green Component</key>
-				<real>0.1283406391402715</real>
+				<real>0.0</real>
 				<key>Red Component</key>
-				<real>0.1283406391402715</real>
+				<real>0.0</real>
 			</dict>
 			<key>Background Image Location</key>
 			<string></string>
@@ -1494,12 +1498,16 @@
 			</dict>
 			<key>Selection Color</key>
 			<dict>
+				<key>Alpha Component</key>
+				<real>1</real>
 				<key>Blue Component</key>
-				<real>0.18823529779911041</real>
+				<real>0.26421586001467279</real>
+				<key>Color Space</key>
+				<string>sRGB</string>
 				<key>Green Component</key>
-				<real>0.18823529779911041</real>
+				<real>0.528564453125</real>
 				<key>Red Component</key>
-				<real>0.18823529779911041</real>
+				<real>0.033188518136739731</real>
 			</dict>
 			<key>Send Code When Idle</key>
 			<false/>
@@ -2395,7 +2403,7 @@
 		</dict>
 	</dict>
 	<key>PrefsCustomFolder</key>
-	<string>/Users/Mahou/Workspace/Tools/settings/iterm</string>
+	<string>/Users/Mahou/Workspace/my-stuff/preferences/iterm</string>
 	<key>Print In Black And White</key>
 	<true/>
 	<key>SUEnableAutomaticChecks</key>

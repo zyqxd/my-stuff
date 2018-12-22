@@ -1,0 +1,9 @@
+[user]
+	name = David Zhang
+	email = zyq.david@gmail.com
+[filter "media"]
+	required = true
+	clean = git media clean %f
+	smudge = git media smudge %f
+[core]
+	excludesfile = /Users/Mahou/.gitignore

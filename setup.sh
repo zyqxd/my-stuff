@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # enable hold movement in vim
 defaults write -g ApplePressAndHoldEnabled -bool false
 defaults write -g InitialKeyRepeat -int 15

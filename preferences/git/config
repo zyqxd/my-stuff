@@ -7,3 +7,76 @@
 	smudge = git media smudge %f
 [core]
 	excludesfile = /Users/Mahou/.gitignore
+[alias]
+  ##
+	# Source: https://github.com/GitAlias/gitalias/blob/master/gitalias.txt
+  # Guidelines: these aliases do not use options, because we want
+  # these aliases to be easy to compose and use in many ways.
+  ##
+
+	### ADD ###
+  a = add
+
+  aa = add --all
+
+  ap = add --patch
+
+  au = add --update
+
+	### BRANCH ###
+  b = branch
+
+	### CHECKOUT ###
+  c = checkout
+
+  co = checkout
+
+  ### CHERRY PICK ###
+  cp = cherry-pick
+
+	### CLEAN ###
+  cleanest = clean -ffdx
+
+	### COMMIT ###
+  c = commit
+
+  ca = commit --amend
+
+  cam = commit --amend --message
+
+	### DIFF ###
+  d = diff
+
+  dc = diff --cached
+
+  ds = diff --staged
+
+  dw = diff --word-diff
+
+	### LOG ###
+  l = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit -n 10
+
+	last = log -1 HEAD
+
+	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+
+  ### REBASE ###
+  rb = rebase
+
+  rbc = rebase --continue
+
+  rbs = rebase --skip
+
+	### RESET ###
+	unstage = reset HEAD --
+
+  ### SHOW ###
+	sh = show --pretty=''
+
+	sf = show --pretty='' --name-only
+
+	### STATUS ###
+  s = status -s
+
+  # Show our defined alias list
+  aliases = "!git config --get-regexp '^alias\\.' | sed 's/ / \t\t= /'"

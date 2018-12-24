@@ -40,6 +40,8 @@
 	### COMMIT ###
   c = commit
 
+  cm = commit --message
+
   ca = commit --amend
 
   cam = commit --amend --message
@@ -59,6 +61,11 @@
 	last = log -1 HEAD
 
 	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+
+  ### PUSH ###
+  p = push
+
+  pf = push --force
 
   ### REBASE ###
   rb = rebase

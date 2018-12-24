@@ -26,6 +26,8 @@
 	### BRANCH ###
   b = branch
 
+  bd = branch -D
+
 	### CHECKOUT ###
   c = checkout
 
@@ -68,11 +70,11 @@
   pf = push --force
 
   ### REBASE ###
-  rb = rebase
+  r = rebase
 
-  rbc = rebase --continue
+  rc = rebase --continue
 
-  rbs = rebase --skip
+  rs = rebase --skip
 
 	### RESET ###
 	unstage = reset HEAD --

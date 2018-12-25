@@ -88,3 +88,10 @@
   ### custom ###
 
   aliases = "!git config --get-regexp '^alias\\.' | sed 's/ / \t\t= /'"
+
+  switch = "!f(){ \
+    switch_branch=\"$1\"; \
+    git aa; \
+    git stash; \
+    git co \"$switch_branch\"; \
+  };f"

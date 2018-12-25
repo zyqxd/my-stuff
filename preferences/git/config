@@ -1,95 +1,90 @@
 [user]
-	name = David Zhang
-	email = zyq.david@gmail.com
+  name = David Zhang
+  email = zyq.david@gmail.com
 [filter "media"]
-	required = true
-	clean = git media clean %f
-	smudge = git media smudge %f
+  required = true
+  clean = git media clean %f
+  smudge = git media smudge %f
 [core]
-	excludesfile = /Users/Mahou/.gitignore
+  excludesfile = /Users/Mahou/.gitignore
 [alias]
   ##
-	# Source: https://github.com/GitAlias/gitalias/blob/master/gitalias.txt
+  # Source: https://github.com/GitAlias/gitalias/blob/master/gitalias.txt
   # Guidelines: these aliases do not use options, because we want
   # these aliases to be easy to compose and use in many ways.
   ##
 
-	### ADD ###
+  ### add ###
+
   a = add
-
   aa = add --all
-
   ap = add --patch
-
   au = add --update
 
-	### BRANCH ###
-  b = branch
+  ### branch ###
 
+  b = branch
   bd = branch -D
 
-	### CHECKOUT ###
-  c = checkout
+  ### checkout ###
 
+  c = checkout
   co = checkout
 
-  ### CHERRY PICK ###
+  ### cherry-pick ###
+
   cp = cherry-pick
 
-	### CLEAN ###
+  ### clean ###
+
   cleanest = clean -ffdx
 
-	### COMMIT ###
+  ### commit ###
+
   c = commit
-
   cm = commit --message
-
   ca = commit --amend
-
   cam = commit --amend --message
 
-	### DIFF ###
+  ### diff ###
+
   d = diff
-
   dc = diff --cached
-
   ds = diff --staged
-
   dw = diff --word-diff
 
-	### LOG ###
+  ### log ###
+
   l = log --graph --pretty=format:'%Cred%h%Creset - %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit -n 10
+  last = log -1 HEAD
+  tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
 
-	last = log -1 HEAD
+  ### push ###
 
-	tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
-
-  ### PUSH ###
   p = push
-
   pf = push --force
 
-  ### REBASE ###
-  r = rebase
+  ### rebase ###
 
-  ra = rebase --abort
+  rb = rebase
+  rba = rebase --abort
+  rbi = rebase --interactive
+  rbc = rebase --continue
+  rbs = rebase --skip
 
-  ri = rebase --interactive
+  ### reset ###
 
-  rc = rebase --continue
+  unstage = reset HEAD --
 
-  rs = rebase --skip
+  ### show ###
 
-	### RESET ###
-	unstage = reset HEAD --
+  sh = show --pretty=''
+  sf = show --pretty='' --name-only
 
-  ### SHOW ###
-	sh = show --pretty=''
+  ### status ###
 
-	sf = show --pretty='' --name-only
-
-	### STATUS ###
   s = status -s
 
-  # Show our defined alias list
+  ### custom ###
+
   aliases = "!git config --get-regexp '^alias\\.' | sed 's/ / \t\t= /'"

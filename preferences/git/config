@@ -62,6 +62,7 @@
   ### push ###
 
   p = push
+  po = "!git push origin $(git branch-name)"
   pf = push --force
 
   ### rebase ###
@@ -96,6 +97,7 @@
   ### workflow and customs ###
 
   aliases = "!git config --get-regexp '^alias\\.' | sed 's/ / \t\t= /'"
+  branch-name = rev-parse --abbrev-ref HEAD
 
   switch = "!f(){ \
     switch_branch=\"$1\"; \

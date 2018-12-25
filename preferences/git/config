@@ -72,6 +72,10 @@
   ### REBASE ###
   r = rebase
 
+  ra = rebase --abort
+
+  ri = rebase --interactive
+
   rc = rebase --continue
 
   rs = rebase --skip

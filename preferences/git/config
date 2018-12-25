@@ -85,7 +85,15 @@
 
   s = status -s
 
-  ### custom ###
+  ### assumes ###
+
+  assume   = update-index --assume-unchanged
+  unassume = update-index --no-assume-unchanged
+  assume-all = "!git st -s | awk {'print $2'} | xargs git assume"
+  unassume-all = "!git assumed | xargs git update-index --no-assume-unchanged"
+  assumed  = !"git ls-files -v | grep ^h | cut -c 3-"
+
+  ### workflow and customs ###
 
   aliases = "!git config --get-regexp '^alias\\.' | sed 's/ / \t\t= /'"
 
@@ -95,3 +103,9 @@
     git stash; \
     git co \"$switch_branch\"; \
   };f"
+
+  squash = "!f(){ \
+    git reset --soft HEAD~${1}; \
+    git commit --edit -m \"$(git log --format=%B --reverse HEAD..HEAD@{1})\"; \
+  };f"
+

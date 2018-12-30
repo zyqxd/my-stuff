@@ -73,6 +73,9 @@
   rbi = rebase --interactive
   rbc = rebase --continue
   rbs = rebase --skip
+  squash = "!f(){ \
+    git rebase -i HEAD~\"$1\"; \
+  };f"
 
   ### reset ###
 
@@ -134,7 +137,3 @@
     git stash pop; \
   };f"
 
-  squash = "!f(){ \
-    git reset --soft HEAD~${1}; \
-    git commit --edit -m \"$(git log --format=%B --reverse HEAD..HEAD@{1})\"; \
-  };f"

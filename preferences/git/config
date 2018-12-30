@@ -101,14 +101,30 @@
   branch-name = rev-parse --abbrev-ref HEAD
 
   switch = "!f(){ \
-    switch_branch=\"$1\"; \
-    git aa; \
-    git stash; \
-    git co \"$switch_branch\"; \
+    if [ ! -f .git-switch.lock ]; then \
+      switch_branch=\"$1\"; \
+      current_branch=\"$(git branch-name)\"; \
+      git aa; \
+      git stash; \
+      git co \"$switch_branch\"; \
+      echo \"$current_branch\" > .git-switch.lock; \
+    else \
+      echo Switch already lock exists!; \
+    fi \
+  };f"
+
+  unswitch = "!f(){ \
+    if [ -f .git-switch.lock ]; then \
+      switch_branch=\"$(cat .git-switch.lock)\"; \
+      git co \"$switch_branch\"; \
+      git stash pop; \
+      rm .git-switch.lock; \
+    else \
+      echo Switch lock does not exist!; \
+    fi \
   };f"
 
   squash = "!f(){ \
     git reset --soft HEAD~${1}; \
     git commit --edit -m \"$(git log --format=%B --reverse HEAD..HEAD@{1})\"; \
   };f"
-

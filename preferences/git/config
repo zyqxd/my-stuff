@@ -30,6 +30,7 @@
 
   c = checkout
   co = checkout
+  n = checkout -b
 
   ### cherry-pick ###
 

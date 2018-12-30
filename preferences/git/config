@@ -124,6 +124,16 @@
     fi \
   };f"
 
+  update = "!f(){ \
+    git aa; \
+    git stash; \
+    git co master; \
+    git pull; \
+    git co -; \
+    git rebase -; \
+    git stash pop; \
+  };f"
+
   squash = "!f(){ \
     git reset --soft HEAD~${1}; \
     git commit --edit -m \"$(git log --format=%B --reverse HEAD..HEAD@{1})\"; \

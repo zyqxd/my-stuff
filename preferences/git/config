@@ -76,6 +76,7 @@
   squash = "!f(){ \
     git rebase -i HEAD~\"$1\"; \
   };f"
+  rbap = !"git squash 2"
 
   ### reset ###
 

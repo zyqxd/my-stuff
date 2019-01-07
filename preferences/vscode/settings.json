@@ -70,7 +70,7 @@
   "editor.detectIndentation": true,
   "extensions.autoUpdate": false,
   "materialTheme.fixIconsRunning": false,
-  "workbench.iconTheme": "eq-material-theme-icons-darker",
+  "workbench.iconTheme": "eq-material-theme-icons-palenight",
   "material-icon-theme.folders.color": "#26a69a",
   "update.channel": "none",
   "gitlens.codeLens.authors.enabled": false,

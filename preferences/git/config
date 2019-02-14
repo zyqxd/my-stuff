@@ -63,7 +63,7 @@
   ### push ###
 
   p = push
-  po = "!git push origin $(git branch-name)"
+  po = "!git push --set-upstream origin $(git branch-name)"
   pf = push --force
 
   ### rebase ###

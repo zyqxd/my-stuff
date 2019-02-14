@@ -757,9 +757,9 @@
 	<key>NSWindow Frame SessionsPreferences</key>
 	<string>306 476 609 401 0 0 1440 900 </string>
 	<key>NSWindow Frame SharedPreferences</key>
-	<string>177 388 796 486 0 0 1440 877 </string>
+	<string>177 332 796 486 0 0 1440 877 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
-	<string>176 70 1130 804 0 0 1440 877 </string>
+	<string>155 73 1130 804 0 0 1440 877 </string>
 	<key>New Bookmarks</key>
 	<array>
 		<dict>
@@ -1508,6 +1508,15 @@
 				<real>0.528564453125</real>
 				<key>Red Component</key>
 				<real>0.033188518136739731</real>
+			</dict>
+			<key>Semantic History</key>
+			<dict>
+				<key>action</key>
+				<string>editor</string>
+				<key>editor</key>
+				<string>com.microsoft.VSCode</string>
+				<key>text</key>
+				<string></string>
 			</dict>
 			<key>Send Code When Idle</key>
 			<false/>
@@ -2318,6 +2327,15 @@
 				<real>0.31925182228741278</real>
 				<key>Red Component</key>
 				<real>0.48199462890625</real>
+			</dict>
+			<key>Semantic History</key>
+			<dict>
+				<key>action</key>
+				<string>editor</string>
+				<key>editor</key>
+				<string>com.microsoft.VSCode</string>
+				<key>text</key>
+				<string></string>
 			</dict>
 			<key>Send Code When Idle</key>
 			<false/>

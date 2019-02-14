@@ -74,4 +74,7 @@
   "material-icon-theme.folders.color": "#26a69a",
   "update.channel": "none",
   "gitlens.codeLens.authors.enabled": false,
+  "css.lint.unknownProperties": "ignore",
+  "less.lint.unknownProperties": "ignore",
+  "css.validate": false,
 }

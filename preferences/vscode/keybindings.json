@@ -3,7 +3,13 @@
   {
     "key": "cmd+e","command": "expand_region", "when": "editorTextFocus"
   },
-  // {
-  //   "key": "cmd+shift+e","command": "undo_expand_region", "when": "editorTextFocus && editorHasSelection"
-  // }
+  {
+    "key": "shift+cmd+[",
+    "command": "workbench.files.action.collapseExplorerFolders",
+    "when": "explorerViewletVisible"
+  },
+  {
+    "key": "shift+cmd+[",
+    "command": "-workbench.action.previousEditor"
+  }
 ]

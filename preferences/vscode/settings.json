@@ -1,7 +1,7 @@
 {
   "editor.fontFamily": "'Fira Code', monospace",
   "editor.fontSize": 13,
-  "editor.fontWeight": "100",
+  "editor.fontWeight": "400",
   "editor.fontLigatures": true,
   "editor.renderLineHighlight": "line",
   "editor.renderIndentGuides": true,
@@ -24,18 +24,11 @@
       "editor.wordWrap": "off"
   },
   "vscode_custom_css.imports": [
-    "file:///Users/deezy/.vscode.css"
+    "file:///Users/dz/.vscode.css"
   ],
   "zenMode.fullScreen": false,
-  "python.linting.lintOnSave": true,
-  "vim.disableAnnoyingNeovimMessage": true,
   "vim.easymotion": true,
   "vim.textwidth": 120,
-  "vim.cursorStylePerMode" : {
-    "normal": "underline",
-    "insert": "line-thin",
-    "replace": "block-outline"
-  },
   "search.exclude": {
     "**/.git": true,
     "**/_build": true,
@@ -47,7 +40,7 @@
     "**/node_modules/": true
   },
   "explorer.confirmDragAndDrop": false,
-  "workbench.colorTheme": "Material Theme Palenight High Contrast",
+  "workbench.colorTheme": "Material Theme Palenight",
   "workbench.colorCustomizations": {
     "activityBarBadge.background": "#C6FF00",
     "list.activeSelectionForeground": "#C6FF00",
@@ -61,18 +54,11 @@
     "tab.activeBorder": "#C6FF00",
     "notificationLink.foreground": "#C6FF00"
   },
-  "materialTheme.cache.workbench.settings": {
-    "themeColours": "Palenight",
-    "accentPrevious": "Breaking Bad",
-    "accent": "Acid Lime"
-  },
   "explorer.confirmDelete": false,
   "editor.detectIndentation": true,
   "extensions.autoUpdate": false,
-  "materialTheme.fixIconsRunning": false,
-  "workbench.iconTheme": "eq-material-theme-icons-palenight",
+  "workbench.iconTheme": "material-icon-theme",
   "material-icon-theme.folders.color": "#26a69a",
-  "update.channel": "none",
   "gitlens.codeLens.authors.enabled": false,
   "css.lint.unknownProperties": "ignore",
   "less.lint.unknownProperties": "ignore",

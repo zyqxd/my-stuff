@@ -6,7 +6,7 @@
   clean = git media clean %f
   smudge = git media smudge %f
 [core]
-  excludesfile = /Users/Mahou/.gitignore
+	excludesfile = /Users/dz/.gitignore
 [alias]
   ##
   # Source: https://github.com/GitAlias/gitalias/blob/master/gitalias.txt

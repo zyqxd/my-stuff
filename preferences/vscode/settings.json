@@ -7,7 +7,7 @@
   "editor.renderIndentGuides": true,
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
   "editor.wordWrapColumn": 120,
   "editor.wordWrap": "off",
   "editor.rulers": [80],
@@ -20,12 +20,9 @@
   "extensions.ignoreRecommendations": false,
   "files.trimTrailingWhitespace": true,
   "[markdown]": {
-      "files.trimTrailingWhitespace": false,
-      "editor.wordWrap": "off"
+    "files.trimTrailingWhitespace": false,
+    "editor.wordWrap": "off"
   },
-  "vscode_custom_css.imports": [
-    "file:///Users/dz/.vscode.css"
-  ],
   "zenMode.fullScreen": false,
   "vim.easymotion": true,
   "vim.textwidth": 120,
@@ -40,7 +37,7 @@
     "**/node_modules/": true
   },
   "explorer.confirmDragAndDrop": false,
-  "workbench.colorTheme": "Material Theme Palenight",
+  "workbench.colorTheme": "Material Theme Palenight High Contrast",
   "workbench.colorCustomizations": {
     "activityBarBadge.background": "#C6FF00",
     "list.activeSelectionForeground": "#C6FF00",
@@ -57,10 +54,10 @@
   "explorer.confirmDelete": false,
   "editor.detectIndentation": true,
   "extensions.autoUpdate": false,
-  "workbench.iconTheme": "material-icon-theme",
+  "workbench.iconTheme": "eq-material-theme-icons-palenight",
   "material-icon-theme.folders.color": "#26a69a",
   "gitlens.codeLens.authors.enabled": false,
   "css.lint.unknownProperties": "ignore",
   "less.lint.unknownProperties": "ignore",
-  "css.validate": false,
+  "css.validate": false
 }

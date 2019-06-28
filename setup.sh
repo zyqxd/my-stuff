@@ -19,6 +19,9 @@ ln -sf ~/Workspace/my-stuff/preferences/vscode/vscode.css ~/.vscode.css
 ln -sf ~/Workspace/my-stuff/preferences/vscode/settings.json $HOME/Library/Application\ Support/Code/User/settings.json
 ln -sf ~/Workspace/my-stuff/preferences/vscode/keybindings.json $HOME/Library/Application\ Support/Code/User/keybindings.json
 
+# Setup divvy
+ln -sf ~/Workspace/my-stuff/preferences/divvy/com.mizage.direct.Divvy.plist $HOME/Library/Preferences/com.mizage.direct.Divvy.plist
+
 source ~/.bash_profile
 
 git config --global core.excludesfile ~/.gitignore

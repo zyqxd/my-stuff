@@ -9,9 +9,7 @@
   "editor.insertSpaces": true,
   "editor.wordWrapColumn": 120,
   "editor.wordWrap": "off",
-  "editor.rulers": [
-    80
-  ],
+  "editor.rulers": [80],
   "editor.minimap.enabled": false,
   "editor.cursorStyle": "line",
   "workbench.editor.showIcons": true,
@@ -59,8 +57,12 @@
     "breadcrumb.activeSelectionForeground": "#AB47BC",
     "menu.selectionForeground": "#AB47BC",
     "menubar.selectionForeground": "#AB47BC",
-    "editor.findMatchBorder": "#AB47BC",
-    "selection.background": "#AB47BC40"
+    "selection.background": "#AB47BC40",
+    "editor.findMatchBorder": "#FFFFFF",
+    "editor.findMatchHighlightBackground": "#135564",
+    "editor.findMatchBackground": "#427683",
+    "editor.selectionBackground": "#135564",
+    "editor.selectionHighlightBackground": "#135564"
   },
   "explorer.confirmDelete": false,
   "editor.detectIndentation": true,
@@ -72,10 +74,29 @@
   "css.validate": false,
   "editor.formatOnSave": true,
   "materialTheme.accent": "Purple",
-  "tslint.exclude": [
-    "*.js",
-    "*.jsx"
-  ],
+  "tslint.exclude": ["*.js", "*.jsx"],
   "flow.pathToFlow": "${workspaceFolder}/node_modules/.bin/flow",
   "javascript.validate.enable": false,
+  "vim.normalModeKeyBindingsNonRecursive": [
+    {
+      "before": ["u"],
+      "after": [],
+      "commands": [
+        {
+          "command": "undo"
+        }
+      ]
+    },
+    {
+      "before": ["<C-r>"],
+      "after": [],
+      "commands": [
+        {
+          "command": "redo"
+        }
+      ]
+    }
+  ],
+  "typescript.updateImportsOnFileMove.enabled": "never",
+  "javascript.updateImportsOnFileMove.enabled": "never"
 }

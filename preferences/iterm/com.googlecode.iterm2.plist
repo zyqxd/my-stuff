@@ -655,10 +655,12 @@
 	</dict>
 	<key>Default Bookmark Guid</key>
 	<string>0A3381F6-6132-4806-A122-B119378F7181</string>
+	<key>DimBackgroundWindows</key>
+	<true/>
 	<key>DimInactiveSplitPanes</key>
 	<true/>
 	<key>FlashTabBarInFullscreen</key>
-	<false/>
+	<true/>
 	<key>GlobalKeyMap</key>
 	<dict>
 		<key>0xf702-0x300000</key>
@@ -693,6 +695,10 @@
 	<key>HideFromDockAndAppSwitcher</key>
 	<true/>
 	<key>HideMenuBarInFullscreen</key>
+	<true/>
+	<key>HideScrollbar</key>
+	<true/>
+	<key>HideTab</key>
 	<true/>
 	<key>HideTabCloseButton</key>
 	<false/>
@@ -749,10 +755,17 @@
 	</data>
 	<key>NSTableView Supports v2 KeyBingingTable</key>
 	<true/>
+	<key>NSToolbar Configuration com.apple.NSColorPanel</key>
+	<dict>
+		<key>TB Is Shown</key>
+		<integer>1</integer>
+	</dict>
+	<key>NSWindow Frame SessionsPreferences</key>
+	<string>-956 1065 606 469 -1225 900 3200 1310 </string>
 	<key>NSWindow Frame SharedPreferences</key>
-	<string>376 1349 796 486 -1169 900 3200 1310 </string>
+	<string>376 1427 1018 447 -1169 900 3200 1310 </string>
 	<key>NSWindow Frame iTerm Window 0</key>
-	<string>0 23 1440 854 0 0 1440 877 </string>
+	<string>-692 1126 2130 866 -1225 900 3200 1310 </string>
 	<key>New Bookmarks</key>
 	<array>
 		<dict>
@@ -1654,6 +1667,8 @@
 	<true/>
 	<key>ShowPaneTitles</key>
 	<false/>
+	<key>StretchTabsToFillBar</key>
+	<true/>
 	<key>SwitchPaneModifier</key>
 	<integer>4</integer>
 	<key>SwitchTabModifier</key>

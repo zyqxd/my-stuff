@@ -7,6 +7,7 @@
   smudge = git media smudge %f
 [core]
 	excludesfile = /Users/dz/.gitignore
+	editor = 'vim'
 [alias]
   ##
   # Source: https://github.com/GitAlias/gitalias/blob/master/gitalias.txt
@@ -81,6 +82,7 @@
   ### reset ###
 
   unstage = reset HEAD --
+  pop = reset head^
 
   ### show ###
 
@@ -138,3 +140,5 @@
     git stash pop; \
   };f"
 
+[pull]
+	ff = only

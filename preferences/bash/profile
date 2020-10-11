@@ -56,3 +56,4 @@ export NVM_DIR="$HOME/.nvm"
 
 # libressl
 export PATH="/usr/local/opt/libressl/bin:$PATH"
+export PATH="/usr/local/opt/node@10/bin:$PATH"

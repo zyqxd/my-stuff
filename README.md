@@ -61,4 +61,27 @@ code --install-extension ms-vscode.vscode-typescript-tslint-plugin
 code --install-extension rebornix.ruby
 code --install-extension shd101wyy.markdown-preview-enhanced
 code --install-extension vscodevim.vim
+code --install-extension dnicolson.binary-plist
+code --install-extension akamud.vscode-theme-onedark
 ```
+
+## notes
+
+Things to install
+homebrew
+git
+Chrome
+Divvy
+iStat
+Alfred
+iTerm
+vscode
+
+# IF needed 
+
+chsh -s /bin/bash
+
+Open vscode - shell command
+
+install fonts
+install vs code themes

@@ -14,13 +14,12 @@
   "editor.cursorStyle": "line",
   "workbench.editor.showIcons": true,
   "workbench.activityBar.visible": false,
-  "workbench.statusBar.visible": false,
-  "window.zoomLevel": 0,
   "extensions.ignoreRecommendations": false,
   "files.trimTrailingWhitespace": true,
   "[markdown]": {
     "files.trimTrailingWhitespace": false,
-    "editor.wordWrap": "off"
+    "editor.wordWrap": "off",
+    "editor.formatOnSave": false
   },
   "zenMode.fullScreen": false,
   "vim.easymotion": true,
@@ -45,12 +44,11 @@
   },
   "explorer.confirmDelete": false,
   "extensions.autoUpdate": false,
-  "workbench.iconTheme": "material-icon-theme",
+  "workbench.iconTheme": "eq-material-theme-icons-ocean",
   "gitlens.codeLens.authors.enabled": false,
   "css.lint.unknownProperties": "ignore",
   "less.lint.unknownProperties": "ignore",
   "css.validate": false,
-  "tslint.exclude": ["*.js", "*.jsx"],
   "javascript.validate.enable": false,
   "vim.normalModeKeyBindingsNonRecursive": [
     {
@@ -81,5 +79,15 @@
   "editor.formatOnType": true,
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.detectIndentation": false
+  "editor.detectIndentation": false,
+  "eslint.validate": ["typescript", "typescriptreact"],
+  "security.workspace.trust.untrustedFiles": "open",
+  "editor.inlineSuggest.enabled": true,
+  "github.copilot.enable": {
+    "*": true,
+    "yaml": false,
+    "plaintext": false,
+    "markdown": false
+  },
+  "editor.suggest.showStatusBar": true
 }

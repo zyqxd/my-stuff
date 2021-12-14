@@ -6,7 +6,7 @@
   clean = git media clean %f
   smudge = git media smudge %f
 [core]
-	excludesfile = /Users/dz/.gitignore
+	excludesfile = /Users/zyqxd/.gitignore
 	editor = 'vim'
 [alias]
   ##
@@ -92,6 +92,10 @@
   ### status ###
 
   s = status -s
+
+  ### reset ###
+  
+  r = reset
 
   ### assumes ###
 

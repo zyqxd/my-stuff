@@ -30,3 +30,5 @@ dumps/
 .vscode/
 .git-switch.lock
 .irbrc
+
+lib/monkey_patches/advant_of_code_2021.rb

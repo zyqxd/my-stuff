@@ -1,93 +1,99 @@
 {
-  "editor.fontFamily": "'Fira Code', monospace",
-  "editor.fontSize": 13,
-  "editor.fontWeight": "400",
-  "editor.fontLigatures": true,
-  "editor.renderLineHighlight": "line",
-  "editor.renderIndentGuides": true,
-  "editor.tabSize": 2,
-  "editor.insertSpaces": true,
-  "editor.wordWrapColumn": 120,
-  "editor.wordWrap": "off",
-  "editor.rulers": [80],
-  "editor.minimap.enabled": false,
-  "editor.cursorStyle": "line",
-  "workbench.editor.showIcons": true,
-  "workbench.activityBar.visible": false,
-  "extensions.ignoreRecommendations": false,
-  "files.trimTrailingWhitespace": true,
-  "[markdown]": {
-    "files.trimTrailingWhitespace": false,
+    "editor.fontFamily": "'Fira Code', 'Apple Color Emoji'",
+    "editor.fontSize": 13,
+    "editor.fontWeight": "400",
+    "editor.fontLigatures": true,
+    "editor.renderLineHighlight": "line",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.wordWrapColumn": 120,
     "editor.wordWrap": "off",
-    "editor.formatOnSave": false
-  },
-  "zenMode.fullScreen": false,
-  "vim.easymotion": true,
-  "vim.textwidth": 120,
-  "vim.statusBarColorControl": false,
-  "search.exclude": {
-    "**/.git": true,
-    "**/_build": true,
-    "**/node_modules": true,
-    "**/bower_components": true,
-    "**/deps": true
-  },
-  "files.exclude": {
-    "**/node_modules/": true
-  },
-  "explorer.confirmDragAndDrop": false,
-  "workbench.colorCustomizations": {
-    "editor.findMatchHighlightBackground": "#135564",
-    "editor.findMatchBackground": "#427683",
-    "editor.selectionBackground": "#135564",
-    "editor.selectionHighlightBackground": "#135564"
-  },
-  "explorer.confirmDelete": false,
-  "extensions.autoUpdate": false,
-  "workbench.iconTheme": "eq-material-theme-icons-ocean",
-  "gitlens.codeLens.authors.enabled": false,
-  "css.lint.unknownProperties": "ignore",
-  "less.lint.unknownProperties": "ignore",
-  "css.validate": false,
-  "javascript.validate.enable": false,
-  "vim.normalModeKeyBindingsNonRecursive": [
-    {
-      "before": ["u"],
-      "after": [],
-      "commands": [
-        {
-          "command": "undo"
-        }
-      ]
+    "editor.rulers": [80, 120],
+    "editor.minimap.enabled": false,
+    "editor.cursorStyle": "line",
+    "workbench.editor.showIcons": true,
+    "workbench.activityBar.visible": false,
+    "extensions.ignoreRecommendations": false,
+    "files.trimTrailingWhitespace": true,
+    "[markdown]": {
+        "files.trimTrailingWhitespace": false,
+        "editor.wordWrap": "off",
+        "editor.formatOnSave": false
     },
-    {
-      "before": ["<C-r>"],
-      "after": [],
-      "commands": [
+    "zenMode.fullScreen": false,
+    "vim.easymotion": true,
+    "vim.textwidth": 120,
+    "vim.statusBarColorControl": false,
+    "search.exclude": {
+        "**/.git": true,
+        "**/_build": true,
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/deps": true
+    },
+    "files.exclude": {
+        "**/node_modules/": true
+    },
+    "explorer.confirmDragAndDrop": false,
+    "workbench.colorCustomizations": {
+        "editor.findMatchHighlightBackground": "#135564",
+        "editor.findMatchBackground": "#427683",
+        "editor.selectionBackground": "#135564",
+        "editor.selectionHighlightBackground": "#135564"
+    },
+    "explorer.confirmDelete": false,
+    "extensions.autoUpdate": false,
+    "workbench.iconTheme": "file-icons",
+    "gitlens.codeLens.authors.enabled": false,
+    "css.lint.unknownProperties": "ignore",
+    "less.lint.unknownProperties": "ignore",
+    "css.validate": false,
+    "javascript.validate.enable": false,
+    "vim.normalModeKeyBindingsNonRecursive": [
         {
-          "command": "redo"
+            "before": ["u"],
+            "after": [],
+            "commands": [
+                {
+                    "command": "undo"
+                }
+            ]
+        },
+        {
+            "before": ["<C-r>"],
+            "after": [],
+            "commands": [
+                {
+                    "command": "redo"
+                }
+            ]
         }
-      ]
-    }
-  ],
-  "typescript.updateImportsOnFileMove.enabled": "never",
-  "javascript.updateImportsOnFileMove.enabled": "never",
-  "workbench.colorTheme": "Atom One Dark",
-  "editor.largeFileOptimizations": false,
-  "workbench.startupEditor": "newUntitledFile",
-  "editor.formatOnPaste": true,
-  "editor.formatOnType": true,
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.detectIndentation": false,
-  "eslint.validate": ["typescript", "typescriptreact"],
-  "security.workspace.trust.untrustedFiles": "open",
-  "editor.inlineSuggest.enabled": true,
-  "github.copilot.enable": {
-    "*": true,
-    "yaml": false,
-    "plaintext": false,
-    "markdown": false
-  },
-  "editor.suggest.showStatusBar": true
+    ],
+    "typescript.updateImportsOnFileMove.enabled": "never",
+    "javascript.updateImportsOnFileMove.enabled": "never",
+    "editor.largeFileOptimizations": false,
+    "workbench.startupEditor": "newUntitledFile",
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.detectIndentation": false,
+    "eslint.validate": ["typescript", "typescriptreact"],
+    "security.workspace.trust.untrustedFiles": "open",
+    "editor.inlineSuggest.enabled": true,
+    "github.copilot.enable": {
+        "*": true,
+        "yaml": false,
+        "plaintext": false,
+        "markdown": true,
+        "typescriptreact": true,
+        "ruby": true
+    },
+    "editor.suggest.showStatusBar": true,
+    "json.maxItemsComputed": 500,
+    "bracket-pair-colorizer-2.depreciation-notice": false,
+    "editor.guides.indentation": true,
+    "window.commandCenter": true,
+    "svg.preview.transparencyGrid": true,
+    "workbench.colorTheme": "Atom One Dark"
 }

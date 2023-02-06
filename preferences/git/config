@@ -31,6 +31,7 @@
 
   c = checkout
   co = checkout
+  cob = checkout-branch
   n = checkout -b
 
   ### cherry-pick ###
@@ -66,7 +67,6 @@
   p = push
   po = "!git push --set-upstream origin $(git branch-name)"
   pf = push --force
-
   ### rebase ###
 
   rb = rebase
@@ -78,6 +78,9 @@
     git rebase -i HEAD~\"$1\"; \
   };f"
   rbap = !"git squash 2"
+
+  ### reflog ###
+  rf = reflog --format='%C(blue)%h%C(reset) %C(magenta)%s%C(reset) %C(green)%cr%C(reset) %C(yellow)%D%C(reset) %n>>> %gs'
 
   ### reset ###
 
@@ -122,7 +125,7 @@
       echo Switch already lock exists!; \
     fi \
   };f"
-
+q
   unswitch = "!f(){ \
     if [ -f .git-switch.lock ]; then \
       switch_branch=\"$(cat .git-switch.lock)\"; \

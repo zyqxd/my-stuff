@@ -4,8 +4,6 @@
 #                      #
 ########################
 
-#!/bin/bash
-
 # Styles: 00=none 01=bold 04=underscore 05=blink 07=reverse 08=concealed
 # Colors: 30=black 31=red 32=green 33=yellow 34=blue 35=magenta 36=cyan 37=white
 # Bkgrds: 40=black 41=red 42=green 43=yellow 44=blue 45=magenta 46=cyan 47=white
@@ -25,14 +23,14 @@ MAGENTA="\[\e[0;35m\]"
 WHITE="\[\e[0;37m\]"
 
 # GIT BRANCH PROMPT
-if [ -f ~/.git-prompt.sh ]; then
+#if [ -f ~/.git-prompt.sh ]; then
   source ~/.git-prompt.sh
-fi
+#fi
 
 # GIT AUTOCOMPLETE BRANCHES
-if [ -f ~/.git-autocomplete.bash ]; then
+#if [ -f ~/.git-autocomplete.bash ]; then
   source ~/.git-autocomplete.bash
-fi
+#fi
 
 export PS1="$RED[\j] $BLUE[\d \t] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
 
@@ -42,11 +40,10 @@ alias dc="docker-compose"
 alias wineit="test \"$?BASH_VERSION\" = \"0\" || eval 'setenv() { export \"$1=$2\"; }';                setenv PATH \"/Applications/Wine Devel.app/Contents/Resources/start/bin:/Applications/Wine Devel.app/Contents/Resources/wine/bin:$PATH\"; winehelp --clear"
 
 # rbenv
-export PATH="$HOME/.rbenv/bin:$PATH"
-eval "$(rbenv init -)"
+export PATH="$HOME/.rbenv/shims:$HOME/.rbenv/bin:$PATH"
+
 
 export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
-
 # nvm
 export NVM_DIR="$HOME/.nvm"
   [ -s "/usr/local/opt/nvm/nvm.sh" ] && . "/usr/local/opt/nvm/nvm.sh"  # This loads nvm
@@ -63,4 +60,9 @@ export PATH="/usr/local/opt/postgresql@9.6/bin:$PATH"
 export PATH="/usr/local/opt/terraform@0.13/bin:$PATH"
 export PATH="/usr/local/opt/postgresql@12/bin:$PATH"
 
+# Set PATH, MANPATH, etc., for Homebrew.
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
+
+eval "$(rbenv init -)"

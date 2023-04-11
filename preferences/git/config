@@ -31,7 +31,7 @@
 
   c = checkout
   co = checkout
-  cob = checkout-branch
+  cob = checkout-branch 
   n = checkout -b
 
   ### cherry-pick ###

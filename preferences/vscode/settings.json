@@ -82,9 +82,10 @@
   "editor.inlineSuggest.enabled": true,
   "github.copilot.enable": {
     "*": true,
-    "yaml": false,
     "plaintext": false,
     "markdown": true,
+    "scminput": false,
+    "yaml": false,
     "typescriptreact": true,
     "ruby": true
   },
@@ -98,5 +99,8 @@
   "workbench.colorTheme": "Atom One Dark",
   "ruby.rubocop.executePath": "/Users/zyqxd/.rbenv/shims/",
   "ruby.rubocop.configFilePath": ".rubocop.yml",
-  "ruby.rubocop.onSave": false
+  "ruby.rubocop.onSave": false,
+  "git.openRepositoryInParentFolders": "never",
+  "html.autoClosingTags": false,
+  "html.autoCreateQuotes": false
 }

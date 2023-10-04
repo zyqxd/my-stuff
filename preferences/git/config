@@ -151,3 +151,5 @@ q
 	ff = only
 [merge]
 	renameLimit = 999999
+[safe]
+	directory = *

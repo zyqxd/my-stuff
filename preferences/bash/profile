@@ -39,10 +39,6 @@ alias gti=git
 alias dc="docker-compose"
 alias wineit="test \"$?BASH_VERSION\" = \"0\" || eval 'setenv() { export \"$1=$2\"; }';                setenv PATH \"/Applications/Wine Devel.app/Contents/Resources/start/bin:/Applications/Wine Devel.app/Contents/Resources/wine/bin:$PATH\"; winehelp --clear"
 
-# rbenv
-export PATH="$HOME/.rbenv/shims:$HOME/.rbenv/bin:$PATH"
-
-
 export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
 
 # nvm
@@ -69,4 +65,15 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
 
+if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
+
+export GEM_HOME=~/.gem
+export GEM_PATH=~/.gem
+
+#PATH for rbenv
+export PATH="$HOME/.rbenv/shims:$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
+
+export PATH="/opt/homebrew/opt/openssl@1.1/bin:$PATH"
+export PATH="/opt/homebrew/opt/bison@2.7/bin:$PATH"
+export PATH="/opt/homebrew/opt/bison/bin:$PATH"

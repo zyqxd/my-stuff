@@ -1007,7 +1007,7 @@
 			<key>HotKey Window Animates</key>
 			<false/>
 			<key>HotKey Window AutoHides</key>
-			<true/>
+			<false/>
 			<key>HotKey Window Dock Click Action</key>
 			<integer>0</integer>
 			<key>HotKey Window Floats</key>
@@ -1535,7 +1535,7 @@
 			<key>Window Type</key>
 			<integer>0</integer>
 			<key>Working Directory</key>
-			<string>/Users/david/Development</string>
+			<string>/Users/davidzhang/Development</string>
 		</dict>
 	</array>
 	<key>PMPrintingExpandedStateForPrint2</key>

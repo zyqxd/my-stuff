@@ -19,6 +19,6 @@ ln -sf ~/Development/my-stuff/preferences/vscode/vscode.css ~/.vscode.css
 ln -sf ~/Development/my-stuff/preferences/vscode/settings.json $HOME/Library/Application\ Support/Code/User/settings.json
 ln -sf ~/Development/my-stuff/preferences/vscode/keybindings.json $HOME/Library/Application\ Support/Code/User/keybindings.json
 
-source ~/.bash_profile 
+source ~/.bash_profile
 
 git config --global core.excludesfile ~/.gitignore

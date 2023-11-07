@@ -3,9 +3,8 @@ My Personal Tools and Settings for Development and stuff
 ## Setup Pre-requisites
 
 - [chrome](https://www.google.ca/chrome/?brand=CHBD&gclid=CjwKCAjw9dboBRBUEiwA7VrrzSjFTd7ABOJR75htdglTzZuv4naAyByJEfF38wkHZy5hHDfkCbvUThoCH90QAvD_BwE&gclsrc=aw.ds)
-- [alfred 4](https://www.alfredapp.com/)
+- [alfred](https://www.alfredapp.com/)
 - [iterm 2](https://www.iterm2.com/downloads.html)
-- [docker(ph)](https://download.docker.com/mac/stable/26764/Docker.dmg)
 - [divvy](https://mizage.com/divvy/)
 - [VS Code](https://code.visualstudio.com/Download)
 - [Slack](https://slack.com/intl/en-ca/downloads/mac)
@@ -23,17 +22,16 @@ pbcopy < ~/.ssh/id_rsa.pub
 
 First, install all prerequisite programs
 ```
-
 cd ~
 
+# If you need to change default to bash
 chsh -s /bin/bash
 
+# Install brew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# not sure yet => brew install rbenv
-
-mkdir Workspace
-cd Workspace
+mkdir Development
+cd Development
 git clone git@github.com:zyqxd/my-stuff.git
 
 cd my-stuff
@@ -44,13 +42,21 @@ cd my-stuff
 
 To enable code CLI, Open up vscode command command palette - 
 
-Search for `install 'code' command in PATH`
+Search for `shell`
 
 ## Iterm setup
 
 After installing iterm, go to `preferences > Load preferences from a custom folder or URL`
 
 Select `my-stuff/preferences/iterm`
+
+## Setup divvy
+
+After installing divvy, run
+
+`pbcopy < preferences/divvy/divvy`
+
+Paste into Safari
 
 #### Extensions
 
@@ -87,14 +93,3 @@ code --install-extension wingrunr21.vscode-ruby
 code --install-extension yo1dog.cursor-align
 code --install-extension yzhang.markdown-all-in-one
 ```
-
-## notes
-
-Things to install
-homebrew
-git
-Chrome
-Divvy
-Alfred
-iTerm
-vscode

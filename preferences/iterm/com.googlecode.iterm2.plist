@@ -962,7 +962,7 @@
 			<key>Custom Command</key>
 			<string>No</string>
 			<key>Custom Directory</key>
-			<string>Advanced</string>
+			<string>Yes</string>
 			<key>Default Bookmark</key>
 			<string>No</string>
 			<key>Description</key>
@@ -1535,7 +1535,7 @@
 			<key>Window Type</key>
 			<integer>0</integer>
 			<key>Working Directory</key>
-			<string>/Users/zyqxd/Workspace</string>
+			<string>/Users/david/Development</string>
 		</dict>
 	</array>
 	<key>PMPrintingExpandedStateForPrint2</key>

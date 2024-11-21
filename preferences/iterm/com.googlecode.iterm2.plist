@@ -651,6 +651,8 @@
 	<true/>
 	<key>DimInactiveSplitPanes</key>
 	<true/>
+	<key>DimOnlyText</key>
+	<true/>
 	<key>FlashTabBarInFullscreen</key>
 	<true/>
 	<key>GlobalKeyMap</key>
@@ -689,7 +691,7 @@
 	<key>HideFromDockAndAppSwitcher</key>
 	<true/>
 	<key>HideMenuBarInFullscreen</key>
-	<true/>
+	<false/>
 	<key>HideScrollbar</key>
 	<true/>
 	<key>HideTab</key>
@@ -720,11 +722,11 @@
 			<key>AWDS Pane Option</key>
 			<string>Recycle</string>
 			<key>AWDS Tab Directory</key>
-			<string>/Users/zyqxd/Workspace</string>
+			<string>/Users/davidzhang/Development</string>
 			<key>AWDS Tab Option</key>
 			<string>Yes</string>
 			<key>AWDS Window Directory</key>
-			<string>/Users/zyqxd/Workspace</string>
+			<string>/Users/davidzhang/Development</string>
 			<key>AWDS Window Option</key>
 			<string>Yes</string>
 			<key>Ambiguous Double Width</key>
@@ -910,7 +912,7 @@
 			<key>Blur</key>
 			<true/>
 			<key>Blur Radius</key>
-			<real>26.37870399746193</real>
+			<real>0.10000000000000001</real>
 			<key>Bold Color</key>
 			<dict>
 				<key>Blue Component</key>
@@ -962,7 +964,7 @@
 			<key>Custom Command</key>
 			<string>No</string>
 			<key>Custom Directory</key>
-			<string>Yes</string>
+			<string>Advanced</string>
 			<key>Default Bookmark</key>
 			<string>No</string>
 			<key>Description</key>
@@ -1454,13 +1456,13 @@
 			<key>Non-ASCII Anti Aliased</key>
 			<true/>
 			<key>Normal Font</key>
-			<string>FiraCode-Regular 13</string>
+			<string>FiraCode-Regular 15</string>
 			<key>Only The Default BG Color Uses Transparency</key>
 			<true/>
 			<key>Open Toolbelt</key>
 			<false/>
 			<key>Option Key Sends</key>
-			<integer>0</integer>
+			<integer>2</integer>
 			<key>Prompt Before Closing 2</key>
 			<false/>
 			<key>Right Option Key Sends</key>
@@ -1470,7 +1472,7 @@
 			<key>Screen</key>
 			<integer>-2</integer>
 			<key>Scrollback Lines</key>
-			<integer>10000</integer>
+			<integer>0</integer>
 			<key>Selected Text Color</key>
 			<dict>
 				<key>Blue Component</key>
@@ -1519,7 +1521,7 @@
 			<key>Transparency</key>
 			<real>0.0</real>
 			<key>Unlimited Scrollback</key>
-			<false/>
+			<true/>
 			<key>Use Bold Font</key>
 			<true/>
 			<key>Use Bright Bold</key>
@@ -1586,7 +1588,7 @@
 	<key>SoundForEsc</key>
 	<false/>
 	<key>SplitPaneDimmingAmount</key>
-	<real>0.2194089933206107</real>
+	<real>0.14804630612864078</real>
 	<key>StretchTabsToFillBar</key>
 	<true/>
 	<key>SwitchPaneModifier</key>

@@ -63,33 +63,36 @@ Paste into Safari
 Generate: `code --list-extensions | xargs -L 1 echo code --install-extension`
 
 ```
-code --install-extension akamud.vscode-theme-onedark
+code --install-extension attilabuti.vscode-mjml
+code --install-extension craigmaslowski.erb
 code --install-extension dnicolson.binary-plist
 code --install-extension eamodio.gitlens
 code --install-extension enochc.copy-relative-path
-code --install-extension Equinusocio.vsc-community-material-theme
-code --install-extension Equinusocio.vsc-material-theme
-code --install-extension equinusocio.vsc-material-theme-icons
 code --install-extension esbenp.prettier-vscode
+code --install-extension evgeniypeshkov.syntax-highlighter
 code --install-extension ex-codes.pine-script-syntax-highlighter
 code --install-extension fabiospampinato.vscode-open-in-github
 code --install-extension file-icons.file-icons
 code --install-extension flowtype.flow-for-vscode
-code --install-extension GitHub.copilot
+code --install-extension github.copilot
+code --install-extension github.copilot-chat
+code --install-extension golang.go
 code --install-extension hashicorp.terraform
 code --install-extension janisdd.vscode-edit-csv
 code --install-extension kumar-harsh.graphql-for-vscode
 code --install-extension mechatroner.rainbow-csv
 code --install-extension mikestead.dotenv
-code --install-extension misogi.ruby-rubocop
 code --install-extension ms-azuretools.vscode-docker
 code --install-extension ms-vscode-remote.remote-containers
-code --install-extension rebornix.ruby
 code --install-extension rvest.vs-code-prettier-eslint
 code --install-extension shd101wyy.markdown-preview-enhanced
+code --install-extension shopify.ruby-lsp
+code --install-extension sianglim.slim
+code --install-extension t3dotgg.vsc-material-theme-but-i-wont-sue-you
 code --install-extension vitaliymaz.vscode-svg-previewer
 code --install-extension vscodevim.vim
-code --install-extension wingrunr21.vscode-ruby
+code --install-extension vsls-contrib.gistfs
 code --install-extension yo1dog.cursor-align
 code --install-extension yzhang.markdown-all-in-one
+code --install-extension zxh404.vscode-proto3
 ```

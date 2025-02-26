@@ -4,6 +4,9 @@
   "liveshare.guestApprovalRequired": true,
   "liveshare.shareExternalFiles": false,
   "previousSettings.comment": "Your config was invalid JSON and prevented us from ensuring required security controls were in place. You can find your original config at `/Users/davidzhang/Library/Application Support/Code/User/settings.json.bak` if you would like to try to recover them.",
-  "workbench.colorTheme": "Material Theme Palenight High Contrast",
-  "workbench.iconTheme": "eq-material-theme-icons-palenight"
+  "workbench.iconTheme": "eq-material-theme-icons-palenight",
+  "editor.fontFamily": "Fira Code",
+  "editor.fontSize": 15,
+  "editor.fontLigatures": true,
+  "workbench.colorTheme": "Material Theme Palenight High Contrast"
 }

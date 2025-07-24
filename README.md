@@ -5,7 +5,7 @@ My Personal Tools and Settings for Development and stuff
 - [chrome](https://www.google.ca/chrome/?brand=CHBD&gclid=CjwKCAjw9dboBRBUEiwA7VrrzSjFTd7ABOJR75htdglTzZuv4naAyByJEfF38wkHZy5hHDfkCbvUThoCH90QAvD_BwE&gclsrc=aw.ds)
 - [alfred](https://www.alfredapp.com/)
 - [iterm 2](https://www.iterm2.com/downloads.html)
-- [divvy](https://mizage.com/divvy/)
+- [lasso](https://thelasso.app/)
 - [VS Code](https://code.visualstudio.com/Download)
 - [Slack](https://slack.com/intl/en-ca/downloads/mac)
 - (included ./fonts) [Fira Code](https://github.com/tonsky/FiraCode)
@@ -50,13 +50,13 @@ After installing iterm, go to `preferences > Load preferences from a custom fold
 
 Select `my-stuff/preferences/iterm`
 
-## Setup divvy
+## Lasso Setup
 
-After installing divvy, run
+Lasso window management preferences are automatically configured during setup. 
 
-`pbcopy < preferences/divvy/divvy`
+After running `./setup.sh`, simply launch Lasso and your shortcuts will be ready to use.
 
-Paste into Safari
+Your current Lasso configuration has been exported and will be restored automatically.
 
 #### Extensions
 

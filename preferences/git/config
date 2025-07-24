@@ -44,7 +44,6 @@
 
   ### commit ###
 
-  c = commit
   cm = commit --message
   ca = commit --amend
   cam = commit --amend --message

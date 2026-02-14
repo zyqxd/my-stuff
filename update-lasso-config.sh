@@ -12,15 +12,15 @@ if [ ! -f "$HOME/Library/Preferences/com.heavylightapps.lasso.plist" ]; then
 fi
 
 # Create preferences directory if it doesn't exist
-mkdir -p ~/Development/my-stuff/preferences/lasso/Application\ Support
+mkdir -p ~/Personal/my-stuff/preferences/lasso/Application\ Support
 
 # Copy current Lasso preferences
 echo "📋 Copying Lasso preferences..."
-cp "$HOME/Library/Preferences/com.heavylightapps.lasso.plist" ~/Development/my-stuff/preferences/lasso/
+cp "$HOME/Library/Preferences/com.heavylightapps.lasso.plist" ~/Personal/my-stuff/preferences/lasso/
 
 # Copy Lasso application support files
 echo "📁 Copying Lasso application support files..."
-cp -r "$HOME/Library/Application Support/Lasso/"* ~/Development/my-stuff/preferences/lasso/Application\ Support/ 2>/dev/null || true
+cp -r "$HOME/Library/Application Support/Lasso/"* ~/Personal/my-stuff/preferences/lasso/Application\ Support/ 2>/dev/null || true
 
 echo "✅ Lasso configuration updated in my-stuff repo!"
 echo "💡 Don't forget to commit these changes to git if you want to save them."

@@ -8,6 +8,7 @@
 [core]
 	excludesfile = /Users/davidzhang/.gitignore
 	editor = 'vim'
+	pager = delta
 [alias]
   ##
   # Source: https://github.com/GitAlias/gitalias/blob/master/gitalias.txt
@@ -124,7 +125,7 @@
       echo Switch already lock exists!; \
     fi \
   };f"
-q
+
   unswitch = "!f(){ \
     if [ -f .git-switch.lock ]; then \
       switch_branch=\"$(cat .git-switch.lock)\"; \
@@ -152,3 +153,11 @@ q
 	renameLimit = 999999
 [safe]
 	directory = *
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	side-by-side = true
+	line-numbers = true
+[diff]
+	colorMoved = default

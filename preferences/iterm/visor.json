@@ -1,5 +1,5 @@
 {
-  "Working Directory" : "\/Users\/Mahou\/Workspace",
+  "Working Directory" : "\/Users\/davidzhang\/Development",
   "Prompt Before Closing 2" : false,
   "Selected Text Color" : {
     "Green Component" : 0.8156862854957581,
@@ -56,7 +56,7 @@
     "Green Component" : 0.9268307089805603
   },
   "BM Growl" : true,
-  "AWDS Window Directory" : "\/Users\/Mahou\/Workspace",
+  "AWDS Window Directory" : "\/Users\/davidzhang\/Development",
   "Ansi 3 Color" : {
     "Green Component" : 0.7098039215686275,
     "Blue Component" : 0.403921568627451,
@@ -401,7 +401,7 @@
     "Red Component" : 0.8156862854957581
   },
   "Space" : -1,
-  "AWDS Tab Directory" : "\/Users\/Mahou\/Workspace",
+  "AWDS Tab Directory" : "\/Users\/davidzhang\/Development",
   "AWDS Pane Option" : "Recycle",
   "HotKey Window AutoHides" : false,
   "Command" : "",

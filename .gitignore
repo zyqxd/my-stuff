@@ -14,5 +14,8 @@ Thumbs.db
 *.swo
 *~
 
+# IDE / Editor
+.ruby-lsp/
+
 # Logs
 *.log

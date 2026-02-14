@@ -3,17 +3,25 @@
 
 # Taps
 tap "homebrew/bundle"
-tap "homebrew/cask"
-tap "homebrew/core"
 
 # CLI Tools
 brew "git"
 brew "node"
 brew "nvm"
-brew "postgresql@14"
+brew "postgresql@16"
 brew "tfenv"
 brew "yarn"
-brew "openssl@1.1"
+brew "openssl@3"
+
+# Interactive Git Tools
+brew "lazygit"
+brew "git-delta"
+brew "fzf"
+
+# Modern Terminal Utilities
+brew "bat"
+brew "eza"
+brew "zoxide"
 
 # Development Tools
 cask "visual-studio-code"

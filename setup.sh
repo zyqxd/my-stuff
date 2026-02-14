@@ -53,7 +53,6 @@ ln -sf ~/Development/my-stuff/preferences/git/config ~/.gitconfig
 # VS Code setup
 echo "💻 Setting up VS Code preferences..."
 mkdir -p "$HOME/Library/Application Support/Code/User"
-ln -sf ~/Development/my-stuff/preferences/vscode/vscode.css ~/.vscode.css
 ln -sf ~/Development/my-stuff/preferences/vscode/settings.json "$HOME/Library/Application Support/Code/User/settings.json"
 ln -sf ~/Development/my-stuff/preferences/vscode/keybindings.json "$HOME/Library/Application Support/Code/User/keybindings.json"
 

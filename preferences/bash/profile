@@ -26,9 +26,8 @@ GREEN="\[\e[0;32m\]"
 MAGENTA="\[\e[0;35m\]"
 WHITE="\[\e[0;37m\]"
 
-# Git integration
+# Git prompt
 source ~/.git-prompt.sh
-source ~/.git-autocomplete.bash
 
 # Prompt configuration
 export PS1="$RED[\j] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
@@ -48,18 +47,9 @@ export PATH="/opt/homebrew/opt/openssl@3/bin:$PATH"
 # Homebrew setup
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
-# fzf - fuzzy finder
-eval "$(fzf --bash)"
-
-# zoxide - smart cd
-eval "$(zoxide init bash)"
-
-# Modern CLI aliases
-alias lg="lazygit"
+# Aliases
 alias cat="bat --paging=never"
-alias ls="eza"
 alias ll="eza -la --git"
-alias tree="eza --tree"
 
 # Node.js (nvm)
 export NVM_DIR="$HOME/.nvm"
@@ -80,26 +70,8 @@ alias ssh-playpen="kubectl exec --context ski-staging-green-us-west-2-postoffice
 alias rc-playpen="kubectl exec --context ski-staging-green-us-west-2-postoffice -it postoffice-playpen-davidzhang -- bash -c 'bin/rails c'"
 
 
-# Removed rbenv configuration - using RVM instead as per company standards
-
-# Disable bracketed paste mode to fix copy/paste issues
-printf '\e[?2004l'
-
-# Alternative method - disable bracketed paste in readline
+# Disable bracketed paste mode
 bind 'set enable-bracketed-paste off' 2>/dev/null
-
-# Function to disable bracketed paste when terminal starts
-disable_bracketed_paste() {
-    printf '\e[?2004l'
-}
-
-# Call it when shell starts
-disable_bracketed_paste
-
-# Also disable it after each command (in case something re-enables it)
-if [[ "$PROMPT_COMMAND" != *"disable_bracketed_paste"* ]]; then
-    PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'\n'}disable_bracketed_paste"
-fi
 
 # Added by Toolbox App
 export PATH="$PATH:/usr/local/bin"

@@ -40,8 +40,6 @@ alias dc="docker-compose"
 export BASH_SILENCE_DEPRECATION_WARNING=1
 export BUNDLER_EDITOR=code
 
-# PATH configuration
-export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
 export PATH="/opt/homebrew/opt/openssl@3/bin:$PATH"
 
 # Homebrew setup
@@ -51,10 +49,6 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 alias cat="bat --paging=never"
 alias ll="eza -la --git"
 
-# Node.js (nvm)
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
 
 # Ruby (RVM) - Re-enabled to align with company standards
 # RVM is loaded by Square's bash_profile, but we ensure it's available
@@ -78,3 +72,6 @@ export PATH="$PATH:/usr/local/bin"
 
 export SSL_CERT_FILE=/tmp/final-certs.pem
 export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
+
+# zoxide (smarter cd) - must be last
+eval "$(zoxide init bash)"

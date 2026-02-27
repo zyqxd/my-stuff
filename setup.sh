@@ -64,6 +64,10 @@ brew bundle --file=./Brewfile
 echo ""
 echo "⚙️  Configuring development environment..."
 
+# Install fonts
+echo "🔤 Installing fonts..."
+cp "$REPO_DIR/fonts/"*.otf "$HOME/Library/Fonts/" 2>/dev/null || true
+
 # Vim key repeat settings
 echo "⌨️  Configuring vim key repeat settings..."
 defaults write -g ApplePressAndHoldEnabled -bool false
@@ -86,6 +90,10 @@ echo "💻 Setting up VS Code preferences..."
 mkdir -p "$HOME/Library/Application Support/Code/User"
 ln -sf $REPO_DIR/preferences/vscode/settings.json "$HOME/Library/Application Support/Code/User/settings.json"
 ln -sf $REPO_DIR/preferences/vscode/keybindings.json "$HOME/Library/Application Support/Code/User/keybindings.json"
+
+# iTerm2 setup
+echo "🖥️  Setting up iTerm2 preferences..."
+cp "$REPO_DIR/preferences/iterm/com.googlecode.iterm2.plist" "$HOME/Library/Preferences/"
 
 # Lasso setup
 # Note: the plist must be copied (macOS preferences system ignores symlinks).
@@ -110,10 +118,8 @@ echo "🎉 Setup complete!"
 echo ""
 echo "📋 Next steps:"
 echo "   1. Restart your terminal or run: source ~/.bash_profile"
-echo "   2. Set up iTerm2 preferences (Preferences > Load from custom folder)"
-echo "      └─ Select: $REPO_DIR/preferences/iterm"
-echo "   3. Launch Lasso to activate your window management shortcuts"
-echo "   4. Install VS Code extensions:"
+echo "   2. Launch Lasso to activate your window management shortcuts"
+echo "   3. Install VS Code extensions:"
 echo "      └─ Open VS Code > Command Palette > 'Shell Command: Install code command'"
 echo "      └─ Then run the extension install commands from README.md"
 echo ""

@@ -30,8 +30,8 @@ chsh -s /bin/bash
 # Install brew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-mkdir Development
-cd Development
+mkdir Workspace
+cd Workspace
 git clone git@github.com:zyqxd/my-stuff.git
 
 cd my-stuff

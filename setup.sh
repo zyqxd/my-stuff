@@ -2,18 +2,49 @@
 
 # David Zhang's Complete Development Environment Setup
 # This script installs packages AND configures preferences
+#
+# Usage:
+#   ./setup.sh          Install and configure everything
+#   ./setup.sh export   Export current Lasso config back to repo
 
 set -e  # Exit on any error
 
-echo "🚀 David's Complete Development Environment Setup"
-echo "================================================"
+# Auto-detect the repo directory
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Check if we're in the right directory
-if [ ! -f "Brewfile" ]; then
-    echo "❌ Error: Please run this script from ~/Personal/my-stuff directory"
-    echo "   cd ~/Personal/my-stuff && ./setup.sh"
+if [ ! -f "$REPO_DIR/Brewfile" ]; then
+    echo "❌ Error: Cannot find Brewfile in $REPO_DIR"
     exit 1
 fi
+
+export_lasso() {
+    echo "🪟 Exporting Lasso configuration to repo..."
+
+    if [ ! -f "$HOME/Library/Preferences/com.heavylightapps.lasso.plist" ]; then
+        echo "❌ Lasso preferences not found. Make sure Lasso is installed and configured."
+        exit 1
+    fi
+
+    mkdir -p "$REPO_DIR/preferences/lasso/Application Support"
+
+    echo "📋 Copying Lasso preferences..."
+    cp "$HOME/Library/Preferences/com.heavylightapps.lasso.plist" "$REPO_DIR/preferences/lasso/"
+
+    echo "📁 Copying Lasso application support files..."
+    cp -r "$HOME/Library/Application Support/Lasso/"* "$REPO_DIR/preferences/lasso/Application Support/" 2>/dev/null || true
+
+    echo "✅ Lasso configuration exported!"
+    echo "💡 Don't forget to commit these changes to git."
+}
+
+if [ "${1}" = "export" ]; then
+    export_lasso
+    exit 0
+fi
+
+echo "🚀 David's Complete Development Environment Setup"
+echo "================================================"
 
 # Check if Homebrew is installed
 if ! command -v brew &> /dev/null; then
@@ -41,26 +72,30 @@ defaults write -g KeyRepeat -int 2
 
 # Bash profile setup
 echo "🐚 Setting up bash profile..."
-ln -sf ~/Personal/my-stuff/preferences/bash/profile ~/.bash_profile
+ln -sf $REPO_DIR/preferences/bash/profile ~/.bash_profile
 
 # Git configuration
 echo "📝 Setting up git configuration..."
-ln -sf ~/Personal/my-stuff/preferences/git/prompt.sh ~/.git-prompt.sh
-ln -sf ~/Personal/my-stuff/preferences/git/autocomplete.bash ~/.git-autocomplete.bash
-ln -sf ~/Personal/my-stuff/preferences/git/ignore ~/.gitignore
-ln -sf ~/Personal/my-stuff/preferences/git/config ~/.gitconfig
+ln -sf $REPO_DIR/preferences/git/prompt.sh ~/.git-prompt.sh
+ln -sf $REPO_DIR/preferences/git/autocomplete.bash ~/.git-autocomplete.bash
+ln -sf $REPO_DIR/preferences/git/ignore ~/.gitignore
+ln -sf $REPO_DIR/preferences/git/config ~/.gitconfig
 
 # VS Code setup
 echo "💻 Setting up VS Code preferences..."
 mkdir -p "$HOME/Library/Application Support/Code/User"
-ln -sf ~/Personal/my-stuff/preferences/vscode/settings.json "$HOME/Library/Application Support/Code/User/settings.json"
-ln -sf ~/Personal/my-stuff/preferences/vscode/keybindings.json "$HOME/Library/Application Support/Code/User/keybindings.json"
+ln -sf $REPO_DIR/preferences/vscode/settings.json "$HOME/Library/Application Support/Code/User/settings.json"
+ln -sf $REPO_DIR/preferences/vscode/keybindings.json "$HOME/Library/Application Support/Code/User/keybindings.json"
 
 # Lasso setup
+# Note: the plist must be copied (macOS preferences system ignores symlinks).
+# Application Support files are symlinked so changes sync automatically.
 echo "🪟 Setting up Lasso window management preferences..."
 mkdir -p "$HOME/Library/Application Support/Lasso"
-cp ~/Personal/my-stuff/preferences/lasso/com.heavylightapps.lasso.plist "$HOME/Library/Preferences/"
-cp -r ~/Personal/my-stuff/preferences/lasso/Application\ Support/* "$HOME/Library/Application Support/Lasso/"
+cp "$REPO_DIR/preferences/lasso/com.heavylightapps.lasso.plist" "$HOME/Library/Preferences/"
+for f in "$REPO_DIR/preferences/lasso/Application Support/"*; do
+    ln -sf "$f" "$HOME/Library/Application Support/Lasso/$(basename "$f")"
+done
 
 # Apply git global settings
 echo "🔧 Applying git global configuration..."
@@ -76,10 +111,13 @@ echo ""
 echo "📋 Next steps:"
 echo "   1. Restart your terminal or run: source ~/.bash_profile"
 echo "   2. Set up iTerm2 preferences (Preferences > Load from custom folder)"
-echo "      └─ Select: ~/Personal/my-stuff/preferences/iterm"
+echo "      └─ Select: $REPO_DIR/preferences/iterm"
 echo "   3. Launch Lasso to activate your window management shortcuts"
 echo "   4. Install VS Code extensions:"
 echo "      └─ Open VS Code > Command Palette > 'Shell Command: Install code command'"
 echo "      └─ Then run the extension install commands from README.md"
+echo ""
+echo "💡 To export Lasso config changes back to this repo, run:"
+echo "   ./setup.sh export"
 echo ""
 echo "✨ Your development environment is ready!"

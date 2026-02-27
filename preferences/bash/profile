@@ -1,18 +1,3 @@
-##############################################################
-# load Square specific bash_profile
-##############################################################
-if [ -f ~/Development/config_files/square/bash_profile ]; then
-  source ~/Development/config_files/square/bash_profile
-fi
-##############################################################
-export IGNORE_ANNOTATIONS=1
-export IGNORE_RUBOCOP=1
-export ODBCINI=~/.odbc.ini
-
-###########################################
-# Feel free to make your own changes below.
-###########################################
-
 # vim: filetype=sh
 ########################
 #                      #
@@ -49,28 +34,10 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 alias cat="bat --paging=never"
 alias ll="eza -la --git"
 
-
-# Ruby (RVM) - Re-enabled to align with company standards
-# RVM is loaded by Square's bash_profile, but we ensure it's available
-
-# Work-specific aliases (Postoffice DB connections)
-alias ods-rds-postoffice-use1-1="ods-rds postoffice-production-aurora-use1-001-01.cwycpbm6brkp.us-east-1.rds.amazonaws.com --user app-owners --profile postoffice-production--ods-rds-app-owners postoffice_production"
-alias ods-rds-postoffice-use1-2="ods-rds postoffice-production-aurora-use1-001-02.cwycpbm6brkp.us-east-1.rds.amazonaws.com --user app-owners --profile postoffice-production--ods-rds-app-owners postoffice_production"
-alias ods-rds-postoffice-usw2-1="ods-rds postoffice-production-aurora-usw2-001-01.c1udglz7lmyd.us-west-2.rds.amazonaws.com --user app-owners --profile postoffice-production--ods-rds-app-owners postoffice_production"
-alias ods-rds-postoffice-usw2-2="ods-rds postoffice-production-aurora-usw2-001-02.c1udglz7lmyd.us-west-2.rds.amazonaws.com --user app-owners --profile postoffice-production--ods-rds-app-owners postoffice_production"
-
-# Kubernetes aliases
-alias ssh-playpen="kubectl exec --context ski-staging-green-us-west-2-postoffice -it postoffice-playpen-davidzhang -- bash"
-alias rc-playpen="kubectl exec --context ski-staging-green-us-west-2-postoffice -it postoffice-playpen-davidzhang -- bash -c 'bin/rails c'"
-
-
 # Disable bracketed paste mode
 bind 'set enable-bracketed-paste off' 2>/dev/null
 
-# Added by Toolbox App
 export PATH="$PATH:/usr/local/bin"
-
-export SSL_CERT_FILE=/tmp/final-certs.pem
 export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
 
 # zoxide (smarter cd) - must be last

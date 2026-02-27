@@ -1,13 +1,9 @@
 # David Zhang's Homebrew Bundle
 # Install with: brew bundle
 
-# Taps
-tap "homebrew/bundle"
-
 # CLI Tools
 brew "git"
 brew "node"
-brew "nvm"
 brew "postgresql@16"
 brew "tfenv"
 brew "yarn"

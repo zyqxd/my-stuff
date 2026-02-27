@@ -38,6 +38,7 @@ alias ll="eza -la --git"
 bind 'set enable-bracketed-paste off' 2>/dev/null
 
 export PATH="$PATH:/usr/local/bin"
+export PATH="$HOME/.local/bin:$PATH"
 export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
 
 # zoxide (smarter cd) - must be last

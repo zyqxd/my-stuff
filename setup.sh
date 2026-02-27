@@ -91,9 +91,10 @@ mkdir -p "$HOME/Library/Application Support/Code/User"
 ln -sf $REPO_DIR/preferences/vscode/settings.json "$HOME/Library/Application Support/Code/User/settings.json"
 ln -sf $REPO_DIR/preferences/vscode/keybindings.json "$HOME/Library/Application Support/Code/User/keybindings.json"
 
-# iTerm2 setup
+# iTerm2 setup — point iTerm2 at the repo's preferences folder
 echo "🖥️  Setting up iTerm2 preferences..."
-cp "$REPO_DIR/preferences/iterm/com.googlecode.iterm2.plist" "$HOME/Library/Preferences/"
+defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$REPO_DIR/preferences/iterm"
+defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
 
 # Lasso setup
 # Note: the plist must be copied (macOS preferences system ignores symlinks).

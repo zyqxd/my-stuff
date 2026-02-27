@@ -6,7 +6,7 @@
   clean = git media clean %f
   smudge = git media smudge %f
 [core]
-	excludesfile = /Users/davidzhang/.gitignore
+	excludesfile = /Users/david/.gitignore
 	editor = 'vim'
 	pager = delta
 [alias]

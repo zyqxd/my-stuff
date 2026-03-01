@@ -91,6 +91,52 @@ mkdir -p "$HOME/Library/Application Support/Code/User"
 ln -sf $REPO_DIR/preferences/vscode/settings.json "$HOME/Library/Application Support/Code/User/settings.json"
 ln -sf $REPO_DIR/preferences/vscode/keybindings.json "$HOME/Library/Application Support/Code/User/keybindings.json"
 
+# VS Code extensions
+if command -v code &> /dev/null; then
+    echo "📦 Installing VS Code extensions..."
+    extensions=(
+        attilabuti.vscode-mjml
+        craigmaslowski.erb
+        dnicolson.binary-plist
+        eamodio.gitlens
+        enochc.copy-relative-path
+        esbenp.prettier-vscode
+        evgeniypeshkov.syntax-highlighter
+        ex-codes.pine-script-syntax-highlighter
+        fabiospampinato.vscode-open-in-github
+        file-icons.file-icons
+        flowtype.flow-for-vscode
+        github.copilot
+        github.copilot-chat
+        golang.go
+        hashicorp.terraform
+        janisdd.vscode-edit-csv
+        kumar-harsh.graphql-for-vscode
+        mechatroner.rainbow-csv
+        mikestead.dotenv
+        ms-azuretools.vscode-docker
+        ms-vscode-remote.remote-containers
+        rvest.vs-code-prettier-eslint
+        shd101wyy.markdown-preview-enhanced
+        shopify.ruby-lsp
+        sianglim.slim
+        t3dotgg.vsc-material-theme-but-i-wont-sue-you
+        vitaliymaz.vscode-svg-previewer
+        vscodevim.vim
+        vsls-contrib.gistfs
+        yo1dog.cursor-align
+        yzhang.markdown-all-in-one
+        zxh404.vscode-proto3
+    )
+    for ext in "${extensions[@]}"; do
+        code --install-extension "$ext" --force 2>/dev/null || echo "   ⚠️  Failed to install $ext"
+    done
+else
+    echo "⚠️  VS Code CLI (code) not found. Skipping extension installation."
+    echo "   Open VS Code > Command Palette > 'Shell Command: Install code command'"
+    echo "   Then re-run ./setup.sh to install extensions."
+fi
+
 # iTerm2 setup — point iTerm2 at the repo's preferences folder
 echo "🖥️  Setting up iTerm2 preferences..."
 defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$REPO_DIR/preferences/iterm"
@@ -120,9 +166,6 @@ echo ""
 echo "📋 Next steps:"
 echo "   1. Restart your terminal or run: source ~/.bash_profile"
 echo "   2. Launch Lasso to activate your window management shortcuts"
-echo "   3. Install VS Code extensions:"
-echo "      └─ Open VS Code > Command Palette > 'Shell Command: Install code command'"
-echo "      └─ Then run the extension install commands from README.md"
 echo ""
 echo "💡 To export Lasso config changes back to this repo, run:"
 echo "   ./setup.sh export"

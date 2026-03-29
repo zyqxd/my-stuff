@@ -137,6 +137,11 @@ else
     echo "   Then re-run ./setup.sh to install extensions."
 fi
 
+# Claude Code setup
+echo "🤖 Setting up Claude Code preferences..."
+mkdir -p "$HOME/.claude"
+ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+
 # iTerm2 setup — point iTerm2 at the repo's preferences folder
 echo "🖥️  Setting up iTerm2 preferences..."
 defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$REPO_DIR/preferences/iterm"

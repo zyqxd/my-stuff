@@ -30,6 +30,3 @@ cask "alfred"
 cask "lasso"
 cask "slack"
 cask "google-chrome"
-
-# Fonts
-cask "font-fira-code"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Claude Code status line: model name | context progress bar | session usage %
+# Claude Code status line: model | effort | context bar | cost | 5h usage %
 
 input=$(cat)
 
@@ -7,17 +7,17 @@ input=$(cat)
 CYAN='\033[36m'
 GREEN='\033[32m'
 YELLOW='\033[33m'
+RED='\033[31m'
 DIM='\033[2m'
 RESET='\033[0m'
 
+delim="${DIM} | ${RESET}"
+
 model=$(echo "$input" | jq -r '.model.display_name // "Claude"')
-
+effort=$(echo "$input" | jq -r '.effort_level // empty')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-
-# Session cumulative token usage
-total_in=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
-total_out=$(echo "$input" | jq -r '.context_window.total_output_tokens // 0')
-ctx_size=$(echo "$input" | jq -r '.context_window.context_window_size // 1')
+cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+five_hour_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 
 # Build context progress bar (10 chars wide)
 if [ -n "$used_pct" ]; then
@@ -32,23 +32,22 @@ else
   ctx_display="░░░░░░░░░░ --%"
 fi
 
-# Session usage: total tokens this session as % of context window
-total_tokens=$((total_in + total_out))
-if [ "$ctx_size" -gt 0 ] && [ "$total_tokens" -gt 0 ]; then
-  session_pct=$(awk "BEGIN {printf \"%.0f\", ($total_tokens / $ctx_size) * 100}")
-  session_display="session ${session_pct}%"
-else
-  session_display=""
+# Session cost
+cost_display=$(printf '$%.2f' "$cost")
+
+# Compose output: model | effort | context bar | cost | 5h usage
+output="${CYAN}${model}${RESET}"
+
+if [ -n "$effort" ]; then
+  output="${output}${delim}${DIM}${effort}${RESET}"
 fi
 
-# Delimiter
-delim="${DIM} | ${RESET}"
+output="${output}${delim}${GREEN}${ctx_display}${RESET}"
+output="${output}${delim}${YELLOW}${cost_display}${RESET}"
 
-# Compose output
-if [ -n "$session_display" ]; then
-  printf "${CYAN}%s${RESET}${delim}${GREEN}%s${RESET}${delim}${YELLOW}%s${RESET}" \
-    "$model" "$ctx_display" "$session_display"
-else
-  printf "${CYAN}%s${RESET}${delim}${GREEN}%s${RESET}" \
-    "$model" "$ctx_display"
+if [ -n "$five_hour_pct" ]; then
+  five_hour_fmt=$(printf '%.0f%%' "$five_hour_pct")
+  output="${output}${delim}${RED}5h: ${five_hour_fmt}${RESET}"
 fi
+
+printf "%b" "$output"

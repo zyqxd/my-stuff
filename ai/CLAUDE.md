@@ -13,9 +13,14 @@
 
 ### 2. Subagent Strategy to keep main context window clean
 
+- **"Async" = execute with a subagent.** When the user says "do X async",
+  spin up a subagent for X. Use this terminology consistently.
 - Offload research, exploration, and parallel analysis to subagents
 - For complex problems, throw more compute at it via subagents
 - One task per subagent for focused execution
+- When dispatching multiple subagents in parallel, use the
+  `/dispatching-parallel-agents` skill. If the skill is not installed
+  locally, install it first before dispatching.
 
 ### 3. Self-Improvement Loop
 

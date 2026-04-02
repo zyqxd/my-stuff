@@ -5,6 +5,7 @@
 brew "git"
 brew "node"
 brew "postgresql@16"
+brew "rbenv"
 brew "tfenv"
 brew "yarn"
 brew "openssl@3"

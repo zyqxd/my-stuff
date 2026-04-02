@@ -61,6 +61,31 @@ echo "📦 Installing packages from Brewfile..."
 echo "   This may take a few minutes..."
 brew bundle --file=./Brewfile
 
+# Install Claude Code (not available via Homebrew)
+if ! command -v claude &> /dev/null; then
+    echo "🤖 Installing Claude Code..."
+    npm install -g @anthropic-ai/claude-code
+else
+    echo "✅ Claude Code already installed"
+fi
+
+# Set default shell to Homebrew bash (macOS defaults to zsh)
+BREW_BASH="/opt/homebrew/bin/bash"
+if [ "$SHELL" != "$BREW_BASH" ]; then
+    if [ -x "$BREW_BASH" ]; then
+        if ! grep -qF "$BREW_BASH" /etc/shells; then
+            echo "🐚 Adding Homebrew bash to /etc/shells (requires sudo)..."
+            echo "$BREW_BASH" | sudo tee -a /etc/shells > /dev/null
+        fi
+        echo "🐚 Switching default shell to Homebrew bash..."
+        chsh -s "$BREW_BASH"
+    else
+        echo "⚠️  Homebrew bash not found at $BREW_BASH. Skipping shell switch."
+    fi
+else
+    echo "✅ Default shell is already Homebrew bash"
+fi
+
 echo ""
 echo "⚙️  Configuring development environment..."
 
@@ -141,6 +166,18 @@ fi
 echo "🤖 Setting up Claude Code preferences..."
 mkdir -p "$HOME/.claude"
 ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+ln -sf "$REPO_DIR/ai/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
+
+# Ensure settings.json has the statusline command configured
+CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+STATUSLINE_JSON='{"statusLine":{"type":"command","command":"bash ~/.claude/statusline-command.sh"}}'
+if [ -f "$CLAUDE_SETTINGS" ]; then
+    # Merge statusline config into existing settings
+    jq -s '.[0] * .[1]' "$CLAUDE_SETTINGS" <(echo "$STATUSLINE_JSON") > "${CLAUDE_SETTINGS}.tmp" \
+        && mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
+else
+    echo "$STATUSLINE_JSON" | jq . > "$CLAUDE_SETTINGS"
+fi
 
 # iTerm2 setup — point iTerm2 at the repo's preferences folder
 echo "🖥️  Setting up iTerm2 preferences..."

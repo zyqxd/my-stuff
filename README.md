@@ -1,98 +1,53 @@
 My Personal Tools and Settings for Development and stuff
 
-## Setup Pre-requisites
+## New Machine Setup
 
-- [chrome](https://www.google.ca/chrome/?brand=CHBD&gclid=CjwKCAjw9dboBRBUEiwA7VrrzSjFTd7ABOJR75htdglTzZuv4naAyByJEfF38wkHZy5hHDfkCbvUThoCH90QAvD_BwE&gclsrc=aw.ds)
-- [alfred](https://www.alfredapp.com/)
-- [iterm 2](https://www.iterm2.com/downloads.html)
-- [lasso](https://thelasso.app/)
-- [VS Code](https://code.visualstudio.com/Download)
-- [Slack](https://slack.com/intl/en-ca/downloads/mac)
-- (included ./fonts) [Fira Code](https://github.com/tonsky/FiraCode)
-- [Git checkout](https://medium.com/@ljn6176/how-to-switch-git-branches-more-gracefully-b1ffbc1c49eb)
+On a fresh Mac, you need two things before you can clone this repo and run `setup.sh`:
+git (via Xcode Command Line Tools) and an SSH key for GitHub.
 
-## Setup Git Hub SSH
+### 1. Install Xcode Command Line Tools
 
-```
-ssh-keygen -t rsa -b 4096
-pbcopy < ~/.ssh/id_rsa.pub
+This gives you `git` and other build essentials.
+
+```bash
+xcode-select --install
 ```
 
-## Get started
+Follow the prompt to install. This can take a few minutes.
 
-First, install all prerequisite programs
+### 2. Set up GitHub SSH key
+
+Generate a new SSH key and copy it to your clipboard:
+
+```bash
+ssh-keygen -t ed25519 -C "your-email@example.com"
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+pbcopy < ~/.ssh/id_ed25519.pub
 ```
-cd ~
 
-# If you need to change default to bash
-chsh -s /bin/bash
+Then add it to GitHub: **GitHub.com > Settings > SSH and GPG keys > New SSH key** and paste.
 
-# Install brew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+Verify it works:
 
-mkdir Workspace
-cd Workspace
+```bash
+ssh -T git@github.com
+```
+
+### 3. Clone and run setup
+
+```bash
+mkdir -p ~/Workspace && cd ~/Workspace
 git clone git@github.com:zyqxd/my-stuff.git
-
 cd my-stuff
 ./setup.sh
 ```
 
-## VS Code Setup
-
-To enable code CLI, Open up vscode command command palette - 
-
-Search for `shell`
-
-## Iterm setup
-
-After installing iterm, go to `preferences > Load preferences from a custom folder or URL`
-
-Select `my-stuff/preferences/iterm`
-
-## Lasso Setup
-
-Lasso window management preferences are automatically configured during setup. 
-
-After running `./setup.sh`, simply launch Lasso and your shortcuts will be ready to use.
-
-Your current Lasso configuration has been exported and will be restored automatically.
-
-#### Extensions
-
-Generate: `code --list-extensions | xargs -L 1 echo code --install-extension`
-
-```
-code --install-extension attilabuti.vscode-mjml
-code --install-extension craigmaslowski.erb
-code --install-extension dnicolson.binary-plist
-code --install-extension eamodio.gitlens
-code --install-extension enochc.copy-relative-path
-code --install-extension esbenp.prettier-vscode
-code --install-extension evgeniypeshkov.syntax-highlighter
-code --install-extension ex-codes.pine-script-syntax-highlighter
-code --install-extension fabiospampinato.vscode-open-in-github
-code --install-extension file-icons.file-icons
-code --install-extension flowtype.flow-for-vscode
-code --install-extension github.copilot
-code --install-extension github.copilot-chat
-code --install-extension golang.go
-code --install-extension hashicorp.terraform
-code --install-extension janisdd.vscode-edit-csv
-code --install-extension kumar-harsh.graphql-for-vscode
-code --install-extension mechatroner.rainbow-csv
-code --install-extension mikestead.dotenv
-code --install-extension ms-azuretools.vscode-docker
-code --install-extension ms-vscode-remote.remote-containers
-code --install-extension rvest.vs-code-prettier-eslint
-code --install-extension shd101wyy.markdown-preview-enhanced
-code --install-extension shopify.ruby-lsp
-code --install-extension sianglim.slim
-code --install-extension t3dotgg.vsc-material-theme-but-i-wont-sue-you
-code --install-extension vitaliymaz.vscode-svg-previewer
-code --install-extension vscodevim.vim
-code --install-extension vsls-contrib.gistfs
-code --install-extension yo1dog.cursor-align
-code --install-extension yzhang.markdown-all-in-one
-code --install-extension zxh404.vscode-proto3
-```
+`setup.sh` handles everything else:
+- Installs Homebrew (if needed)
+- Installs all packages and apps via Brewfile (Chrome, iTerm2, Alfred, Lasso, VS Code, Docker, Slack, etc.)
+- Installs Claude Code via npm
+- Switches default shell to Homebrew bash
+- Symlinks bash profile, git config, VS Code settings, iTerm2 preferences
+- Configures Lasso window management, fonts, keyboard repeat settings
+- Sets up Claude Code agent rules and statusline

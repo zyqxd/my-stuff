@@ -44,5 +44,5 @@ export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
 # zoxide (smarter cd) - must be last
 eval "$(zoxide init bash)"
 
-# rbenv
-eval "$(rbenv init - bash)"
+# Added by tec agent
+[[ -x /Users/david.yq.zhang/.local/state/tec/profiles/base/current/global/init ]] && eval "$(/Users/david.yq.zhang/.local/state/tec/profiles/base/current/global/init bash)"

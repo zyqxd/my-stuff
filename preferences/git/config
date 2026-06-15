@@ -6,7 +6,7 @@
   clean = git media clean %f
   smudge = git media smudge %f
 [core]
-	excludesfile = /Users/david/.gitignore
+	excludesfile = /Users/david.yq.zhang/.gitignore
 	editor = 'vim'
 	pager = delta
 [alias]
@@ -161,3 +161,5 @@
 	line-numbers = true
 [diff]
 	colorMoved = default
+[include]
+	path = /Users/david.yq.zhang/.config/dev/gitconfig

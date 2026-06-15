@@ -1,0 +1,13 @@
+# David Zhang's Homebrew Bundle (optional GUI apps)
+# Installed only when you opt in during ./setup.sh.
+# Install manually with: brew bundle --file=Brewfile.apps
+
+# Development Tools
+cask "visual-studio-code"
+cask "docker"
+
+# Productivity Apps
+cask "alfred"
+cask "lasso"
+cask "slack"
+cask "google-chrome"

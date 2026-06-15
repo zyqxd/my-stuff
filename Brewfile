@@ -1,11 +1,14 @@
-# David Zhang's Homebrew Bundle
+# David Zhang's Homebrew Bundle (core)
 # Install with: brew bundle
+#
+# Optional GUI apps live in Brewfile.apps and are installed only if you opt in
+# during ./setup.sh.
 
 # CLI Tools
+brew "bash"
 brew "git"
 brew "node"
 brew "postgresql@16"
-brew "rbenv"
 brew "tfenv"
 brew "yarn"
 brew "openssl@3"
@@ -20,13 +23,5 @@ brew "bat"
 brew "eza"
 brew "zoxide"
 
-# Development Tools
-cask "visual-studio-code"
+# Terminal (central to this setup)
 cask "iterm2"
-cask "docker"
-
-# Productivity Apps
-cask "alfred"
-cask "lasso"
-cask "slack"
-cask "google-chrome"

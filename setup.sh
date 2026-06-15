@@ -18,6 +18,17 @@ if [ ! -f "$REPO_DIR/Brewfile" ]; then
     exit 1
 fi
 
+# Prompt for a yes/no answer, defaulting to yes. Returns 0 (yes) on empty input,
+# "y" or "yes". Non-interactive runs (no TTY / EOF) default to yes.
+confirm() {
+    local reply
+    read -r -p "$1 [Y/n] " reply || reply="y"
+    case "${reply:-y}" in
+        [Yy]|[Yy][Ee][Ss]) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 export_lasso() {
     echo "🪟 Exporting Lasso configuration to repo..."
 
@@ -73,12 +84,20 @@ echo "📦 Installing packages from Brewfile..."
 echo "   This may take a few minutes..."
 brew bundle --file=./Brewfile
 
-# Install Claude Code (not available via Homebrew)
-if ! command -v claude &> /dev/null; then
-    echo "🤖 Installing Claude Code..."
-    npm install -g @anthropic-ai/claude-code
+# Install Claude Code (optional, via Homebrew cask)
+echo ""
+if confirm "🤖 Install Claude Code?"; then
+    brew install --cask claude-code
 else
-    echo "✅ Claude Code already installed"
+    echo "⏭️  Skipping Claude Code"
+fi
+
+# Install optional GUI apps
+echo ""
+if confirm "🖥️  Install GUI apps (VS Code, Docker, Slack, Chrome, Alfred, Lasso)?"; then
+    brew bundle --file="$REPO_DIR/Brewfile.apps"
+else
+    echo "⏭️  Skipping GUI apps"
 fi
 
 # Set default shell to Homebrew bash (macOS defaults to zsh)
@@ -158,20 +177,43 @@ else
     echo "$STATUSLINE_JSON" | jq . > "$CLAUDE_SETTINGS"
 fi
 
-# iTerm2 setup — point iTerm2 at the repo's preferences folder
+# iTerm2 setup
+# The committed prefs use the placeholder __ITERM_WORKING_DIR__ for the directory
+# new windows/tabs open in. We generate a user-specific copy (with the placeholder
+# resolved) outside the repo so the repo stays clean and portable across users.
+# Split panes keep "reuse previous directory" — that's unaffected here.
 echo "🖥️  Setting up iTerm2 preferences..."
-defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$REPO_DIR/preferences/iterm"
+read -r -p "   iTerm working directory under \$HOME (blank = home): " ITERM_SUBDIR || ITERM_SUBDIR=""
+if [ -z "$ITERM_SUBDIR" ]; then
+    ITERM_DIR="$HOME"
+else
+    ITERM_DIR="$HOME/$ITERM_SUBDIR"
+fi
+echo "   New iTerm windows/tabs will open in: $ITERM_DIR"
+
+ITERM_PREFS_DIR="$HOME/.config/iterm"
+mkdir -p "$ITERM_PREFS_DIR"
+cp "$REPO_DIR/preferences/iterm/"* "$ITERM_PREFS_DIR/"
+# Resolve the placeholder in the generated copy (| as sed delimiter to avoid / clashes).
+for f in "$ITERM_PREFS_DIR/"*; do
+    sed -i '' "s|__ITERM_WORKING_DIR__|$ITERM_DIR|g" "$f"
+done
+defaults write com.googlecode.iterm2 PrefsCustomFolder -string "$ITERM_PREFS_DIR"
 defaults write com.googlecode.iterm2 LoadPrefsFromCustomFolder -bool true
 
-# Lasso setup
+# Lasso setup (optional)
 # Note: the plist must be copied (macOS preferences system ignores symlinks).
 # Application Support files are symlinked so changes sync automatically.
-echo "🪟 Setting up Lasso window management preferences..."
-mkdir -p "$HOME/Library/Application Support/Lasso"
-cp "$REPO_DIR/preferences/lasso/com.heavylightapps.lasso.plist" "$HOME/Library/Preferences/"
-for f in "$REPO_DIR/preferences/lasso/Application Support/"*; do
-    ln -sf "$f" "$HOME/Library/Application Support/Lasso/$(basename "$f")"
-done
+echo ""
+if confirm "🪟 Set up Lasso window-management config?"; then
+    mkdir -p "$HOME/Library/Application Support/Lasso"
+    cp "$REPO_DIR/preferences/lasso/com.heavylightapps.lasso.plist" "$HOME/Library/Preferences/"
+    for f in "$REPO_DIR/preferences/lasso/Application Support/"*; do
+        ln -sf "$f" "$HOME/Library/Application Support/Lasso/$(basename "$f")"
+    done
+else
+    echo "⏭️  Skipping Lasso config"
+fi
 
 # Apply git global settings
 echo "🔧 Applying git global configuration..."

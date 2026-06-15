@@ -45,9 +45,14 @@ cd my-stuff
 
 `setup.sh` handles everything else:
 - Installs Homebrew (if needed)
-- Installs all packages and apps via Brewfile (Chrome, iTerm2, Alfred, Lasso, VS Code, Docker, Slack, etc.)
-- Installs Claude Code via npm
+- Installs core CLI tools via `Brewfile` (git, node, postgres, fzf, bat, eza, iTerm2, etc.)
 - Switches default shell to Homebrew bash
-- Symlinks bash profile, git config, VS Code settings, iTerm2 preferences
-- Configures Lasso window management, fonts, keyboard repeat settings
+- Symlinks bash profile, git config, VS Code settings
+- Configures fonts and keyboard repeat settings (key-repeat speed-up; requires a logout to take effect)
+- Generates a user-specific iTerm2 prefs copy and prompts for the working directory new tabs open in
 - Sets up Claude Code agent rules and statusline
+
+It also prompts (default yes) before these optional steps:
+- **Claude Code** — installed via the Homebrew `claude-code` cask
+- **GUI apps** — `Brewfile.apps`: VS Code, Docker, Slack, Chrome, Alfred, Lasso
+- **Lasso config** — window-management preferences

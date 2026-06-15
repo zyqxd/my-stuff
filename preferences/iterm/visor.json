@@ -1,5 +1,5 @@
 {
-  "Working Directory" : "\/Users\/davidzhang\/Development",
+  "Working Directory" : "__ITERM_WORKING_DIR__",
   "Prompt Before Closing 2" : false,
   "Selected Text Color" : {
     "Green Component" : 0.8156862854957581,
@@ -56,7 +56,7 @@
     "Green Component" : 0.9268307089805603
   },
   "BM Growl" : true,
-  "AWDS Window Directory" : "\/Users\/davidzhang\/Development",
+  "AWDS Window Directory" : "__ITERM_WORKING_DIR__",
   "Ansi 3 Color" : {
     "Green Component" : 0.7098039215686275,
     "Blue Component" : 0.403921568627451,
@@ -401,7 +401,7 @@
     "Red Component" : 0.8156862854957581
   },
   "Space" : -1,
-  "AWDS Tab Directory" : "\/Users\/davidzhang\/Development",
+  "AWDS Tab Directory" : "__ITERM_WORKING_DIR__",
   "AWDS Pane Option" : "Recycle",
   "HotKey Window AutoHides" : false,
   "Command" : "",

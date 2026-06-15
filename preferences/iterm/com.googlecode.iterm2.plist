@@ -744,11 +744,11 @@
 			<key>AWDS Pane Option</key>
 			<string>Recycle</string>
 			<key>AWDS Tab Directory</key>
-			<string>/Users/davidzhang/Development</string>
+			<string>__ITERM_WORKING_DIR__</string>
 			<key>AWDS Tab Option</key>
 			<string>Yes</string>
 			<key>AWDS Window Directory</key>
-			<string>/Users/davidzhang/Development</string>
+			<string>__ITERM_WORKING_DIR__</string>
 			<key>AWDS Window Option</key>
 			<string>Yes</string>
 			<key>Ambiguous Double Width</key>
@@ -1307,7 +1307,7 @@
 			<key>Window Type</key>
 			<integer>0</integer>
 			<key>Working Directory</key>
-			<string>/Users/davidzhang/Development</string>
+			<string>__ITERM_WORKING_DIR__</string>
 		</dict>
 	</array>
 	<key>PMPrintingExpandedStateForPrint2</key>

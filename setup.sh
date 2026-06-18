@@ -127,8 +127,8 @@ cp "$REPO_DIR/fonts/"*.otf "$HOME/Library/Fonts/" 2>/dev/null || true
 # Vim key repeat settings
 echo "⌨️  Configuring vim key repeat settings..."
 defaults write -g ApplePressAndHoldEnabled -bool false
-defaults write -g InitialKeyRepeat -int 10
-defaults write -g KeyRepeat -int 1
+defaults write -g InitialKeyRepeat -int 20
+defaults write -g KeyRepeat -int 2
 
 # Bash profile setup
 echo "🐚 Setting up bash profile..."

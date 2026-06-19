@@ -410,6 +410,10 @@ __git_ps1 ()
 		elif [ -h "$g/HEAD" ]; then
 			# symlink symbolic ref
 			b="$(git symbolic-ref HEAD 2>/dev/null)"
+		elif [ -e "$g/reftable/tables.list" ]; then
+			# reftable backend: HEAD on disk is a ".invalid"
+			# placeholder, so resolve the ref via git instead
+			b="$(git symbolic-ref HEAD 2>/dev/null)"
 		else
 			local head=""
 			if ! __git_eread "$g/HEAD" head; then

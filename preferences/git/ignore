@@ -28,8 +28,14 @@ Temporary Items
 
 # Custom
 dumps/
-.vscode/
+.vscode/*
 .git-switch.lock
 .irbrc
 
-lib/monkey_patches/advant_of_code_2021.rb
+# AI Crap
+.codex/
+.cursor/
+.opencode/
+.pi/
+**/.claude/settings.local.json
+skills.json

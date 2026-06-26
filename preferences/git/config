@@ -163,3 +163,14 @@
 	colorMoved = default
 [include]
 	path = /Users/david.yq.zhang/.config/dev/gitconfig
+[http]
+	maxRequests = 1
+[maintenance]
+	repo = /Users/david.yq.zhang/world/git
+[shop-world "stale-pr-cutoff"]
+	main = 1782307165
+[credential "https://*.quick.shopify.io"]
+	helper = 
+	helper = /Users/david.yq.zhang/.config/quick/quick-git-credential.sh
+[http "https://*.quick.shopify.io/"]
+	extraHeader = X-Requested-With: XMLHttpRequest

@@ -50,7 +50,7 @@ cd my-stuff
 - Symlinks bash profile, git config, VS Code settings
 - Configures fonts and keyboard repeat settings (key-repeat speed-up; requires a logout to take effect)
 - Generates a user-specific iTerm2 prefs copy and prompts for the working directory new tabs open in
-- Sets up Claude Code agent rules and statusline
+- Sets up Claude Code agent rules and statusline, and shares the same agent rules with the pi agent (`~/.pi/agent/CLAUDE.md`)
 
 It also prompts (default yes) before these optional steps:
 - **Claude Code** — installed via the Homebrew `claude-code` cask

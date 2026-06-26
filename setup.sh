@@ -177,6 +177,14 @@ else
     echo "$STATUSLINE_JSON" | jq . > "$CLAUDE_SETTINGS"
 fi
 
+# pi agent setup
+# pi loads global context from ~/.pi/agent/CLAUDE.md (or AGENTS.md) at startup.
+# Symlink the same shared rules used by Claude Code so both agents stay in sync
+# from a single source of truth (ai/CLAUDE.md).
+echo "🥧 Setting up pi agent preferences..."
+mkdir -p "$HOME/.pi/agent"
+ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.pi/agent/CLAUDE.md"
+
 # iTerm2 setup
 # The committed prefs use the placeholder __ITERM_WORKING_DIR__ for the directory
 # new windows/tabs open in. We generate a user-specific copy (with the placeholder

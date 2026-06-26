@@ -7,7 +7,6 @@
   "editor.fontFamily": "Fira Code",
   "editor.fontSize": 15,
   "editor.fontLigatures": true,
-  "workbench.colorTheme": "Material Theme Palenight High Contrast",
   "remote.defaultExtensionsIfInstalledLocally": [
     "GitHub.copilot",
     "GitHub.copilot-chat",
@@ -28,5 +27,8 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "python.defaultInterpreterPath": "/opt/homebrew/bin/python3",
-  "markdown-preview-enhanced.liveUpdate": false
+  "markdown-preview-enhanced.liveUpdate": false,
+  "workbench.colorTheme": "Atom Material Theme",
+  "editor.wordWrap": "bounded",
+  "security.workspace.trust.untrustedFiles": "open"
 }

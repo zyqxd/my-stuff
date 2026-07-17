@@ -246,3 +246,28 @@ Rules for myself:
   cherry-picked ephemerally — it must NEVER be committed onto `labels` /
   `emit-both-surfaces`. Local branch state ≠ origin; a user tophatting in the
   same worktree can leave the cherry-pick behind.
+
+## Working-contract violations to never repeat: no code comments, no PR-bot replies
+
+Source: stripe-express-ready-metrics #937051, 2026-07-16 (user correction).
+
+1. **No code comments unless explicitly asked — this includes prop/interface doc
+   comments AND test comments.** I added a 3-line doc comment on a `readyGuardRef`
+   prop and a 3-line comment above a test assertion. Both violated the standing
+   "Shopify is light on comments" contract. The intent must live in the code
+   (clear names) and, for tests, in the `it(...)` description — not in comments.
+   Before committing, `git diff origin/main..HEAD | grep -E '^\+.*(//|/\*)'` and
+   delete any comment I introduced.
+2. **Never reply to the PR bot (binks).** Acting on a binks finding = fix the
+   code, push, and let binks re-review on push. Do NOT post reply comments to
+   binks threads (I did it 2×; had to delete them via
+   `gh api -X DELETE repos/shop/world/pulls/comments/<id>`). No bot
+   conversation, no "confirmed and fixed in <sha>" replies.
+3. **Squash my commits before/when finishing.** Keep each PR a single clean
+   commit (fixes from review rounds get squashed into the one commit, not left
+   as a pile of follow-up commits). Use `git reset --soft <base>` + one commit;
+   remove any review-round comments in the same pass.
+
+Rule: at the end of every change, run a pre-handoff check — (a) no added
+comments, (b) no bot replies posted, (c) branch squashed to one commit per PR,
+(d) no `[DO NOT MERGE]` / dev-only files in `git diff origin/main..HEAD`.

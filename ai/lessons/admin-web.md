@@ -199,3 +199,50 @@ Rules for myself:
   PR inline instead.
 - Testing section states the real verification for *this* PR; don't inflate a
   label-only PR with behavioral test counts.
+
+## Stripe Express ready metrics — trace component nesting before claiming a metric gap
+- Do NOT analyze paired-metric emission (ReadyResult vs ReadyDuration) by reading
+  each file in isolation. `ExpressPayButtons` (Billing/Subscribe) RENDERS
+  `StripeExpressApplePay/GooglePay` → `StripeExpressAdminCheckout` and wires
+  `onReady={handleApplePayReady}`. On a successful load the INNER
+  `StripeExpressAdminCheckout.handleReady` emits Duration, then calls `onReady`
+  which makes the OUTER `ExpressPayButtons` emit Result(success). Both fire once —
+  the metrics ARE paired across the parent+child. Trace `onReady`/callback nesting
+  before asserting "this surface emits X but not Y".
+- Product fact: there is NO standalone "add Apple Pay / Google Pay as a payment
+  method" flow. Stripe Express wallets only render when the merchant/device
+  actually has that wallet set up (availability-gated). Don't invent an
+  "add payment method" surface for StripeExpressAdminCheckout — it is only the
+  inner button nested under ExpressPayButtons on the billing checkout page.
+- Consequence: real ReadyResult/ReadyDuration discrepancies are narrow
+  (label mismatch: Result carries `surface`, Duration doesn't; duration value
+  skew across paths; rare double-ready/late-ready count edges), NOT the
+  "success emits only one metric" gap I wrongly reported first.
+
+## Never commit/push to a real PR branch without checking for the dev-only monkey-patch commit
+
+Source: stripe-express-ready-metrics stack, 2026-07-16. A dev-only tophat
+"monkey patch" (`[DO NOT MERGE]` commit `0b30ff1`, adds
+`monetization-core/utilities/tophatExpressWallets.ts` + edits 4 Stripe Express
+files) is cherry-picked onto the PR branches during tophatting. It slipped onto
+real PR branches **twice**:
+- `labels` (#937049): local branch had drifted to include it; a rebase surfaced
+  it as a 3rd replayed commit — caught before pushing.
+- `emit-both-surfaces` (#937051): it had been cherry-picked onto the local
+  branch during tophatting; I committed a fix on top and **pushed the monkey
+  patch to the PR** before noticing, then had to `git rebase --onto` it out and
+  force-push a correction.
+
+Rules for myself:
+- **Before any `git commit`/`git push` to a branch that has an associated
+  cherry-pick-tophat workflow, run `git log --oneline -5` and scan for
+  `[DO NOT MERGE]` / the tophat commit, and `git ls-files <dev-only-helper>`.**
+  If present, drop it (`git rebase --onto <clean-base> <monkeypatch-sha>`)
+  BEFORE committing real work on top.
+- After pushing, **verify the pushed diff**: `git diff --name-only origin/main..HEAD`
+  should contain zero dev-only files (e.g. grep for the helper). Treat a nonzero
+  count as an incident and force-push a correction immediately.
+- The tophat monkey patch lives on its own branch (`…/tophat-monkeypatch`) and is
+  cherry-picked ephemerally — it must NEVER be committed onto `labels` /
+  `emit-both-surfaces`. Local branch state ≠ origin; a user tophatting in the
+  same worktree can leave the cherry-pick behind.

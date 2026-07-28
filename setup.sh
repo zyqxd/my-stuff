@@ -29,6 +29,23 @@ confirm() {
     esac
 }
 
+link_agent_skills() {
+    local target_dir="$1"
+    local skill_dir
+    local target_path
+
+    mkdir -p "$target_dir"
+    for skill_dir in "$REPO_DIR"/skills/*; do
+        [ -f "$skill_dir/SKILL.md" ] || continue
+        target_path="$target_dir/$(basename "$skill_dir")"
+        if [ -e "$target_path" ] && [ ! -L "$target_path" ]; then
+            echo "❌ Error: Cannot link $skill_dir over existing directory $target_path" >&2
+            return 1
+        fi
+        ln -sfn "$skill_dir" "$target_path"
+    done
+}
+
 export_lasso() {
     echo "🪟 Exporting Lasso configuration to repo..."
 
@@ -165,6 +182,7 @@ echo "🤖 Setting up Claude Code preferences..."
 mkdir -p "$HOME/.claude"
 ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 ln -sf "$REPO_DIR/ai/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
+link_agent_skills "$HOME/.claude/skills"
 
 # Ensure settings.json has the statusline command configured
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
@@ -184,6 +202,7 @@ fi
 echo "🥧 Setting up pi agent preferences..."
 mkdir -p "$HOME/.pi/agent"
 ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.pi/agent/CLAUDE.md"
+link_agent_skills "$HOME/.pi/agent/skills"
 
 # iTerm2 setup
 # The committed prefs use the placeholder __ITERM_WORKING_DIR__ for the directory

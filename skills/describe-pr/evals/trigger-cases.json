@@ -1,0 +1,54 @@
+[
+  {
+    "query": "Open a PR for the changes on this branch.",
+    "should_trigger": true
+  },
+  {
+    "query": "Create the pull request and get it ready for review.",
+    "should_trigger": true
+  },
+  {
+    "query": "Prepare this branch for a PR.",
+    "should_trigger": true
+  },
+  {
+    "query": "Submit this Graphite stack.",
+    "should_trigger": true
+  },
+  {
+    "query": "Update PR #937051 with the latest changes.",
+    "should_trigger": true
+  },
+  {
+    "query": "Rewrite this PR description so reviewers can scan it.",
+    "should_trigger": true
+  },
+  {
+    "query": "Can you improve the pull request body?",
+    "should_trigger": true
+  },
+  {
+    "query": "Use gh pr create for this work.",
+    "should_trigger": true
+  },
+  {
+    "query": "Review PR #937051 for correctness.",
+    "should_trigger": false
+  },
+  {
+    "query": "Draft a Conventional Commits message for these changes.",
+    "should_trigger": false
+  },
+  {
+    "query": "Write a GitHub issue describing this bug.",
+    "should_trigger": false
+  },
+  {
+    "query": "Summarize the changes for the release notes.",
+    "should_trigger": false
+  },
+  {
+    "query": "Explain this diff to me before I decide what to do.",
+    "should_trigger": false
+  }
+]

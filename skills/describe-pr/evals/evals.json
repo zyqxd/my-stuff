@@ -1,0 +1,55 @@
+{
+  "skill_name": "describe-pr",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Draft only; do not open GitHub. Prepare a PR body for a bug fix that closes #42. The change reuses the payment selector's default-selection helper to prevent signup checkout from disabling the CTA when a merchant has an ineligible bank account and an eligible card. This is not stacked. Manual Tophat has not run; suggest author-owned setup and binary cases.",
+      "expected_output": "A concise PR body with Closes #42, a minimally sufficient Summary, paragraph-form Context, no Stack section, and an explicitly unrun author-owned Tophat plan.",
+      "assertions": [
+        "A Closes #42 directive appears before Summary",
+        "Summary uses only the one-sentence bullets needed to label the change as a bug fix and explain what and how",
+        "Context is a 1-3 sentence paragraph explaining customer impact and why the shared helper is needed",
+        "Stack is omitted",
+        "Tophat suggests setup and mixed bank/card binary cases without claiming they ran"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Draft only; do not open GitHub. Prepare the middle PR description in a three-PR deprecation stack: #100 stops new writes, this branch backfills existing rows, and #102 removes the legacy column. The project is reducing dual-write operational risk. Manual Tophat is complex and author-owned; suggest setup, before/after checks, and cleanup.",
+      "expected_output": "A concise deprecation PR body whose Stack section lists all three changes in merge order and clearly highlights this PR.",
+      "assertions": [
+        "Summary uses 1-3 one-sentence bullets and labels the change as a deprecation",
+        "Context is a 1-3 sentence paragraph explaining the project motivation",
+        "Stack lists #100, this PR, and #102 in merge order with this PR bolded",
+        "Every Stack item is at most one short sentence",
+        "Tophat provides author-facing setup, before/after checks, and cleanup suggestions without claiming completion"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Draft only; do not open GitHub. This is a tiny top-of-stack maintenance PR: remove the single ignored_columns entry for legacy_flag after #20 drops the physical column. No other code changes. It must deploy only after #20's migration completes. The stack is #18 remove the backend field, #19 resync the client schema, #20 drop the column, then this PR. Manual Tophat has not run; suggest an author-owned model-load smoke test.",
+      "expected_output": "A minimal maintenance PR body with exactly one Summary bullet, one Context sentence naming the #20 deployment dependency, a terse four-item Stack, and an author-owned Tophat suggestion.",
+      "assertions": [
+        "Summary contains exactly one one-sentence bullet that labels the change as maintenance and explains the removal",
+        "Context is exactly one paragraph sentence stating that deployment must wait for #20's migration",
+        "Context does not use bullets or add generic dead-code or future-schema rationale",
+        "Stack lists #18, #19, #20, and this PR in order with this PR bolded",
+        "Tophat uses numbered steps for the linear model-load smoke test without claiming it ran"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Draft only; do not open GitHub. This feature emits per-wallet ready metrics on two routes with different expectations: Admin `/admin/checkout` emits ReadyResult plus ReadyDuration, while Signup `/signup/checkout` emits ReadyResult only. A dev-only monkey patch controls Apple Pay and Google Pay independently with show, timeout, or hide URL parameters and must be removed before commit or push. Manual Tophat has not run. Suggest author-owned coverage for both-ready, both-timeout, mixed ready/timeout, and hidden cases. Visual console evidence and a recording of the mixed timing flow would help reviewers.",
+      "expected_output": "A concise PR body whose Tophat separates Admin and Signup because their routes and expectations differ, uses compact case/parameter/expected-result tables, and includes concrete unchecked screenshot and recording prompts plus monkey-patch cleanup.",
+      "assertions": [
+        "Tophat uses separate Admin and Signup subheadings because their routes and expected emissions differ",
+        "Repeated wallet-state cases use Markdown tables with Case and Expected plus compact setup or per-input parameter columns",
+        "The tables cover both-ready, both-timeout, mixed ready/timeout, and relevant hidden cases",
+        "Tophat includes the exact prefix `- [ ] Screenshot:` with a concrete filtered-console hint",
+        "Tophat includes the exact prefix `- [ ] Recording:` with a concrete mixed ready/timeout hint",
+        "Tophat removes the dev-only monkey patch before commit or push",
+        "Media prompts are author-owned and do not claim evidence was already captured"
+      ]
+    }
+  ]
+}

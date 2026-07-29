@@ -1,12 +1,14 @@
 ---
 name: refine-memory
-description: Use only when the human explicitly invokes `/skill:refine-memory` to consolidate lessons, prune memory bloat, and propose commandment-quality promotions.
+description: Use only when the human explicitly invokes `/skill:refine-memory` to turn lessons into actionable memory, resolve conflicts, and prune bloat without touching other skills.
 disable-model-invocation: true
 ---
 
 # Refine Memory
 
 > **HARD GATE** — Never edit, delete, move, or promote memory before showing the exact proposal and receiving explicit human approval. Never inspect or alter other skills. Never store secrets, personal data, buyer or merchant data, speculation, or transient status.
+>
+> **RATIONALE GATE** — Never invent, erase, or silently generalize the failure, cause, scope, evidence, or uncertainty that makes a lesson useful. Incomplete lessons require clarification, not compression.
 
 ## Default scope
 
@@ -24,49 +26,58 @@ Read [REFERENCE.md](REFERENCE.md) before classifying candidates. If its research
 
 - Confirm scope, authority, and destination; ask only when the invocation is ambiguous.
 - Read governing `CLAUDE.md` files and repository instructions before target files.
-- Record `git status --short`, existing target diffs, and `wc -l -w -c` for always-loaded files.
+- Record `git status --short`, target diffs, and `wc -l -w -c` for always-loaded and total audited memory.
 - Do not absorb, revert, or reformat unrelated changes.
 
-### 2. Distill candidates
+### 2. Check whether each lesson is sufficient
 
-Group overlapping lessons into one repeatable pattern while preserving the strongest source evidence. For every candidate, choose exactly one disposition:
+Before shortening or classifying a lesson, extract:
 
-- `promote` — concise commandment that passes every promotion gate.
-- `consolidate` — merge repeated scoped lessons without widening scope.
-- `keep` — useful lesson lacking enough evidence or breadth.
-- `defer` — keep a procedure or on-demand fact out of commandments without inspecting or changing another store.
-- `remove` — stale, contradicted, redundant, derivable, or transient content.
+- **Trigger or failure:** what happened, or when the preference applies.
+- **Cause or rationale:** why the outcome was wrong; an explicit human preference is sufficient rationale.
+- **Action:** what future behavior should change.
+- **Scope and boundary:** where it applies and important exceptions.
+- **Evidence and status:** source, recurrence, and what remains unknown or unverified.
 
-Prefer updating an existing rule over adding a near-duplicate. Never turn a one-off correction into a universal commandment unless the human explicitly declares it durable.
+If compression would lose one of these, preserve the detail. If the lesson lacks enough information, use `clarify`, list the missing questions, and leave it unchanged. Remove identifying or volatile details only when the causal evidence remains clear.
 
-### 3. Evaluate effectiveness against cost
+### 3. Classify candidates
 
-For each proposed commandment, state:
+Group lessons only when they share a trigger, cause, and corrective action. Give every candidate exactly one disposition:
 
-- failures it prevents and evidence of recurrence;
-- intended scope and expected shelf life;
-- why a capable agent could not reliably infer it;
-- existing rules it replaces or conflicts with;
-- loaded words/bytes added or removed.
+- `promote` — direct commandment that passes every promotion gate.
+- `consolidate` — merge repeated scoped evidence without widening or weakening it.
+- `clarify` — rationale, scope, evidence, or uncertainty is insufficient; ask targeted questions.
+- `keep` — useful scoped lesson that is already clear.
+- `defer` — procedure or on-demand fact stays outside commandments and other stores remain untouched.
+- `remove` — stale, contradicted, redundant, derivable, or transient content with no remaining causal value.
 
-Reject candidates whose expected benefit does not justify permanent context cost. Keep procedures and scoped guidance in lessons or defer them for separate user-directed work. Never treat skill files as refinement inputs or destinations.
+Prefer revising an existing rule over adding a near-duplicate. A one-off correction stays scoped unless the human explicitly declares it durable.
 
-### 4. Write the review artifact and stop
+### 4. Synthesize direct rules and compare meaning
 
-Write `~/plans/DD_MM_YYYY-memory-refinement.md` using the real system date. Include baseline footprint, classifications, exact before/after text, destination paths, removals, provenance, conflicts, and projected net footprint.
+- Write in plain, imperative language: **when this happens → do this → verify this → observe this boundary**.
+- Default to one verifiable sentence. Use a heading with 2–4 short bullets when independent dimensions would become vague in one sentence, especially for explicit communication preferences.
+- Map every claimed prevented failure to the exact clause that prevents it; revise any rule whose wording covers less than its rationale claims.
+- Compare rules semantically by trigger, prescribed action, scope, and exceptions. Different headings or vocabulary do not make conflicting actions compatible.
+- Preserve uncertainty and next evidence needed; never convert “unknown” into a conclusion merely to make a rule timeless.
+
+For each promotion, state recurrence evidence, scope, shelf life, non-obvious value, conflicts or replacements, and loaded cost. Reject permanent context whose expected benefit does not justify that cost.
+
+### 5. Write the review artifact and stop
+
+Write `~/plans/DD_MM_YYYY-memory-refinement.md` using the real system date. Start with a short **Human review** section containing the verdict, proposed decisions, risks or unresolved questions, and footprint delta. Put scope, evidence maps, semantic conflict checks, and exact patches afterward.
 
 Preview the complete proposal and ask the human to approve all, approve selected items, revise, or stop. **Do not edit memory in this turn.**
 
-### 5. Apply only approved operations
+### 6. Apply only approved operations
 
-After approval, re-read every target and its diff. Stop and re-propose if content drifted. Apply only approved text; keep each commandment one verifiable sentence, ideally no more than 30 words. Preserve evidence in the scoped lesson or audit instead of bloating the commandment.
+After approval, re-read every target and diff. Stop and re-propose on drift. Apply only approved text and preserve rationale in the scoped lesson or audit. Do not commit, push, or submit shared Brain changes unless explicitly requested.
 
-Do not commit, push, or submit shared Brain changes unless explicitly requested.
+### 7. Verify
 
-### 6. Verify
-
-- Re-run `wc -l -w -c` and report the measured delta.
-- Search for surviving duplicates, contradictions, stale references, and sensitive data.
-- Inspect the target-only diff and prove unrelated changes are untouched; any changed `skills/` path is a hard failure.
-- Confirm every promotion passes every gate and every removal remains recoverable from version control or retained provenance.
-- Update the audit with applied operations, verification evidence, and deferred candidates.
+- Re-run `wc -l -w -c` and report measured deltas.
+- Re-run the lesson-sufficiency, failure-coverage, and semantic-conflict checks against the resulting text.
+- Inspect the target-only diff; any changed `skills/` path during a memory run is a hard failure.
+- Confirm every promotion passes every gate, uncertainty remains explicit, and removals are recoverable from version control or retained provenance.
+- Update the audit with applied operations, verification evidence, and deferred or clarification candidates.

@@ -3,6 +3,9 @@
 ## Contents
 
 - Memory layers
+- Lesson sufficiency
+- Direct rule synthesis
+- Semantic comparison
 - Promotion gate
 - Effectiveness versus efficiency
 - Audit format
@@ -26,22 +29,63 @@ Do not duplicate a lesson into Brain knowledge when existing configuration decla
 
 Memory refinement never verifies whether a procedure already exists in a skill and never proposes skill changes. Mark such candidates `keep` or `defer`; skill work requires a separate explicit request.
 
+## Lesson sufficiency
+
+A useful lesson needs enough rationale to change future behavior:
+
+| Field | Question |
+|---|---|
+| Trigger or failure | What happened, or when does this preference apply? |
+| Cause or rationale | Why was the outcome wrong? An explicit human preference is enough. |
+| Action | What should the agent do differently? |
+| Scope and boundary | Where does it apply, and when should it not apply? |
+| Evidence and status | What supports it, and what remains unknown or unverified? |
+
+These are information requirements, not a mandatory template. Keep prose compact when it already answers them. If a required field is absent, classify the candidate `clarify`, ask only the missing questions, and preserve the original text. Never invent a cause or delete uncertainty to make a lesson appear complete.
+
+## Direct rule synthesis
+
+Convert rationale into an observable rule:
+
+```text
+When <trigger>, <action>; verify <evidence>; preserve <boundary or exception>.
+```
+
+Prefer a direct imperative over a summary. “Format for the task” is vague; naming paragraphs for explanation, bullets for distinct points, numbered lists for sequence, and tables for comparisons is actionable.
+
+One sentence is the default, not a hard limit. Use one heading with 2–4 short bullets when an explicit preference has independent actions that would become vague if compressed together. Each bullet must still pass the promotion gate.
+
+For every proposed rule, build a coverage map from each claimed prevented failure to the clause that prevents it. If evidence includes wrong-context edits but the rule starts only before commit, the rule is incomplete.
+
+## Semantic comparison
+
+Compare meaning, not keywords or headings:
+
+| Dimension | Compare |
+|---|---|
+| Trigger | Do the rules activate in the same situation? |
+| Action | Do they prescribe different behavior? |
+| Scope | Is one global and one intentionally narrower? |
+| Boundary | Do exceptions or precedence make them compatible? |
+
+A conflict exists when the same trigger and scope lead to incompatible actions, even when wording differs. Scan every audited lesson and commandment for these relationships. Record unresolved conflicts in the human review; do not silently choose a winner without enough rationale.
+
 ## Promotion gate
 
 A commandment must pass **all** criteria:
 
-1. **Evidence** — the human explicitly declared it durable, or at least two independent corrections or outcomes support it.
+1. **Evidence** — the human explicitly declared it durable, or at least two independent corrections or outcomes support it; the source and rationale are preserved.
 2. **Recurrence** — the prevented failure is likely across future tasks in the destination scope.
 3. **Correct scope** — global memory receives only broadly applicable rules; narrower rules stay scoped.
 4. **Behavioral value** — the rule materially changes an agent action or decision.
-5. **Specificity** — compliance is observable; avoid vague advice such as “be careful.”
+5. **Specificity** — trigger, action, and expected evidence are observable; avoid vague advice such as “be careful” or “format appropriately.”
 6. **Durability** — the rule is unlikely to expire with a branch, project phase, person, date, or tool version.
 7. **Non-obviousness** — a capable agent cannot reliably derive it from code, standard practice, or current documentation.
-8. **Consistency** — it neither duplicates nor contradicts a higher-precedence instruction; revise an existing rule when possible.
-9. **Economy** — it fits one sentence, ideally 30 words or fewer. Longer workflows remain scoped or are deferred; they do not trigger skill changes.
+8. **Consistency** — semantic trigger/action/boundary comparison finds no unresolved duplicate or conflict; revise an existing rule when possible.
+9. **Economy** — use one concise sentence by default, or one 2–4 bullet block when separate actionable dimensions would otherwise become vague. Longer workflows remain scoped or deferred.
 10. **Safety** — it contains no secret, credential, personal data, buyer data, merchant data, or sensitive incident detail.
 
-A failed criterion blocks promotion, not retention. Keep useful evidence as a lesson, fact, project record, or skill.
+A failed criterion blocks promotion, not retention. Keep useful evidence in its existing lesson or record; any destination change requires separate user-directed work.
 
 ## Effectiveness versus efficiency
 
@@ -66,11 +110,19 @@ The review artifact should contain:
 ```markdown
 # Memory Refinement — YYYY-MM-DD
 
-## Scope and baseline
-| Always-loaded file | Lines | Words | Bytes |
+## Human review
+Verdict: <one short paragraph>
 
-## Proposed operations
-| ID | Candidate | Evidence | Disposition | Destination | Loaded delta |
+### Proposed decisions
+| ID | Decision | Why it matters | Footprint |
+
+### Risks and unresolved questions
+### Approval choices
+
+## Scope and baseline
+## Lesson evidence and rationale gaps
+## Semantic conflicts
+## Promotion coverage maps
 
 ## Exact edits
 ### ID — <title>
@@ -78,10 +130,10 @@ Before: <exact text or absent>
 After: <exact text or removed>
 Reason: <promotion-gate result and provenance>
 
-## Conflicts, sensitive findings, and deferrals
-## Approval
 ## Applied operations and verification
 ```
+
+Keep the human review short and use lay terms. Detailed evidence and exact patches belong after the decision summary so auditability does not bury the outcome.
 
 Use lines, words, and bytes as reproducible measurements. If a trustworthy tokenizer or harness context report is available, include tokens too; otherwise label `bytes / 4` as an estimate rather than a measurement.
 

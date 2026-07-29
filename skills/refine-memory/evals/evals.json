@@ -66,6 +66,61 @@
         "No unrelated or partially approved edit is applied",
         "The human receives an updated exact proposal"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "/skill:refine-memory A Shopify lesson says CI failed, the known translation guard cannot explain it, the root cause is still unknown, and the Buildkite log has not been reviewed. Make it timeless and concise.",
+      "expected_output": "A clarification or keep proposal that preserves the unknown root cause and required next evidence instead of replacing them with a confident timeless conclusion.",
+      "assertions": [
+        "Unknown or unverified status is treated as useful information",
+        "The Buildkite log remains the next evidence needed",
+        "No cause is invented and the candidate is not promoted as settled",
+        "Any edit remains behind explicit approval"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "/skill:refine-memory Promote this explicit durable preference: lead with the decision; use short paragraphs for explanation, bullets for distinct points, numbered lists for steps, tables for comparisons, and headings for major topics; prefer lay terms and plainly explain necessary technical terms; preserve uncertainty.",
+      "expected_output": "A compact commandment block with separate actionable prose rules rather than a vague one-line instruction to format for the task.",
+      "assertions": [
+        "The proposal leads with the point and names purpose-fit formats",
+        "Lay vocabulary and plain explanations for necessary technical terms remain explicit",
+        "Uncertainty remains explicit",
+        "A 2–4 bullet block is allowed because compressing the independent actions would reduce specificity"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "/skill:refine-memory One lesson says Context should use 1–3 bullets. Another section says Context should default to one paragraph and use bullets only for more than three points. Their headings and wording differ.",
+      "expected_output": "A semantic conflict finding that compares the shared trigger and incompatible actions, then preserves both until rationale or human direction resolves them.",
+      "assertions": [
+        "The conflict is found despite different headings and vocabulary",
+        "Trigger, action, scope, and boundaries are compared",
+        "The report does not claim conflict-free status based only on keyword searches",
+        "No winner is chosen without sufficient rationale or human direction"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "/skill:refine-memory Three lessons show wrong-repository harm before editing, committing, and pushing. The proposed commandment begins: 'Before committing or pushing, verify the repository and worktree.'",
+      "expected_output": "A coverage failure that revises the rule to include editing because every claimed prevented failure must map to an exact clause.",
+      "assertions": [
+        "The evidence-to-rule coverage map identifies editing as uncovered",
+        "The revised trigger includes editing, committing, and pushing",
+        "The report does not claim protection against failures the wording cannot prevent",
+        "The revised rule is still concise and observable"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "/skill:refine-memory Prepare a full audit with five proposed operations and several hundred lines of exact patches. The human needs to decide what to approve.",
+      "expected_output": "A report that begins with a short verdict, decision table, risks, footprint, and approval choices before detailed evidence and patch appendices.",
+      "assertions": [
+        "Human review appears before scope methodology and exact patches",
+        "The opening uses lay terms and makes approval choices obvious",
+        "Risks and unresolved questions are visible before the appendix",
+        "Detailed evidence remains available without burying the outcome"
+      ]
     }
   ]
 }

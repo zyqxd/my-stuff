@@ -49,3 +49,19 @@ Source: refine-memory scope correction, 2026-07-29.
 
 - A full memory-refinement run scans commandments and lessons, never skills, skill references, or skill evals for duplication or possible destinations.
 - Keep or defer procedural lessons; changing a skill requires separate explicit user-directed work.
+
+## Preserve rationale before compressing lessons
+
+Source: refine-memory rationale correction, 2026-07-29.
+
+- A lesson needs the trigger or failure, why it mattered, the future action, its scope or boundary, and supporting evidence or uncertainty; an explicit human preference is sufficient rationale.
+- If required rationale is missing, classify it for clarification and preserve the original text instead of inventing a cause or deleting an unknown.
+- Map every claimed prevented failure to the exact rule clause that prevents it, and compare conflicts by trigger, action, scope, and exceptions rather than wording.
+- Prefer a small actionable rule block over a vague sentence when independent preferences need separate instructions; lead review artifacts with decisions and risks before exact patches.
+
+## Commit only explicitly owned changes
+
+Source: commit-scope correction after refine-memory iteration, 2026-07-29.
+
+- When a working tree contains user-generated or pre-existing changes, interpret “commit your changes” as assistant-owned edits only unless the user explicitly includes the other work.
+- Preserve excluded changes unstaged for the user's next review or refinement; do not infer commit permission from shared task context.

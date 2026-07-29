@@ -12,7 +12,7 @@ a ~2-week legacy sample that **ends on Jun 22**, so the "Jun 22 shift week" (Jun
 Monday's data → 12, not a real week. The metric logic was correct; the data was unrepresentative.
 **Rules for myself:**
 1. `data/` (and `legacy/`) are **reference only** — never the source of truth for counts/volumes. The
-   live truth is the `asks` collection in the deployed site's `quick.db` (~1400+ docs), or a fresh scan.
+   live truth is the `asks` collection in the deployed site's `quick.db`, or a fresh scan.
 2. Before quoting any count, state the corpus + its date coverage (min/max day) and whether it's the
    live data or a sample. A per-day/`per-shift` count near the corpus edge is almost certainly truncated.
 3. When a user gives an independent number (e.g. a Slack search), reconcile it **explicitly** by
@@ -22,7 +22,7 @@ Monday's data → 12, not a real week. The metric logic was correct; the data wa
 `quick.db` looks browser-only, but the client just POSTs to a REST endpoint you can hit headlessly:
 - Query a collection: `quick curl -s '<site>/api/db/<collection>/query' -X POST -H 'Content-Type: application/json' -d '{}'`
   - body: `{}` = all; `{"select":"a,b,c"}` projects; `{"where":{...}}`, `{"limit","offset","orderBy"}` supported.
-  - returns a **plain JSON array**; no server-side cap observed (got all 1487 in one call).
+  - returns a **plain JSON array**; verify response completeness rather than assuming pagination or limits.
 - `quick curl` injects IAP auth. Deployed static assets are also fetchable (`quick curl <site>/metrics.js`)
   — use this to verify a deploy shipped the intended code, and to verify a data migration (e.g. recompute
   every `date`/`week` and diff against stored values) **entirely from the CLI**. Beats waiting on a browser.
@@ -36,7 +36,7 @@ silently included them (they rode into the merge to master). Not catastrophic (`
 
 ## Domain note — the ATC shift boundary (verified 2026-07-15)
 Monetization "ATC" rotation = **weekly, Monday→Monday, on `America/Toronto` wall-clock** (DST-observing).
-Verified from the `spy` bot (`U01GURPPHNV`) "Monetization Combined Dev ATC this week is <name>" posts:
+Verified from the rotation bot's "Monetization Combined Dev ATC this week is <name>" posts:
 daily 08:56 America/Toronto greeting, new name appears Monday; summer post 12:56 UTC / winter 13:56 UTC.
 All day/week buckets anchor to that tz via `metrics.dayKey` (the single source of truth), NOT UTC.
 
@@ -83,8 +83,8 @@ continuous awareness of the changing Monetization repository was the core requir
 **Rules for myself:**
 1. Establish the authoritative source and freshness SLA before ranking agent integration options.
 2. Never equate a copied prompt, Google Doc, or Q&A export with an agent that searches current repo state.
-3. Verify what a hosted artifact actually contains and how it updates; current Mona Cloud copies
-   `mona/dist` skill/tool assets, not the full Monetization repo, and has no automatic deploy workflow.
+3. Verify what a hosted artifact contains and how it updates; never assume a deployment includes
+   the full repository or refreshes automatically.
 4. For repo-current answers, prefer one centralized agent endpoint backed by current-main retrieval
    (for example Grokt) or automated snapshot deploys, and return the source revision with every answer.
 

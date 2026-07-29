@@ -57,47 +57,15 @@ Rules for myself:
   patch.** After the 2nd finding on one block, stop and redesign toward a single
   source of truth instead of patching path #3, #4, #5.
 
-## Shopify is light on comments — code should be self-explanatory
+## Promoted code-review conventions
 
-Source: reviewer `m14t` on PR #899093 (2026-07-09).
+Source: reviewer feedback on PR #899093 (2026-07-09).
 
-> "Shopify has a preference that steers away from comments."
-> "Shopify is light on comments. There is room when comments explain _why_, but
-> should not explain _what_ the code is doing: the code should do that, and if it
-> is confusing, could be refactored to be more readable."
+- Comments should explain only a non-obvious constraint or trade-off; refactor or rename instead of narrating the code, and put test intent in `it(...)`/`describe(...)` names.
+- Match the section's established file organization instead of creating a one-off variation; change every instance together if the pattern must change.
+- Keep discriminating fixture data legible at the assertion site.
 
-Rules for myself:
-
-- **Default to no comment.** Add one only to explain a non-obvious _why_ — a
-  constraint, gotcha, or deliberate trade-off. Never to narrate _what_ the code
-  does.
-- If code needs a "what" comment to be understood, **refactor or rename instead**
-  (extract a well-named function/variable) so the code carries the meaning.
-- **In tests, put the intent in a descriptive `it(...)`/`describe(...)` name**,
-  not a comment above the assertion.
-- When in doubt, delete the comment.
-
-## Follow the section's existing file/organization pattern — don't deviate
-
-Source: reviewer `m14t` on PR #899093 (2026-07-09).
-
-- Nit (`tests/utilities.tsx`): shared test **constants** belong in the section's
-  `fixtures/*.ts` file; only **functions** stay in `tests/utilities.tsx`.
-  > "I personally don't love it being spread across 3 files, but it's better to
-  > follow the pattern and change them all at once than it is to deviate."
-- Rant (`PaymentMethodCard.test.tsx`): pulling fixture data out to a separate
-  file made it hard to see that the account ending `5678` should be enabled while
-  `9999` should be disabled — the reader can't tell _why_ each case passes.
-
-Rules for myself:
-
-- Before adding a file/constant/helper, **find the section's existing convention
-  and match it exactly.** If the convention is imperfect, follow it consistently
-  rather than introducing a one-off local variation — and if it must change,
-  change every instance together in one pass.
-- **Keep the data that drives a test's pass/fail legible from the test.** Either
-  co-locate it or name it so the discriminating value (enabled vs disabled,
-  eligible vs ineligible) is obvious at the assertion site.
+The global commandments carry these rules; this section retains their source evidence.
 
 ## Core (`//areas/core/shopify`) auto-reformats `db/data/*.yml` on save
 
@@ -106,10 +74,11 @@ A file watcher (started by core `dev up`) rewrites YAML data files (e.g.
 converting `"..."` → `'...'` across the whole file. This produced a 4700-line
 spurious diff.
 
-- Fix: edit + `git add` + commit **atomically in one bash command** (beat the
-  debounce), then guard on `git diff --cached --numstat` before committing.
-- Restore the working tree afterward (`git checkout -- <files>`); the index keeps
-  the clean change.
+- First verify the target files have no pre-existing working-tree changes.
+- Edit + `git add` + commit **atomically in one bash command** (beat the debounce),
+  then guard on `git diff --cached --numstat` before committing.
+- Restore only watcher-generated unstaged changes afterward
+  (`git restore --worktree -- <files>`); never discard pre-existing work.
 
 ## Fresh World worktrees have no generated GraphQL/TS declarations
 
@@ -130,78 +99,15 @@ admin-web (`refresh-graphql` / resync `protocols/graphql/core.*` + `core-types`)
 Reverse schema-dump hunks precisely from the field-add commit; verify against
 _current_ content (`.graphql` sorts fields alphabetically, `.json` uses definition order).
 
-## PR descriptions: bullets over prose, keep the structure
+## PR description corrections from the B2M and Stripe Express stacks
 
-Source: b2m-cta-cleanup restack (#907101/#915894), 2026-07-13. Two-part correction —
-I missed twice in opposite directions.
+Sources: B2M CTA restack (#907101/#915894), 2026-07-13; user edits to Stripe Express #937049, 2026-07-15.
 
-1. First drafts were too verbose. The _structure_ (## Stack Context / ## What? /
-   ## Verification with bullet lists) was RIGHT, but I padded it with prose paragraphs
-   that over-explained how/why — "## Why?" mini-essays, multi-sentence justifications.
-2. Told "too verbose," I over-corrected into a tiny one-paragraph blurb that threw away
-   the useful structure and the per-file detail. Also wrong.
-
-What the user actually wanted (confirmed by their own manual edits to the PRs):
-
-- KEEP the section headings and bullet formatting — it was correct.
-- KEEP the per-file bullet list under "What?" — that detail is useful, not noise.
-- REPLACE over-explaining prose with bullets. If a point fits in a bullet, make it a
-  bullet, not a paragraph. Delete "## Why?" essays unless the reason is truly non-obvious.
-- A short verification checklist is fine.
-
-The fix for "too verbose" is prose→bullets + deleting justification essays — NOT
-deleting structure or collapsing to one paragraph.
-
-Also: never overwrite a PR body without reading its current state first — the user may
-have hand-edited it on GitHub. My `gh` calls and the user share the same `zyqxd` account,
-so `userContentEdits.editor.login` can't tell us apart; recover prior revisions with
-GraphQL `pullRequest.userContentEdits { editedAt diff }` (the `diff` field returns each
-revision's full body).
-
-## PR descriptions: Why-before-What, cite the driving project, drop the meta-narrative
-
-Source: user hand-edits to PR #937049 (Stripe Express ready-metric labels),
-2026-07-15. Extends the existing "PR descriptions" lesson with ordering/content
-rules confirmed by the user's own rewrite.
-
-What the user changed in my draft:
-
-- **Reordered to `Refs:` at top, then `## Why`, then `## What`.** Lead with the
-  ref line and the reason; the mechanics come after. I had `## What` first with
-  `Refs:` buried at the bottom.
-- **"Why" cites the driving initiative with a link and frames product/user
-  impact — not internal code smell.** Mine said the metrics were "inconsistent
-  with the Load metrics and with each other." The user replaced it with the real
-  trigger: a linked project (`#proj-...` Slack channel) shipped so _both_ Apple
-  and Google Pay can now appear at checkout, so "our metrics are ill-equipped
-  with emitting what the user experienced." Anchor the Why to the concrete
-  product change that made this necessary, with a link, in user terms.
-- **Deleted the meta process narrative.** I ended with "_This is PR 1 of a 2-PR
-  stack that supersedes the earlier 4-PR stack (#915999, ...)._" and a `---`
-  rule. The user cut all of it. Reviewers don't need supersede-history or
-  "PR N of M" framing. A plain inline link to the sibling PR where the
-  complementary work happens is enough (e.g. "_#937051 will handle updating emit
-  sites_").
-- **Testing section = honest strategy, not padded pass-counts.** For a
-  label-only / no-behavior PR the user replaced my "18/18, 51/51, ..." list with
-  "Testing in this PR will be based on linters and CI. Tophatting will be done in
-  <emission PR>." Match the verification claim to what the PR actually warrants;
-  push behavioral tophatting to the PR that changes behavior.
-- **Rationale phrasing for a retained-for-compat field:** say _why_ in reviewer
-  terms — "`surface` is retained for now to avoid a breaking change, however
-  `source` will be used going forward" — not internal process ("gated on an
-  Observe/ExP dashboard check").
-- **Prefer concrete `2+` over mathematical `N`** in prose ("0 / 1 / 2+ wallets").
-
-Rules for myself:
-
-- Order: `Refs:` → `## Why` → `## What` → `## Testing`.
-- Make "Why" the product/user story with a link to the driving project; don't
-  justify a change purely by internal inconsistency.
-- Never put stack/supersede history or "PR N of M" in the body; link the sibling
-  PR inline instead.
-- Testing section states the real verification for _this_ PR; don't inflate a
-  label-only PR with behavioral test counts.
+- In the B2M stack, preserve useful headings and per-file bullets while replacing explanatory paragraphs; do not over-correct into an unstructured blurb.
+- Read the current GitHub body before editing because the user may have changed it; when authorship is ambiguous, inspect `pullRequest.userContentEdits { editedAt diff }` before overwriting.
+- In #937049, linked product/user motivation needed to precede mechanics; stack-history narration was noise, and testing had to claim only verification performed for that PR.
+- Explain compatibility decisions in reviewer terms, and prefer concrete reader language such as `2+` instead of symbolic `N`.
+- Treat those headings and ordering as case evidence, not a universal template; choose sections that orient reviewers to the current change.
 
 ## Stripe Express ready metrics — trace component nesting before claiming a metric gap
 
@@ -223,60 +129,20 @@ Rules for myself:
   skew across paths; rare double-ready/late-ready count edges), NOT the
   "success emits only one metric" gap I wrongly reported first.
 
-## Never commit/push to a real PR branch without checking for the dev-only monkey-patch commit
+## Keep development-only changes off real PR branches
 
-Source: stripe-express-ready-metrics stack, 2026-07-16. A dev-only tophat
-"monkey patch" (`[DO NOT MERGE]` commit `0b30ff1`, adds
-`monetization-core/utilities/tophatExpressWallets.ts` + edits 4 Stripe Express
-files) is cherry-picked onto the PR branches during tophatting. It slipped onto
-real PR branches **twice**:
+Source: Stripe Express ready-metrics stack, 2026-07-16; the same temporary tophat patch reached real branches twice.
 
-- `labels` (#937049): local branch had drifted to include it; a rebase surfaced
-  it as a 3rd replayed commit — caught before pushing.
-- `emit-both-surfaces` (#937051): it had been cherry-picked onto the local
-  branch during tophatting; I committed a fix on top and **pushed the monkey
-  patch to the PR** before noticing, then had to `git rebase --onto` it out and
-  force-push a correction.
+- Before committing or pushing after cherry-picked tophatting, inspect recent commits and the branch diff for `[DO NOT MERGE]` markers or development-only helpers; remove them first.
+- Verify the pushed diff contains no development-only files; correct the branch immediately if one escaped.
 
-Rules for myself:
+## Honor the #937051 review handoff contract
 
-- **Before any `git commit`/`git push` to a branch that has an associated
-  cherry-pick-tophat workflow, run `git log --oneline -5` and scan for
-  `[DO NOT MERGE]` / the tophat commit, and `git ls-files <dev-only-helper>`.**
-  If present, drop it (`git rebase --onto <clean-base> <monkeypatch-sha>`)
-  BEFORE committing real work on top.
-- After pushing, **verify the pushed diff**: `git diff --name-only origin/main..HEAD`
-  should contain zero dev-only files (e.g. grep for the helper). Treat a nonzero
-  count as an incident and force-push a correction immediately.
-- The tophat monkey patch lives on its own branch (`…/tophat-monkeypatch`) and is
-  cherry-picked ephemerally — it must NEVER be committed onto `labels` /
-  `emit-both-surfaces`. Local branch state ≠ origin; a user tophatting in the
-  same worktree can leave the cherry-pick behind.
+Source: user correction on Stripe Express #937051, 2026-07-16. Added prop/test comments despite standing workstream guidance and replied to binks twice; the same handoff required review fixes to be squashed.
 
-## Working-contract violations to never repeat: no code comments, no PR-bot replies
-
-Source: stripe-express-ready-metrics #937051, 2026-07-16 (user correction).
-
-1. **No code comments unless explicitly asked — this includes prop/interface doc
-   comments AND test comments.** I added a 3-line doc comment on a `readyGuardRef`
-   prop and a 3-line comment above a test assertion. Both violated the standing
-   "Shopify is light on comments" contract. The intent must live in the code
-   (clear names) and, for tests, in the `it(...)` description — not in comments.
-   Before committing, `git diff origin/main..HEAD | grep -E '^\+.*(//|/\*)'` and
-   delete any comment I introduced.
-2. **Never reply to the PR bot (binks).** Acting on a binks finding = fix the
-   code, push, and let binks re-review on push. Do NOT post reply comments to
-   binks threads (I did it 2×; had to delete them via
-   `gh api -X DELETE repos/shop/world/pulls/comments/<id>`). No bot
-   conversation, no "confirmed and fixed in <sha>" replies.
-3. **Squash my commits before/when finishing.** Keep each PR a single clean
-   commit (fixes from review rounds get squashed into the one commit, not left
-   as a pile of follow-up commits). Use `git reset --soft <base>` + one commit;
-   remove any review-round comments in the same pass.
-
-Rule: at the end of every change, run a pre-handoff check — (a) no added
-comments, (b) no bot replies posted, (c) branch squashed to one commit per PR,
-(d) no `[DO NOT MERGE]` / dev-only files in `git diff origin/main..HEAD`.
+- For this workstream, add no code or test comments unless explicitly requested; use clear names and test descriptions instead.
+- Do not reply to binks; fix the code, push, and let the bot review again.
+- Squash review fixes into one clean commit per PR before handoff.
 
 ## Do not retain synonymous metric labels without auditing reporting consumers
 
@@ -341,3 +207,19 @@ Rules for myself:
 - State shared-path coverage explicitly: `useExpressPayConfig` serves both Signup
   and MerchantCheckout, while `ExpressPayButtons` is the separate Admin Billing path.
 - Do not turn an adjacent observability idea into scope for the active review fix.
+
+## Distinguish an extraction from a future-consumer component scaffold
+
+Source: user clarification while planning issues-monetization #6926, 2026-07-29.
+
+A shared component can copy an existing surface while deliberately leaving that
+surface unchanged because the intended consumer lands later. Do not infer that a
+future cancelled-reactivation design already exists, or silently treat the work
+as a current-flow migration.
+
+- State whether the existing flow adopts the component now; without adoption,
+  call the change a component scaffold rather than a runtime extraction.
+- Separate the component-only PR from the later consumer PR when the issue order
+  explicitly makes the component a prerequisite.
+- If the issue allows either immediate adoption or a tracked follow-up, explain
+  the behavioral and API costs of both before asking the user to choose.

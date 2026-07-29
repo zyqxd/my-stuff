@@ -2,55 +2,37 @@
 
 ### 1. Plan Mode Default
 
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- If something goes sideways, STOP and re-plan immediately - don't keep pushing
-- Use plan mode for verification steps, not just building
-- Write detailed specs upfront to reduce ambiguity
+- Use plan mode for any task with 3+ steps or architectural decisions, including verification.
+- Write a detailed spec first; if execution goes sideways, stop and re-plan.
 
 ### 2. Subagent Strategy to keep main context window clean
 
-- Offload research, exploration, and parallel analysis to subagents
-- For complex problems, throw more compute at it via subagents
-- One task per subagent for focused execution
+- Delegate independent research and exploration to focused subagents, one task each; parallelize complex analysis when it keeps the main context clean.
 
 ### 3. Self-Improvement Loop
 
-- After ANY correction from the user: append the pattern to the durable lessons
-  file `~/Workspace/my-stuff/ai/lessons/<project>.md` (see "Memory & Learnings
-  Location" below) — NOT to any folder inside a repo checkout
-- Write rules for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review the relevant `~/Workspace/my-stuff/ai/lessons/<project>.md` at session start
+- After a user correction, append or refine `~/Workspace/my-stuff/ai/lessons/<project>.md`, never a project checkout.
+- Preserve the failure or preference, rationale, future action, scope, evidence, and uncertainty; ask instead of guessing missing rationale or boundaries.
+- Review the relevant lesson at session start and refine it when the same failure recurs.
 
 ### 4. Verification Before Done
 
-- Never mark a task complete without proving it works
-- Diff behavior between main and your changes when relevant
-- Ask yourself: "Would a staff engineer approve this?"
-- Run tests, check logs, demonstrate correctness
+- Before declaring done, prove the behavior: run applicable tests, inspect relevant logs, and compare with main when behavior changed.
+- Ask whether a staff engineer would approve the evidence and result.
 
 ### 5. Demand Elegance (Balanced)
 
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-- Skip this for simple, obvious fixes - don't over-engineer
-- Challenge your own work before presenting it
+- Before presenting non-trivial work, ask whether a simpler, more elegant solution exists and rework fixes that feel hacky.
+- Skip this for obvious fixes; do not over-engineer.
 
 ### 6. Autonomous Bug Fixing
 
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests -> then resolve them
-- Zero context switching required from the user
-- Go fix failing CI tests without being told how
+- Investigate and fix bug reports or failing CI autonomously; do not ask for hand-holding.
+- Use errors, logs, and failing tests to resolve the root cause without requiring user context switches.
 
 ## Task Management
 
-1. **Plan First**: Write plan to `~/plans/<project>-todo.md` with checkable items (out of any repo checkout)
-2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
-4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review to the same `~/plans/<project>-todo.md`
-6. **Capture Lessons**: Append to `~/Workspace/my-stuff/ai/lessons/<project>.md` after corrections
+- For non-trivial work, write a checkable plan in `~/plans/<project>-todo.md` outside the checkout and check in before implementation; update it during execution, explain progress, and add the final review.
 
 ## Memory & Learnings Location
 
@@ -70,17 +52,17 @@ inside a project/monorepo checkout.
 
 ## Core Principles
 
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
-- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
-- **Comments — match the codebase (Shopify is light on comments)**: Default to no
-  comments. A comment may explain _why_ (a constraint or deliberate trade-off) but
-  never _what_ — the code should say what it does; if it can't, refactor or rename
-  instead. In tests, carry intent in a descriptive `it(...)` name, not a comment.
-- **Follow existing patterns**: Match the section/module's established file layout
-  and conventions rather than introducing a local variation; if the pattern must
-  change, change every instance together. Keep test data legible from the test so
-  the reader can see why each case passes.
+- **Root-cause, minimal fixes:** Solve the root cause with the smallest complete change; avoid temporary fixes, unrelated work, over-engineering, and regressions.
+- **Repository preflight:**
+  - Before committing or pushing, verify the repository, worktree, branch, intended diff, and absence of development-only files; never trust retained shell state.
+  - Include only assistant-owned changes unless the user explicitly includes pre-existing or user-generated work; do not stage, discard, or rewrite excluded changes.
+- **User-facing prose:**
+  - Lead with the outcome or decision.
+  - Use short paragraphs for explanation, bullets for distinct points, numbered lists for sequences, and tables for compact comparisons.
+  - Prefer plain words and explain necessary technical terms on first use.
+- **Representative evidence:** Treat tests, evaluations, and analysis as proof only when inputs are representative, information-complete, and inspectable; toy or truncated inputs prove mechanics, not the claimed behavior or result.
+- **Comments — match the codebase (Shopify is light):** Default to none. Add one only to explain a non-obvious constraint or trade-off, never what the code does; refactor or rename unclear code, and put test intent in a descriptive `it(...)` name.
+- **Follow existing patterns:** Match the section/module's file layout and conventions; if a pattern must change, change every instance together. Keep discriminating test data legible at the assertion site.
 
 ## Report Output Convention
 

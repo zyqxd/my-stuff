@@ -27,9 +27,9 @@ injection`).
 Find them by author **and** by path/message, not by eyeballing one diff:
 
 ```sh
-git log --all --author="Tim Yoon" -i \
+git log --all --author="<feature author>" -i \
   --grep="footer" --grep="branding" --grep="cta" --grep="opt-out" --oneline
-git log --all --author="Tim Yoon" --oneline -- "areas/.../CustomizeEmailTemplate*"
+git log --all --author="<feature author>" --oneline -- "areas/.../CustomizeEmailTemplate*"
 ```
 
 (`--grep` repeated = OR. `-i` for case-insensitive. Don't try `--grep -E` — the
@@ -67,9 +67,9 @@ Lessons:
   that treat notification locale keys as required; core *selective* tests don't run them.
 - **Validate translation-key removal by CI diff against the parent**, not local reasoning.
 - The checkout-web cross-repo `TranslationKeys` guard only triggers on
-  `components/checkouts/config/locales/buyer/en.yml` (+ its `frozen/` snapshot) — notifications
-  has no `frozen/` snapshot, so a *different* guard is at play (root cause still TBD; needs
-  the Buildkite log, which required OAuth I didn't have).
+  `components/checkouts/config/locales/buyer/en.yml` and its `frozen/` snapshot;
+  notifications has no equivalent snapshot, so that known guard does not explain
+  this failure; the actual failing guard remains unverified.
 
 ### Environment: the root worktree can be churned under you
 

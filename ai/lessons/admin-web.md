@@ -135,13 +135,14 @@ _current_ content (`.graphql` sorts fields alphabetically, `.json` uses definiti
 Source: b2m-cta-cleanup restack (#907101/#915894), 2026-07-13. Two-part correction —
 I missed twice in opposite directions.
 
-1. First drafts were too verbose. The *structure* (## Stack Context / ## What? /
+1. First drafts were too verbose. The _structure_ (## Stack Context / ## What? /
    ## Verification with bullet lists) was RIGHT, but I padded it with prose paragraphs
    that over-explained how/why — "## Why?" mini-essays, multi-sentence justifications.
 2. Told "too verbose," I over-corrected into a tiny one-paragraph blurb that threw away
    the useful structure and the per-file detail. Also wrong.
 
 What the user actually wanted (confirmed by their own manual edits to the PRs):
+
 - KEEP the section headings and bullet formatting — it was correct.
 - KEEP the per-file bullet list under "What?" — that detail is useful, not noise.
 - REPLACE over-explaining prose with bullets. If a point fits in a bullet, make it a
@@ -164,13 +165,14 @@ Source: user hand-edits to PR #937049 (Stripe Express ready-metric labels),
 rules confirmed by the user's own rewrite.
 
 What the user changed in my draft:
+
 - **Reordered to `Refs:` at top, then `## Why`, then `## What`.** Lead with the
   ref line and the reason; the mechanics come after. I had `## What` first with
   `Refs:` buried at the bottom.
 - **"Why" cites the driving initiative with a link and frames product/user
   impact — not internal code smell.** Mine said the metrics were "inconsistent
   with the Load metrics and with each other." The user replaced it with the real
-  trigger: a linked project (`#proj-...` Slack channel) shipped so *both* Apple
+  trigger: a linked project (`#proj-...` Slack channel) shipped so _both_ Apple
   and Google Pay can now appear at checkout, so "our metrics are ill-equipped
   with emitting what the user experienced." Anchor the Why to the concrete
   product change that made this necessary, with a link, in user terms.
@@ -185,22 +187,24 @@ What the user changed in my draft:
   "Testing in this PR will be based on linters and CI. Tophatting will be done in
   <emission PR>." Match the verification claim to what the PR actually warrants;
   push behavioral tophatting to the PR that changes behavior.
-- **Rationale phrasing for a retained-for-compat field:** say *why* in reviewer
+- **Rationale phrasing for a retained-for-compat field:** say _why_ in reviewer
   terms — "`surface` is retained for now to avoid a breaking change, however
   `source` will be used going forward" — not internal process ("gated on an
   Observe/ExP dashboard check").
 - **Prefer concrete `2+` over mathematical `N`** in prose ("0 / 1 / 2+ wallets").
 
 Rules for myself:
+
 - Order: `Refs:` → `## Why` → `## What` → `## Testing`.
 - Make "Why" the product/user story with a link to the driving project; don't
   justify a change purely by internal inconsistency.
 - Never put stack/supersede history or "PR N of M" in the body; link the sibling
   PR inline instead.
-- Testing section states the real verification for *this* PR; don't inflate a
+- Testing section states the real verification for _this_ PR; don't inflate a
   label-only PR with behavioral test counts.
 
 ## Stripe Express ready metrics — trace component nesting before claiming a metric gap
+
 - Do NOT analyze paired-metric emission (ReadyResult vs ReadyDuration) by reading
   each file in isolation. `ExpressPayButtons` (Billing/Subscribe) RENDERS
   `StripeExpressApplePay/GooglePay` → `StripeExpressAdminCheckout` and wires
@@ -226,6 +230,7 @@ Source: stripe-express-ready-metrics stack, 2026-07-16. A dev-only tophat
 `monetization-core/utilities/tophatExpressWallets.ts` + edits 4 Stripe Express
 files) is cherry-picked onto the PR branches during tophatting. It slipped onto
 real PR branches **twice**:
+
 - `labels` (#937049): local branch had drifted to include it; a rebase surfaced
   it as a 3rd replayed commit — caught before pushing.
 - `emit-both-surfaces` (#937051): it had been cherry-picked onto the local
@@ -234,6 +239,7 @@ real PR branches **twice**:
   force-push a correction.
 
 Rules for myself:
+
 - **Before any `git commit`/`git push` to a branch that has an associated
   cherry-pick-tophat workflow, run `git log --oneline -5` and scan for
   `[DO NOT MERGE]` / the tophat commit, and `git ls-files <dev-only-helper>`.**
@@ -271,3 +277,67 @@ Source: stripe-express-ready-metrics #937051, 2026-07-16 (user correction).
 Rule: at the end of every change, run a pre-handoff check — (a) no added
 comments, (b) no bot replies posted, (c) branch squashed to one commit per PR,
 (d) no `[DO NOT MERGE]` / dev-only files in `git diff origin/main..HEAD`.
+
+## Do not retain synonymous metric labels without auditing reporting consumers
+
+Source: user correction on Stripe Express ready-metric PR #937049, 2026-07-27.
+
+I retained both `surface` and `source` on
+`StripeExpressPayElementReadyResult` as a compatibility hedge. They carried the
+same Admin-versus-Signup value, creating two names that could conflict and no
+single reporting contract. The right approach was to make `source` canonical
+and audit downstream reporting before removing `surface`.
+
+Rules for myself:
+
+- **One semantic dimension gets one metric label.** Do not preserve synonymous
+  labels indefinitely to avoid a migration; choose the canonical label and
+  migrate consumers.
+- **Before changing a metric label, use Monitoring API metric references** to
+  inventory every alert, SLO, and Grafana dashboard, then inspect each exact
+  expression/panel query.
+- **Do not globally replace same-named labels.** ReadyResult `surface` was
+  redundant, while `merchantCheckoutEvent.surface` has a separate valid
+  taxonomy (`optional_checkout`, `admin_checkout`, trial-reactivation flows).
+- **Plan the historical-series transition.** If old series have only the legacy
+  label, use a temporary dual-read/normalization query through the longest alert
+  window; otherwise the schema cleanup creates a monitoring blind spot.
+- **Do not add a new alert dimension casually.** Grouping by `wallet` changes
+  the per-series sample floor and alert sensitivity; measure volume and
+  recalibrate thresholds separately from the label rename.
+
+## Do not defer a directly related, low-risk metric schema correction mechanically
+
+Source: user correction on Stripe Express ready-metric PR #937051, 2026-07-28.
+
+I treated a reviewer's "non-blocking; include it in the follow-up" wording as a
+reason not to fix a high-cardinality `duration` label in the active emission PR.
+That was too deferential: the PR already touches every emitter, and removing the
+redundant label is small, cohesive, and safer before emission volume expands.
+
+Rules for myself:
+
+- A reviewer allowing a follow-up is permission, not a requirement. Evaluate
+  whether the active PR is the cleaner place to fix the issue.
+- When a PR expands a metric's emission and exposes a redundant high-cardinality
+  label, prefer removing it in that PR if all emitters and types are already in
+  scope.
+- Verify alerts, SLOs, and exact dashboard queries first; if no consumer filters
+  or groups by the label, do not invent compatibility risk to justify deferral.
+
+## Keep review fixes scoped to the reviewed emission condition
+
+Source: user correction on Stripe Express ready-metric PR #937051, 2026-07-28.
+
+When reviewing removal of synthetic ReadyDuration samples from timeout effects, I
+expanded into redesigning how real `onReady` durations could be captured after a
+timeout. That was outside the requested comment and obscured the actual consistency
+requirement across Admin and Signup.
+
+Rules for myself:
+
+- If a review comment targets timeout emission, limit the fix and discussion to
+  timeout emission unless the user explicitly asks to redesign normal readiness.
+- State shared-path coverage explicitly: `useExpressPayConfig` serves both Signup
+  and MerchantCheckout, while `ExpressPayButtons` is the separate Admin Billing path.
+- Do not turn an adjacent observability idea into scope for the active review fix.

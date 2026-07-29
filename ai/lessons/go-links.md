@@ -1,0 +1,26 @@
+# Go Links Lessons
+
+- Keep `FEATURES.md` as the editable current-state capability catalog; leave only a short link in README.
+- Keep repository agent guidance concise: maintain the feature list and include a small example when possible.
+- When documentation policy changes, remove the superseded policy from repository and PR text instead of preserving it as history.
+- Do not add a PR checklist when repository agent files adequately carry the maintenance rule.
+- When a form can use an empty optional value, prefer one always-visible field with hint text over a toggle and progressive-disclosure card.
+- Use the familiar `%s` placeholder for dynamic destinations.
+- Interpret “matching prefix” literally: render the exact target destination as a locked prefix and let users edit only the dynamic suffix.
+- When one destination has several shortcuts, rank aliases by descending usage (`visitCount`), not shortcut length.
+- Re-check the active branch and planning spine immediately before writing when another PR may advance the shared main worktree.
+- Treat external-service redirects as a separate track from QuickDB replacement; keep resolution internal instead of adding an unnecessary public API.
+- Explicitly `cd` into a linked worktree before every command because the bash tool retains the primary repository working directory.
+- For Quick-hosted UI UAT, open a draft PR first and use its IAP-authenticated preview instead of local development.
+- Do not assume a Quick preview shares production fixtures; establish preview-local test data before expecting destination-search matches.
+- Keep the canonical project backlog in the repository's root `TODO.md`; do not default go-links backlog entries to `~/plans`.
+- Default extension automation to a disposable non-default Chrome profile; `Ctrl+C` must close Chrome and delete that profile without touching the normal managed profile.
+- For generated typography animation, isolate a baked static label from a translation-only word reel; use exact timing and never list composite strings.
+- Distinguish bare `go` from the `go.shopify.io` vanity FQDN before treating internal DNS as a requirement; record the exact hostname contract.
+- When GitHub advances a World PR branch outside Gitstream, verify fast-forward ancestry, back up, run `dev gitstream sync-github-ref`, then push a new Gitstream SHA to retrigger stale status contexts.
+- Deploy production Rails services on Production Platform Kubernetes through Conveyor/Shipit and Infra Central; reserve Cloud Run for prototypes.
+- For a Production Platform `shopify.io` vanity host, use a record-store ALIAS to `apps.shopifynetwork.com`, not a CNAME to the generated validation hostname.
+- Use `golinks.shopify.io`, not `go.shopify.io`, so the service does not conflict with Go-language infrastructure or naming.
+- Keep hosting setup scoped to provisioning and configuration when the user excludes documentation changes; do not add doc cleanup to the critical path.
+- Do not use Services DB for new World services; onboard directly with `dev infra onboard --vault-team`, keep ownership in World slices/Vault, and operate runtimes through Production Registry and Infra Central.
+- Treat Minerva as a required final application control for go-links; do not frame the transitional redirect-route bypass as the intended design.

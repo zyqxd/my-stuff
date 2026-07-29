@@ -167,10 +167,16 @@
 	maxRequests = 1
 [maintenance]
 	repo = /Users/david.yq.zhang/world/git
+	repo = /Users/david.yq.zhang/src/github.com/shopify-playground/go-links
+	repo = /Users/david.yq.zhang/src/github.com/Shopify/infrastructure
+	repo = /Users/david.yq.zhang/src/github.com/Shopify/record-store
+	repo = /Users/david.yq.zhang/src/github.com/Shopify/verdant-web
 [shop-world "stale-pr-cutoff"]
-	main = 1782307165
+	main = 1785179601
 [credential "https://*.quick.shopify.io"]
 	helper = 
 	helper = /Users/david.yq.zhang/.config/quick/quick-git-credential.sh
 [http "https://*.quick.shopify.io/"]
 	extraHeader = X-Requested-With: XMLHttpRequest
+[credential "https://gitstream.shopify.io"]
+	helper = gitstream-auth

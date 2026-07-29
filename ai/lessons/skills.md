@@ -35,3 +35,17 @@ Source: review of Stripe Express #937051 generated description, 2026-07-28.
 - Group multi-surface Tophats under short headings so the author can run and clean up one surface at a time.
 - When visual or temporal proof helps, add concrete unchecked prompts such as `[ ] Screenshot: …` or `[ ] Recording: …` for the author to fill.
 - Do not add media placeholders to schema-only or otherwise nonvisual changes merely to complete the template.
+
+## Reconcile every user-designated authoring source before finalizing
+
+Source: memory-refinement skill source correction, 2026-07-29.
+
+- Retrieve every skill or guide the user names, even when an earlier source already supports a valid draft.
+- Record which design choice each source influenced; do not cite a source without applying or explicitly rejecting its relevant guidance.
+
+## Keep skills outside memory refinement
+
+Source: refine-memory scope correction, 2026-07-29.
+
+- A full memory-refinement run scans commandments and lessons, never skills, skill references, or skill evals for duplication or possible destinations.
+- Keep or defer procedural lessons; changing a skill requires separate explicit user-directed work.

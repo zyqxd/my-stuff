@@ -1,0 +1,22 @@
+[
+  {
+    "query": "/skill:refine-memory",
+    "should_trigger": true
+  },
+  {
+    "query": "/skill:refine-memory audit ai/lessons/shopify.md",
+    "should_trigger": true
+  },
+  {
+    "query": "Consolidate my lessons and clean up memory.",
+    "should_trigger": false
+  },
+  {
+    "query": "This correction should be remembered next time.",
+    "should_trigger": false
+  },
+  {
+    "query": "Review whether CLAUDE.md is too long.",
+    "should_trigger": false
+  }
+]

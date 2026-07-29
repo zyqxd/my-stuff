@@ -1,0 +1,71 @@
+{
+  "skill_name": "refine-memory",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/skill:refine-memory Audit the default scope. Two entries in ai/lessons/admin-web.md describe the same route-ownership pitfall from one correction. No other scope mentions it. Do not apply edits yet.",
+      "expected_output": "A review artifact that proposes consolidating the duplicate scoped lesson without promoting it, reports footprint impact, previews exact text, and stops for approval.",
+      "assertions": [
+        "The candidate remains scoped because one correction is insufficient promotion evidence",
+        "The proposal merges duplicate lesson text rather than adding a global commandment",
+        "Exact before and after text plus destination path are shown",
+        "No memory file is edited before explicit approval"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/skill:refine-memory Three independent project lesson files say agents must not absorb unrelated dirty working-tree changes. ai/CLAUDE.md already says changes should touch only what is necessary. Audit only; do not edit.",
+      "expected_output": "A proposal that recognizes the existing commandment, consolidates evidence without adding a near-duplicate, and suggests a surgical revision only if the existing wording fails to cover the behavior.",
+      "assertions": [
+        "The existing higher-precedence rule is identified",
+        "A duplicate global commandment is rejected",
+        "Any proposed revision uses one concise verifiable sentence",
+        "The report compares loaded footprint before and after and waits for approval"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "/skill:refine-memory I explicitly want this treated as a durable cross-project rule: preview the exact external mutation and get my approval before applying it. Check for conflicts and prepare the proposal only.",
+      "expected_output": "A conservative promotion proposal, if novel, with explicit durable-human evidence, exact destination and wording, conflict analysis, footprint delta, and no applied edit.",
+      "assertions": [
+        "Explicit human durability satisfies the evidence gate but all other gates are still evaluated",
+        "The candidate is rejected or revised if an equivalent approval rule already exists",
+        "Any proposed commandment is one observable sentence ideally under 30 words",
+        "No edit occurs before a separate approval turn"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "/skill:refine-memory Review these candidates: a temporary branch name, yesterday's meeting status, an API token, a merchant email, and a verified recurring testing pitfall supported by two postmortems.",
+      "expected_output": "A classified proposal that rejects transient and sensitive entries, evaluates the testing pitfall for its proper scope, and discloses sensitive findings without reproducing their values.",
+      "assertions": [
+        "The branch and meeting status are removed or excluded as transient",
+        "The API token and merchant email are never stored or echoed",
+        "The recurring pitfall is promoted only if every gate passes at the chosen scope",
+        "The report stops for approval"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "/skill:refine-memory Several lessons repeat a twelve-step production deployment and rollback sequence. One lesson suggests it may already exist in skills/deploy/SKILL.md. Prepare the memory-only consolidation approach without editing.",
+      "expected_output": "A proposal that keeps or defers the procedure outside always-loaded memory without reading, comparing, proposing changes to, or modifying any skill file.",
+      "assertions": [
+        "The twelve-step procedure is not promoted verbatim",
+        "No skill file or skill eval is read or compared",
+        "No skill change is proposed; separate explicit work is required",
+        "The memory-only context-cost impact is reported and exact edits await approval"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "/skill:refine-memory Apply approved proposal IDs 1 and 3. One target file changed after the preview was approved.",
+      "expected_output": "The operation stops on drift, preserves all files, and presents a refreshed proposal rather than applying stale exact edits.",
+      "assertions": [
+        "Every target is re-read before editing",
+        "Detected drift blocks all stale operations",
+        "No unrelated or partially approved edit is applied",
+        "The human receives an updated exact proposal"
+      ]
+    }
+  ]
+}

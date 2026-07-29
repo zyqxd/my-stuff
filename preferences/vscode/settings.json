@@ -29,6 +29,6 @@
   "python.defaultInterpreterPath": "/opt/homebrew/bin/python3",
   "markdown-preview-enhanced.liveUpdate": false,
   "workbench.colorTheme": "Atom Material Theme",
-  "editor.wordWrap": "bounded",
-  "security.workspace.trust.untrustedFiles": "open"
+  "security.workspace.trust.untrustedFiles": "open",
+  "git.openRepositoryInParentFolders": "always"
 }

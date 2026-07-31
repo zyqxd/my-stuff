@@ -150,6 +150,8 @@ defaults write -g KeyRepeat -int 2
 # Bash profile setup
 echo "🐚 Setting up bash profile..."
 ln -sf $REPO_DIR/preferences/bash/profile ~/.bash_profile
+mkdir -p "$HOME/.config/atuin"
+ln -sf "$REPO_DIR/preferences/atuin/config.toml" "$HOME/.config/atuin/config.toml"
 
 # Git configuration
 echo "📝 Setting up git configuration..."

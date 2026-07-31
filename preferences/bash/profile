@@ -41,8 +41,14 @@ export PATH="$PATH:/usr/local/bin"
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
 
-# zoxide (smarter cd) - must be last
+# zoxide (smarter cd)
 eval "$(zoxide init bash)"
 
 # Added by tec agent
 [[ -x /Users/david.yq.zhang/.local/state/tec/profiles/base/current/global/init ]] && eval "$(/Users/david.yq.zhang/.local/state/tec/profiles/base/current/global/init bash)"
+
+# Directory-aware shell history
+if command -v atuin >/dev/null 2>&1; then
+    eval "$(atuin init bash)"
+    alias dhistory='atuin search --filter-mode directory'
+fi

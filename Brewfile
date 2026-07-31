@@ -22,6 +22,7 @@ brew "fzf"
 brew "bat"
 brew "eza"
 brew "zoxide"
+brew "atuin"
 
 # Terminal (central to this setup)
 cask "iterm2"

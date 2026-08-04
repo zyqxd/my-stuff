@@ -46,6 +46,43 @@ link_agent_skills() {
     done
 }
 
+# Agent tooling: Shopify installs (pi, brain) plus pi packages and brain wiring.
+# All steps are idempotent; Shopify-only steps are skipped on personal machines.
+setup_agent_tooling() {
+    echo "🧠 Setting up agent tooling (pi, brain, pi packages)..."
+
+    if command -v dev &> /dev/null; then
+        command -v pi &> /dev/null || dev tools install pi || echo "   ⚠️  Failed to install pi"
+        command -v brain &> /dev/null || dev tools install brain || echo "   ⚠️  Failed to install brain"
+    else
+        echo "⏭️  Shopify 'dev' CLI not found — skipping pi/brain installation"
+    fi
+
+    if command -v pi &> /dev/null; then
+        echo "📦 Installing pi packages..."
+        local pkg
+        for pkg in \
+            npm:bigpowers \
+            git:github.com/Shopify/pi-tool-gateway-extension \
+            https://github.com/shopify-playground/shop-pi-fy; do
+            pi install "$pkg" || echo "   ⚠️  Failed to install pi package $pkg"
+        done
+    else
+        echo "⏭️  pi not found — skipping pi packages"
+    fi
+
+    if command -v brain &> /dev/null; then
+        echo "🧠 Bootstrapping brain memory banks..."
+        brain init || echo "   ⚠️  brain init failed"
+        if ! brain memory-bank list --tracked 2>/dev/null | grep -q 'grow-merchant-gmv'; then
+            brain memory-bank track grow-merchant-gmv || echo "   ⚠️  Failed to track grow-merchant-gmv bank"
+        fi
+        brain pi install || echo "   ⚠️  brain pi install failed"
+    else
+        echo "⏭️  brain not found — skipping brain setup"
+    fi
+}
+
 export_lasso() {
     echo "🪟 Exporting Lasso configuration to repo..."
 
@@ -80,6 +117,11 @@ export_vscode_extensions() {
 if [ "${1}" = "export" ]; then
     export_lasso
     export_vscode_extensions
+    exit 0
+fi
+
+if [ "${1}" = "agents" ]; then
+    setup_agent_tooling
     exit 0
 fi
 
@@ -205,6 +247,9 @@ echo "🥧 Setting up pi agent preferences..."
 mkdir -p "$HOME/.pi/agent"
 ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.pi/agent/CLAUDE.md"
 link_agent_skills "$HOME/.pi/agent/skills"
+
+# Agent tooling (pi, brain, pi packages) — also runnable alone: ./setup.sh agents
+setup_agent_tooling
 
 # iTerm2 setup
 # The committed prefs use the placeholder __ITERM_WORKING_DIR__ for the directory

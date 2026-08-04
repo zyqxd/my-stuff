@@ -149,6 +149,8 @@
 
 [pull]
 	ff = only
+[push]
+	autoSetupRemote = true
 [merge]
 	renameLimit = 999999
 [safe]

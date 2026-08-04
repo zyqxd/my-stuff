@@ -39,6 +39,12 @@ bind 'set enable-bracketed-paste off' 2>/dev/null
 
 export PATH="$PATH:/usr/local/bin"
 export PATH="$HOME/.local/bin:$PATH"
+
+# Personal scripts (git-* files become `git <name>` subcommands)
+export PATH="$HOME/Workspace/my-stuff/bin:$PATH"
+
+# Weekly World monorepo hygiene — dry run by default; `world-clean -y` to apply
+alias world-clean='git -C "$HOME/world/trees/root/src" monorepo-cleanup --protect "^(main|master|brain-team-memory-banks)$" --force-gone'
 export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
 
 # zoxide (smarter cd)

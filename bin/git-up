@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# git-up [branch] [remote] — update BRANCH (default: main) with a single-ref,
+# no-tags fetch. Fast-forwards if BRANCH is checked out here; otherwise just
+# updates the remote-tracking ref and prints the rebase hint.
+set -euo pipefail
+
+b="${1:-main}"
+remote="${2:-origin}"
+
+git fetch --no-tags --no-write-fetch-head "$remote" \
+    "+refs/heads/$b:refs/remotes/$remote/$b"
+
+if [ "$(git symbolic-ref --short -q HEAD || true)" = "$b" ]; then
+  git merge --ff-only "$remote/$b"
+else
+  echo "$remote/$b updated — rebase with: git rebase $remote/$b"
+fi

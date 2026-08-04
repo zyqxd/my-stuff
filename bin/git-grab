@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# git-grab <branch> [remote] — fetch one remote branch and switch to it,
+# without widening the fetch refspec.
+set -euo pipefail
+
+[ $# -ge 1 ] || { echo "usage: git grab <branch> [remote]" >&2; exit 2; }
+b="$1"
+remote="${2:-origin}"
+
+git fetch --no-tags "$remote" "+refs/heads/$b:refs/remotes/$remote/$b"
+
+# A narrowed fetch refspec means --track can't map origin/<b> back to a remote
+# branch, so create the branch and set its upstream config explicitly.
+if ! git show-ref --verify -q "refs/heads/$b"; then
+  git branch --no-track "$b" "refs/remotes/$remote/$b"
+  git config "branch.$b.remote" "$remote"
+  git config "branch.$b.merge" "refs/heads/$b"
+fi
+git switch "$b"

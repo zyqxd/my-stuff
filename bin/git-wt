@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# git-wt <branch> [name] — fetch one remote branch and check it out in a new
+# worktree, without widening the fetch refspec. Also works for new branches.
+#
+# Worktree layout comes from git config (set once per repo):
+#   monorepo.wtroot  parent dir for worktrees      (default: parent of this repo)
+#   monorepo.wtsub   subdir inside each worktree   (e.g. "src" for shop/world)
+#
+# Path: <wtroot>/<name>[/<wtsub>]. Name defaults to the branch with / -> -.
+# Without wtroot, falls back to a sibling dir: ../<repo>-<name>.
+set -euo pipefail
+
+[ $# -ge 1 ] || { echo "usage: git wt <branch> [name]" >&2; exit 2; }
+b="$1"
+name="${2:-$(printf '%s' "$b" | tr '/' '-')}"
+remote="${GIT_WT_REMOTE:-origin}"
+
+root="$(git config monorepo.wtroot || true)"
+sub="$(git config monorepo.wtsub || true)"
+if [ -z "$root" ]; then
+  top="$(git rev-parse --show-toplevel)"
+  root="$(dirname "$top")"
+  name="$(basename "$top")-$name"
+fi
+path="$root/$name${sub:+/$sub}"
+
+git fetch --no-tags "$remote" "+refs/heads/$b:refs/remotes/$remote/$b" 2>/dev/null || true
+
+if git show-ref --verify -q "refs/heads/$b"; then
+  git worktree add "$path" "$b"
+elif git show-ref --verify -q "refs/remotes/$remote/$b"; then
+  # A narrowed fetch refspec means --track can't map origin/<b> back to a
+  # remote branch, so create the branch and set its upstream config explicitly.
+  git branch --no-track "$b" "refs/remotes/$remote/$b"
+  git config "branch.$b.remote" "$remote"
+  git config "branch.$b.merge" "refs/heads/$b"
+  git worktree add "$path" "$b"
+else
+  git worktree add -b "$b" "$path"
+fi
+echo "$path"

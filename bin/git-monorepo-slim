@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# git-monorepo-slim — one-time slimming of a monorepo clone whose ref store is
+# polluted with branches that are not yours.
+#
+# What it does (dry run by default, -y to apply):
+#   1. Backs up every ref to <git-dir>/refs-backup-<timestamp>.txt
+#   2. Narrows remote.<remote>.fetch to the main branch only and stops fetching
+#      tags, so a plain `git fetch` moves one ref instead of all of them
+#   3. Batch-deletes local branches that are not yours. Kept: checked-out
+#      branches, branches with any branch.* config, main, --keep matches
+#   4. Batch-deletes remote-tracking refs other than <remote>/main
+#   5. Optionally deletes all tags (--drop-tags)
+#
+# Deleting a local branch never deletes commits, and anything on the remote can
+# be re-fetched later with `git grab <branch>` / `git wt <branch>`.
+#
+# Usage: git monorepo-slim [-y] [--main BRANCH] [--remote NAME] [--keep ERE] [--drop-tags]
+#   -y           apply changes (default: dry run)
+#   --main       primary branch (default: main)
+#   --remote     remote name (default: origin)
+#   --keep ERE   extended regex of extra branch names to keep
+#   --drop-tags  also delete all local tags (re-fetchable with `git fetch --tags`)
+
+set -euo pipefail
+
+MAIN=main REMOTE=origin KEEP_RE='' APPLY=0 DROP_TAGS=0
+
+while (($#)); do
+  case "$1" in
+    -y|--apply)  APPLY=1 ;;
+    --main)      MAIN="$2"; shift ;;
+    --remote)    REMOTE="$2"; shift ;;
+    --keep)      KEEP_RE="$2"; shift ;;
+    --drop-tags) DROP_TAGS=1 ;;
+    -h|--help)   sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+COMMON="$(git rev-parse --git-common-dir)"
+PLAN="$COMMON/monorepo-slim-plan"
+mkdir -p "$PLAN"
+
+echo "==> Backing up all refs"
+BACKUP="$COMMON/refs-backup-$(date +%Y%m%d-%H%M%S).txt"
+git for-each-ref --format='%(refname) %(objectname)' > "$BACKUP"
+echo "    $(wc -l < "$BACKUP" | tr -d ' ') refs -> $BACKUP"
+
+echo "==> Computing keep list (checked-out, configured, $MAIN, --keep matches)"
+git for-each-ref refs/heads --format='%(refname)' > "$PLAN/all-heads.txt"
+{
+  echo "refs/heads/$MAIN"
+  git config --name-only --get-regexp '^branch\.' 2>/dev/null \
+    | sed -E 's/^branch\./refs\/heads\//; s/\.[^.]+$//' || true
+  git worktree list --porcelain | awk '/^branch /{print $2}'
+  if [ -n "$KEEP_RE" ]; then
+    sed 's|^refs/heads/||' "$PLAN/all-heads.txt" | grep -E "$KEEP_RE" \
+      | sed 's|^|refs/heads/|' || true
+  fi
+} | sort -u > "$PLAN/keep-heads.txt"
+
+grep -v -x -F -f "$PLAN/keep-heads.txt" "$PLAN/all-heads.txt" \
+  > "$PLAN/delete-heads.txt" || true
+
+git for-each-ref "refs/remotes/$REMOTE" --format='%(refname)' \
+  | grep -v -x -e "refs/remotes/$REMOTE/$MAIN" -e "refs/remotes/$REMOTE/HEAD" \
+  > "$PLAN/delete-remotes.txt" || true
+
+if ((DROP_TAGS)); then
+  git for-each-ref refs/tags --format='%(refname)' > "$PLAN/delete-tags.txt"
+else
+  : > "$PLAN/delete-tags.txt"
+fi
+
+count() { wc -l < "$1" | tr -d ' '; }
+echo "==> Plan"
+echo "    keep   $(count "$PLAN/keep-heads.txt") local branches:"
+sed 's|^refs/heads/|      |' "$PLAN/keep-heads.txt"
+echo "    delete $(count "$PLAN/delete-heads.txt") local branches       ($PLAN/delete-heads.txt)"
+echo "    delete $(count "$PLAN/delete-remotes.txt") remote-tracking refs  ($PLAN/delete-remotes.txt)"
+echo "    delete $(count "$PLAN/delete-tags.txt") tags                  ($PLAN/delete-tags.txt)"
+echo "    set    remote.$REMOTE.fetch = +refs/heads/$MAIN:refs/remotes/$REMOTE/$MAIN"
+echo "    set    remote.$REMOTE.tagOpt = --no-tags"
+echo "    set    fetch.showForcedUpdates = false, fetch.negotiationAlgorithm = skipping"
+
+if ((!APPLY)); then
+  echo
+  echo "Dry run complete. Review the plan files above, then re-run with -y."
+  exit 0
+fi
+
+echo "==> Applying"
+git config --replace-all "remote.$REMOTE.fetch" "+refs/heads/$MAIN:refs/remotes/$REMOTE/$MAIN"
+git config "remote.$REMOTE.tagOpt" --no-tags
+git config fetch.showForcedUpdates false
+git config fetch.negotiationAlgorithm skipping
+
+sed 's/^/delete /' "$PLAN/delete-heads.txt"   | git update-ref --stdin
+sed 's/^/delete /' "$PLAN/delete-remotes.txt" | git update-ref --stdin
+sed 's/^/delete /' "$PLAN/delete-tags.txt"    | git update-ref --stdin
+
+echo
+echo "Done. Ref backup: $BACKUP"
+echo "Restore any ref with: git update-ref <refname> <sha>   (sha is in the backup)"
+echo "Next: verify with 'time git fetch $REMOTE' — it should take seconds."

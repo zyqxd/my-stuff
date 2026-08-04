@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+# git-monorepo-cleanup — weekly branch + worktree hygiene for large repos.
+#
+# What it does (dry run by default, -y to apply):
+#   1. Fetches the main branch only (one ref, no tags)
+#   2. Checks which tracked branches still exist on the remote (one ls-remote
+#      round-trip, no object transfer) — a gone upstream usually means the PR merged
+#   3. Prunes remote-tracking refs whose branch was deleted on the remote
+#   4. Removes worktrees whose branch is merged or gone (never dirty or locked)
+#   5. Deletes local branches that are merged or gone; flags stale ones for review
+#   6. Runs incremental maintenance (never `gc --prune=now`)
+#
+# Every deletion is logged with its SHA to <git-dir>/cleanup.log; recover with
+# `git branch rescue <sha>` within the gc grace period (~2 weeks).
+#
+# Usage: git monorepo-cleanup [-y] [--force-gone] [--main BRANCH] [--remote NAME]
+#                             [--protect ERE] [--stale-days N]
+#   -y            apply changes (default: dry run)
+#   --force-gone  delete gone-upstream branches even when not an ancestor of
+#                 main (required when the host squash-merges PRs)
+#   --main        primary branch (default: main)
+#   --remote      remote name (default: origin)
+#   --protect     ERE of branches never touched (default: main|master|develop|production|staging)
+#   --stale-days  flag branches/worktrees with no commits in N days (default: 45)
+
+set -euo pipefail
+
+MAIN=main REMOTE=origin STALE_DAYS=45 APPLY=0 FORCE_GONE=0
+PROTECT_RE='^(main|master|develop|production|staging)$'
+
+while (($#)); do
+  case "$1" in
+    -y|--apply)   APPLY=1 ;;
+    --force-gone) FORCE_GONE=1 ;;
+    --main)       MAIN="$2"; shift ;;
+    --remote)     REMOTE="$2"; shift ;;
+    --protect)    PROTECT_RE="$2"; shift ;;
+    --stale-days) STALE_DAYS="$2"; shift ;;
+    -h|--help)    sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+cd "$(git rev-parse --show-toplevel)"
+COMMON="$(git rev-parse --git-common-dir)"
+LOG="$COMMON/cleanup.log"
+NOW=$(date +%s)
+CUTOFF=$(( NOW - STALE_DAYS * 86400 ))
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+
+act()  { if ((APPLY)); then "$@"; else printf '    [dry-run] %s\n' "$*"; fi; }
+note() { if ((APPLY)); then printf '%s\t%s\n' "$(date -u +%FT%TZ)" "$*" >> "$LOG"; fi; }
+
+# ------------------------------------------------------------------ 1. fetch
+echo "==> Fetching $REMOTE/$MAIN (single ref)"
+git fetch --no-tags --no-write-fetch-head --quiet "$REMOTE" \
+    "+refs/heads/$MAIN:refs/remotes/$REMOTE/$MAIN"
+
+# ---------------------------------------------------- 2. gone-upstream check
+# Upstreams are read from branch.* config, not %(upstream:*) atoms: with a
+# narrowed fetch refspec git cannot map config to a remote-tracking ref, so
+# the atoms (and "[gone]") come back empty.
+echo "==> Checking which tracked branches still exist on $REMOTE"
+git config --get-regexp '^branch\.' 2>/dev/null | awk -v r="$REMOTE" '
+  /^branch\..*\.remote /{n=$1; sub(/^branch\./,"",n); sub(/\.remote$/,"",n); rem[n]=$2}
+  /^branch\..*\.merge / {n=$1; sub(/^branch\./,"",n); sub(/\.merge$/,"",n);  mrg[n]=$2}
+  END{for(n in rem) if(rem[n]==r && mrg[n]!="") printf "%s\t%s\n", n, mrg[n]}
+' > "$TMP/tracked-config" || true
+
+git for-each-ref refs/heads --format='%(refname:short)' | sort > "$TMP/heads"
+awk -F'\t' 'NR==FNR{h[$0];next} ($1 in h)' "$TMP/heads" "$TMP/tracked-config" > "$TMP/tracked"
+
+git for-each-ref "refs/remotes/$REMOTE" --format='%(refname)' \
+  | grep -v -x -e "refs/remotes/$REMOTE/$MAIN" -e "refs/remotes/$REMOTE/HEAD" \
+  > "$TMP/rt-refs" || true
+
+{ cut -f2 "$TMP/tracked"; sed "s|^refs/remotes/$REMOTE/|refs/heads/|" "$TMP/rt-refs"; } \
+  | sort -u > "$TMP/query"
+
+if [ -s "$TMP/query" ]; then
+  xargs -n 500 git ls-remote --heads "$REMOTE" < "$TMP/query" \
+    | awk '{print $2}' | sort -u > "$TMP/existing"
+else
+  : > "$TMP/existing"
+fi
+
+while IFS=$'\t' read -r br up; do
+  grep -qxF "$up" "$TMP/existing" || echo "$br"
+done < "$TMP/tracked" > "$TMP/gone"
+
+is_gone()      { grep -qxF "$1" "$TMP/gone"; }
+is_protected() { printf '%s' "$1" | grep -Eq "$PROTECT_RE"; }
+is_merged()    { git merge-base --is-ancestor "refs/heads/$1" "refs/remotes/$REMOTE/$MAIN" 2>/dev/null; }
+
+# ------------------------------------------- 3. stale remote-tracking refs
+while read -r rt; do
+  src="refs/heads/${rt#refs/remotes/"$REMOTE"/}"
+  grep -qxF "$src" "$TMP/existing" && continue
+  echo "    prune  $rt — deleted on $REMOTE"
+  note "rtref-delete $rt $(git rev-parse "$rt")"
+  act git update-ref -d "$rt"
+done < "$TMP/rt-refs"
+
+# -------------------------------------------------------------- 4. worktrees
+echo "==> Worktrees"
+git worktree list --porcelain > "$TMP/wt"
+# "-" placeholders: tab is IFS whitespace, so empty fields would collapse
+awk '
+  function rec() { print p "\t" (b ? b : "-") "\t" (f ? f : "-") }
+  /^worktree /  { if (p) rec(); p=substr($0,10); b=""; f="" }
+  /^branch /    { b=substr($0,8) }
+  /^locked/     { f=f "locked," }
+  /^prunable/   { f=f "prunable," }
+  END           { if (p) rec() }
+' "$TMP/wt" | tail -n +2 > "$TMP/wtrec"   # tail: never touch the main/bare entry
+
+while IFS=$'\t' read -r wpath wref wflags; do
+  branch="${wref#refs/heads/}"
+  { [ "$branch" = "$wref" ] || [ "$wref" = "-" ]; } && branch=""
+  [ "$wflags" = "-" ] && wflags=""
+  label="${branch:-<detached>}"
+
+  case "$wflags" in *locked*)
+    echo "    keep   $wpath ($label) — locked"; continue ;;
+  esac
+  case "$wflags" in *prunable*)
+    echo "    prune  $wpath — gitdir missing"; continue ;;   # worktree prune below
+  esac
+
+  if [ ! -d "$wpath" ]; then
+    echo "    prune  $wpath — directory gone"; continue
+  fi
+
+  # -uno: scanning untracked files across a monorepo worktree is glacial
+  if [ -n "$(git -C "$wpath" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+    echo "    KEEP   $wpath ($label) — uncommitted changes"; continue
+  fi
+
+  reason=""
+  if [ -z "$branch" ]; then
+    reason="detached HEAD, clean"
+  elif is_protected "$branch"; then
+    echo "    keep   $wpath ($label) — protected"; continue
+  elif is_merged "$branch"; then
+    reason="merged into $REMOTE/$MAIN"
+  elif is_gone "$branch"; then
+    if ((FORCE_GONE)); then reason="upstream gone"
+    else echo "    KEEP   $wpath ($label) — upstream gone but unmerged (use --force-gone)"; continue; fi
+  else
+    last=$(git -C "$wpath" log -1 --format=%ct 2>/dev/null || echo "$NOW")
+    if [ "$last" -lt "$CUTOFF" ]; then
+      echo "    STALE  $wpath ($label) — no commits in ${STALE_DAYS}d, review manually"
+    fi
+    continue
+  fi
+
+  echo "    remove $wpath ($label) — $reason"
+  note "worktree-remove $wpath $label $(git -C "$wpath" rev-parse HEAD) [$reason]"
+  act git worktree remove "$wpath"
+  if ((APPLY)); then rmdir "$(dirname "$wpath")" 2>/dev/null || true; fi
+done < "$TMP/wtrec"
+
+act git worktree prune --verbose
+
+# --------------------------------------------------------------- 5. branches
+echo "==> Branches"
+# worktreepath last: it is often empty, and tab-IFS collapses empty fields
+git for-each-ref refs/heads \
+    --format='%(refname:short)%09%(committerdate:unix)%09%(objectname)%09%(worktreepath)' \
+  > "$TMP/br"
+
+while IFS=$'\t' read -r br cdate sha wtp; do
+  is_protected "$br" && continue
+  [ -n "$wtp" ] && continue                # still checked out somewhere
+
+  if is_merged "$br"; then
+    reason="merged into $REMOTE/$MAIN"
+  elif is_gone "$br"; then
+    if ((FORCE_GONE)); then reason="upstream gone"
+    else echo "    KEEP   $br — upstream gone but unmerged (use --force-gone); $sha"; continue; fi
+  elif [ "$cdate" -lt "$CUTOFF" ]; then
+    echo "    STALE  $br — last commit $(( (NOW - cdate) / 86400 ))d ago, review manually"
+    continue
+  else
+    continue
+  fi
+
+  echo "    delete $br ($reason) $sha"
+  note "branch-delete $br $sha [$reason]"
+  act git branch -D "$br"
+done < "$TMP/br"
+
+# ------------------------------------------------------------ 6. maintenance
+echo "==> Incremental maintenance (never gc --prune=now)"
+act git maintenance run --task=pack-refs --task=commit-graph \
+                        --task=loose-objects --task=incremental-repack
+
+echo
+if ((APPLY)); then echo "Done. Deletions logged to $LOG"
+else echo "Dry run complete. Re-run with -y to apply."; fi

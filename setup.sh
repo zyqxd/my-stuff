@@ -78,6 +78,17 @@ setup_agent_tooling() {
             brain memory-bank track grow-merchant-gmv || echo "   ⚠️  Failed to track grow-merchant-gmv bank"
         fi
         brain pi install || echo "   ⚠️  brain pi install failed"
+
+        # ~/plans lives in the personal bank; keep the compatibility symlink.
+        local plans_dir="$HOME/.brain/memory-bank/personal/plans"
+        if [ -d "$HOME/.brain/memory-bank/personal" ]; then
+            mkdir -p "$plans_dir"
+            if [ -e "$HOME/plans" ] && [ ! -L "$HOME/plans" ]; then
+                echo "   ⚠️  ~/plans exists and is not a symlink — move its contents into $plans_dir manually"
+            else
+                ln -sfn "$plans_dir" "$HOME/plans"
+            fi
+        fi
     else
         echo "⏭️  brain not found — skipping brain setup"
     fi

@@ -39,3 +39,6 @@ dumps/
 .pi/
 **/.claude/settings.local.json
 skills.json
+
+# Zones
+areas/clients/admin-web/specs/

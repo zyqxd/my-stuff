@@ -61,7 +61,27 @@ Source: refine-memory rationale correction, 2026-07-29.
 
 ## Commit only explicitly owned changes
 
-Source: commit-scope correction after refine-memory iteration, 2026-07-29.
+Source: commit-scope correction after refine-memory iteration, 2026-07-29. The global "Repository preflight" commandment carries this rule; this section retains the source evidence: "commit your changes" during a shared task meant assistant-owned edits only, and excluded user work stayed unstaged for review.
 
-- When a working tree contains user-generated or pre-existing changes, interpret “commit your changes” as assistant-owned edits only unless the user explicitly includes the other work.
-- Preserve excluded changes unstaged for the user's next review or refinement; do not infer commit permission from shared task context.
+## Hunt for the closeable issue before drafting any new PR body
+
+Source: user correction on shop/world PR #981443, 2026-08-06.
+
+I drafted a new fix PR with no closing directive because none was handed to me,
+even though a matching tracker (shop/issues-monetization#7052, filed by David
+the same day) existed. "Existing or evidenced closing directives" includes
+directives I must go find, not just ones already in a body or the request.
+
+- Before drafting a new PR body, search the team's issue tracker(s) for an
+  issue matching the bug/feature; check the user's plans/todo files and recent
+  issues by the user first.
+- If a matching issue exists, lead the body with `Closes <owner>/<repo>#<n>`
+  (full form for cross-repo, e.g. shop/world PRs closing issues-monetization).
+- If none exists, say so and ask whether to file one or proceed without —
+  don't silently omit the directive.
+- Never put closing directives on DO-NOT-MERGE/tophat PRs.
+- Scope: every new PR body, in any repo; cross-repo trackers included.
+- Evidence: #981443 shipped without `Closes shop/issues-monetization#7052`;
+  David corrected it as a core tenet of PR descriptions.
+- Uncertainty: whether umbrella/partially-satisfied issues should get `Closes`
+  or a plain reference — ask when the PR only advances part of an issue.

@@ -41,8 +41,7 @@ Durable memory lives in the version-controlled `~/Workspace/my-stuff/ai/` repo
 inside a project/monorepo checkout.
 
 - **Lessons:** `~/Workspace/my-stuff/ai/lessons/<project>.md` — one file per
-  project or World zone (e.g. `admin-web.md`). Review the relevant file at
-  session start; append to it after any correction.
+  project or World zone (e.g. `admin-web.md`).
 - **Reports & active todos:** `~/plans/` (see Report Output Convention) — a
   symlink into the brain personal bank (`~/.brain/memory-bank/personal/plans/`).
 - **Never** write lessons/scratch/todos to a `tasks/` (or similar) folder inside
@@ -57,10 +56,12 @@ inside a project/monorepo checkout.
 - **Repository preflight:**
   - Before committing or pushing, verify the repository, worktree, branch, intended diff, and absence of development-only files; never trust retained shell state.
   - Include only assistant-owned changes unless the user explicitly includes pre-existing or user-generated work; do not stage, discard, or rewrite excluded changes.
+- **Never speak as David:** Never post PR/issue comments, review replies, Slack messages, or any communication that appears under David's account, even when a workflow doc says to reply or resolve threads; draft the text and hand it to him to post. Editing titles/descriptions of PRs I author code for is fine; when unsure whether something counts as speaking for him, ask.
+- **Auth-gated content:** When a resource requires authentication I cannot complete (SSO, passkeys, internal docs, Figma, GitHub attachments), never launch or retry a browser sign-in flow; stop after the first failed access, state exactly what is needed, and ask David for the values, file, or paste — everything in one message.
 - **User-facing prose:**
   - Lead with the outcome or decision.
   - Use short paragraphs for explanation, bullets for distinct points, numbered lists for sequences, and tables for compact comparisons.
-  - Prefer plain words and explain necessary technical terms on first use.
+  - Prefer plain words; technical ability does not imply expertise in every field, so explain necessary specialist terms in common words on first use.
 - **Representative evidence:** Treat tests, evaluations, and analysis as proof only when inputs are representative, information-complete, and inspectable; toy or truncated inputs prove mechanics, not the claimed behavior or result.
 - **Comments — match the codebase (Shopify is light):** Default to none. Add one only to explain a non-obvious constraint or trade-off, never what the code does; refactor or rename unclear code, and put test intent in a descriptive `it(...)` name.
 - **Follow existing patterns:** Match the section/module's file layout and conventions; if a pattern must change, change every instance together. Keep discriminating test data legible at the assertion site.

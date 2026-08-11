@@ -57,14 +57,15 @@ I removed `powered_by_shopify_cta_html` + `start_selling_for_free` from all 33
 notification buyer locales after concluding they were orphaned (in-zone `git grep`
 found no `t(".key")` callers; core selective-tests + the interpolation test passed).
 **CI disagreed:** `world-admin-web-tests` and `world-shopify-checks` failed
-*reproducibly*, and a differential (parent PRs #933138/#915894 green, my i18n delta
+_reproducibly_, and a differential (parent PRs #933138/#915894 green, my i18n delta
 red) proved my change caused it — even though, on the commit itself, the only
 remaining references were an analytics `.ipynb` using the strings as SQL literals.
 
 Lessons:
+
 - **`git grep` in one zone does NOT prove a translation key is safe to remove.** There
   are broad, non-selective guards (an admin-web suite + a `world-shopify-checks` step)
-  that treat notification locale keys as required; core *selective* tests don't run them.
+  that treat notification locale keys as required; core _selective_ tests don't run them.
 - **Validate translation-key removal by CI diff against the parent**, not local reasoning.
 - The checkout-web cross-repo `TranslationKeys` guard only triggers on
   `components/checkouts/config/locales/buyer/en.yml` and its `frozen/` snapshot;
@@ -137,15 +138,16 @@ constraints, in tension, so a single admin-web PR can't satisfy both:
   still has it.
 
 So a clean removal is 3 single-zone phases, stacked and merged in order:
-1. admin-web: stop consuming (queries/intents).  2. core: remove field.
-3. admin-web: resync mirror (durable now — any resync in the gap also drops it).
+
+1. admin-web: stop consuming (queries/intents). 2. core: remove field.
+2. admin-web: resync mirror (durable now — any resync in the gap also drops it).
 
 Cross-zone PRs (backend + `admin-web/protocols/graphql` in one PR) make the
 mirror atomic with the source but are **discouraged** — see
 `areas/clients/admin-web/docs/content/docs/development/cross-zone-pr-restriction.md`
 (Graphite merge-queue deprioritizes/ejects them; ~2.1× slower). The git-loader
 typecheck/eslint jobs in `check-schema-sync` are **hard** (only `Check For Schema
-Drift` is soft-fail), which is why the stop-consuming PR must sit *below* the
+Drift` is soft-fail), which is why the stop-consuming PR must sit _below_ the
 core-removal PR in the stack.
 
 ---
@@ -166,3 +168,16 @@ When editing a product or rollout proposal, lead with the outcome and use short
 paragraphs. Replace internal class names, data-model details, and implementation
 caveats with plain terms unless they change the decision. Keep deeper evidence in
 the linked investigation report rather than copying it into the proposal.
+
+## Never post comments/replies as David — working-agreement core tenet
+
+Source: PR #984362, 2026-08-10. I posted three PR comments under David's account (replies to
+the designer, a correction, a final summary) without being asked. David: "Stop commenting for
+me - this is a core tenant of our working agreement." Rule: never write PR/issue comments,
+review replies, Slack messages, or any other communication that appears as David, even when a
+workflow doc says "reply to PR comment threads" — that guidance yields to this agreement.
+Instead: draft the text and hand it to him to post. Editing PR titles/descriptions of
+PRs I author the code for has been fine so far; posting _dialogue_ as him is not. Scope:
+all zones/projects, all channels. If unsure whether something counts as speaking for him, ask.
+
+**Promoted 2026-08-11:** the global commandments carry this rule; this section retains the source evidence.

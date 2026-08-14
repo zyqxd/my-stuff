@@ -30,6 +30,19 @@
 - Investigate and fix bug reports or failing CI autonomously; do not ask for hand-holding.
 - Use errors, logs, and failing tests to resolve the root cause without requiring user context switches.
 
+### 7. Discuss Before Editing Working Designs
+
+- Treat questions and exploratory feedback about a working design, plan, or document as requests to investigate and facilitate a decision—not as approval to edit.
+- Present findings, push back where warranted, and propose the smallest exact change; wait for explicit approval before modifying the working document.
+- After approval, apply only the agreed change and preserve the user's structure, wording, and concurrently edited sections.
+
+### 8. Never Wait on CI
+
+- **David reports CI results.** After pushing, never poll, sleep, loop on `devx ci status`/`agent-ci`, or hold a turn open waiting for a build — no matter how close it looks to finishing.
+- End the turn with an explicit handoff: what was pushed, the new head SHA, and what local evidence already covers it. Then move to the next unblocked task or stop.
+- Local verification is what gates "done" (see 4). CI is confirmation David relays, not proof I wait for.
+- Once he reports a failure or hands over a build URL, pull the logs and fix it autonomously (see 6). Reading CI is expected; waiting on CI is not.
+
 ## Task Management
 
 - For non-trivial work, write a checkable plan in `~/plans/<project>/todo.md` outside the checkout and check in before implementation; update it during execution, explain progress, and add the final review. Focused sub-plans go in `~/plans/<project>/<topic>-todo.md`.

@@ -111,23 +111,18 @@ Sources: B2M CTA restack (#907101/#915894), 2026-07-13; user edits to Stripe Exp
 
 ## Stripe Express ready metrics — trace component nesting before claiming a metric gap
 
-- Do NOT analyze paired-metric emission (ReadyResult vs ReadyDuration) by reading
-  each file in isolation. `ExpressPayButtons` (Billing/Subscribe) RENDERS
-  `StripeExpressApplePay/GooglePay` → `StripeExpressAdminCheckout` and wires
-  `onReady={handleApplePayReady}`. On a successful load the INNER
-  `StripeExpressAdminCheckout.handleReady` emits Duration, then calls `onReady`
-  which makes the OUTER `ExpressPayButtons` emit Result(success). Both fire once —
-  the metrics ARE paired across the parent+child. Trace `onReady`/callback nesting
-  before asserting "this surface emits X but not Y".
+- Never analyze paired-metric emission (ReadyResult vs ReadyDuration) by
+  reading each file in isolation: the INNER `StripeExpressAdminCheckout.handleReady`
+  emits Duration, then calls `onReady`, which makes the OUTER `ExpressPayButtons`
+  emit Result(success) — both fire once, paired across parent+child. Trace
+  `onReady`/callback nesting before asserting "this surface emits X but not Y".
 - Product fact: there is NO standalone "add Apple Pay / Google Pay as a payment
-  method" flow. Stripe Express wallets only render when the merchant/device
-  actually has that wallet set up (availability-gated). Don't invent an
-  "add payment method" surface for StripeExpressAdminCheckout — it is only the
-  inner button nested under ExpressPayButtons on the billing checkout page.
-- Consequence: real ReadyResult/ReadyDuration discrepancies are narrow
-  (label mismatch: Result carries `surface`, Duration doesn't; duration value
-  skew across paths; rare double-ready/late-ready count edges), NOT the
-  "success emits only one metric" gap I wrongly reported first.
+  method" flow; Stripe Express wallets render only when the merchant/device has
+  that wallet set up (availability-gated). `StripeExpressAdminCheckout` is only
+  the inner button under `ExpressPayButtons` on the billing checkout page.
+- Real ReadyResult/ReadyDuration discrepancies are narrow (Result carries
+  `surface`, Duration doesn't; duration skew across paths; rare
+  double-ready/late-ready count edges), not a "success emits only one metric" gap.
 
 ## Keep development-only changes off real PR branches
 
@@ -146,13 +141,11 @@ Source: user correction on Stripe Express #937051, 2026-07-16. Added prop/test c
 
 ## Do not retain synonymous metric labels without auditing reporting consumers
 
-Source: user correction on Stripe Express ready-metric PR #937049, 2026-07-27.
-
-I retained both `surface` and `source` on
-`StripeExpressPayElementReadyResult` as a compatibility hedge. They carried the
-same Admin-versus-Signup value, creating two names that could conflict and no
-single reporting contract. The right approach was to make `source` canonical
-and audit downstream reporting before removing `surface`.
+Source: user correction on PR #937049, 2026-07-27. I kept both `surface` and
+`source` on `StripeExpressPayElementReadyResult` (same Admin-versus-Signup
+value) as a compatibility hedge — two names that could conflict and no single
+reporting contract. Make one canonical and audit consumers before removing the
+other.
 
 Rules for myself:
 
@@ -174,39 +167,27 @@ Rules for myself:
 
 ## Do not defer a directly related, low-risk metric schema correction mechanically
 
-Source: user correction on Stripe Express ready-metric PR #937051, 2026-07-28.
+Source: user correction on PR #937051, 2026-07-28. I took a reviewer's
+"non-blocking; include it in the follow-up" as a reason not to fix a
+high-cardinality `duration` label in a PR that already touched every emitter.
 
-I treated a reviewer's "non-blocking; include it in the follow-up" wording as a
-reason not to fix a high-cardinality `duration` label in the active emission PR.
-That was too deferential: the PR already touches every emitter, and removing the
-redundant label is small, cohesive, and safer before emission volume expands.
-
-Rules for myself:
-
-- A reviewer allowing a follow-up is permission, not a requirement. Evaluate
-  whether the active PR is the cleaner place to fix the issue.
-- When a PR expands a metric's emission and exposes a redundant high-cardinality
-  label, prefer removing it in that PR if all emitters and types are already in
-  scope.
-- Verify alerts, SLOs, and exact dashboard queries first; if no consumer filters
-  or groups by the label, do not invent compatibility risk to justify deferral.
+- A reviewer allowing a follow-up is permission, not a requirement; prefer the
+  active PR when the fix is small, cohesive, and all emitters and types are
+  already in scope — especially before emission volume expands.
+- Verify alerts, SLOs, and exact dashboard queries first; if no consumer
+  filters or groups by the label, do not invent compatibility risk to justify
+  deferral.
 
 ## Keep review fixes scoped to the reviewed emission condition
 
-Source: user correction on Stripe Express ready-metric PR #937051, 2026-07-28.
+Source: user correction on PR #937051, 2026-07-28. A comment on removing
+synthetic timeout ReadyDuration samples drew a redesign of post-timeout
+duration capture — outside the requested comment.
 
-When reviewing removal of synthetic ReadyDuration samples from timeout effects, I
-expanded into redesigning how real `onReady` durations could be captured after a
-timeout. That was outside the requested comment and obscured the actual consistency
-requirement across Admin and Signup.
-
-Rules for myself:
-
-- If a review comment targets timeout emission, limit the fix and discussion to
-  timeout emission unless the user explicitly asks to redesign normal readiness.
-- State shared-path coverage explicitly: `useExpressPayConfig` serves both Signup
-  and MerchantCheckout, while `ExpressPayButtons` is the separate Admin Billing path.
-- Do not turn an adjacent observability idea into scope for the active review fix.
+- Limit the fix and discussion to the commented condition unless the user asks
+  for a redesign; do not turn an adjacent observability idea into scope.
+- State shared-path coverage explicitly: `useExpressPayConfig` serves Signup
+  and MerchantCheckout; `ExpressPayButtons` is the separate Admin Billing path.
 
 ## Keep semantic booleans in component APIs; encode HTML sentinels at the DOM boundary
 
@@ -321,58 +302,30 @@ than focusing manual effort on what this extraction could uniquely break.
 - Explain why each tophat case is necessary; remove it if the rationale is only
   “the route supports this state.”
 
-## Talk normally; do not expect expertise in every field
+## Talk normally — mechanics (principle is constitutional)
 
-Source: repeated user corrections on the #6154 shimmer-data report, 2026-07-31.
+Sources: repeated corrections on the #6154 shimmer-data report, 2026-07-31, and
+the #6154 emission-sequence diagram, 2026-08-05 (a short diagram is not
+automatically clear). The "User-facing prose" commandment carries the
+principle; these mechanics stay scoped.
 
-I used phrases such as “occurrence-level event stream,” “episode grain,”
-“terminal,” and “downstream enrichment” as if the labels explained the design.
-They did not. The user had to stop and ask what each recommendation meant,
-slowing the discussion and obscuring which behavior was observed versus inferred.
-
-The user is a senior engineer, not an expert in every specialty involved in a
-cross-functional problem. Do not expect one person to already know the local
-language of analytics, data modeling, observability, experimentation, payments,
-accessibility, infrastructure, and frontend architecture. Technical ability is
-not permission to skip the explanation.
-
-- Talk normally. Use common words and direct sentences before introducing a
-  field-specific term.
-- Lead with the plain idea, then put the technical term in parentheses only when
-  it adds value: “a timestamped list of recorded actions (an event stream).”
-- Never explain one unfamiliar term with another unfamiliar term.
-- Use the outside-specialty test: a strong engineer who does not work in this
-  exact field should understand the paragraph without stopping for a glossary.
+- Lead with the plain idea; add the technical term in parentheses only when it
+  adds value: "a timestamped list of recorded actions (an event stream)".
+  Introduce internal names after the idea and expand every acronym on first
+  mention: "Shopify's browser-event receiving service (Frontend Event
+  Collector, or FEC)". Never explain one unfamiliar term with another.
+- Outside-specialty test: a strong engineer outside this exact field should
+  read the paragraph without stopping for a glossary. Start pipelines with
+  actors and verbs; for each box state what goes in, what it adds or checks,
+  and what comes out. Give a concrete example row before platform topology.
 - For every proposed data table, state what one row represents and whether the
-  row is emitted by the application or assembled later in the warehouse.
-- For every instrumentation recommendation, answer what is recorded, when it is
-  recorded, which identifier connects it, and who performs any later join.
-- Do not call missing follow-up data “abandonment.” State the observable fact:
-  the wait started and no later signal was recorded. Treat exit events as
-  best-effort unless delivery is guaranteed.
-- Distinguish a legitimate repeated user experience from duplicate delivery;
-  explain idempotency separately rather than hiding both behind “occurrence.”
-- Prefer the communication guidelines’ plain reader language even when the user
-  is technically sophisticated; technical precision requires definitions, not
-  jargon density.
-
-**Update 2026-08-05:** I repeated this failure while explaining the #6154
-emission sequence. I drew a pipeline using “surface-owned producer,” “event
-envelope,” “FEC,” “refined topic,” and “Factoids BigQuery view” before defining
-any of them. A diagram does not become clear merely because it is short.
-
-- Start with actors and verbs: “the checkout records the wait,” “the Admin or
-  Signup sender adds context,” “Shopify receives it,” and “the data pipeline
-  puts it in a queryable table.”
-- Introduce the internal name only after the idea: “Shopify’s browser-event
-  receiving service (Frontend Event Collector, or FEC).” Never use the acronym
-  alone on first mention.
-- For each box in a pipeline, explain what goes in, what that box adds or checks,
-  and what comes out. Do not make the reader reverse-engineer arrows.
-- Prefer a concrete example row before platform topology. Add implementation
-  names afterward for readers who need to find the code.
-- Before sending, expand every acronym and replace every unexplained ownership,
-  messaging, ingestion, or warehouse term with common words.
+  application emits it or the warehouse assembles it later. For every
+  instrumentation recommendation: what is recorded, when, which identifier
+  connects it, and who performs any later join.
+- Do not call missing follow-up data "abandonment" — state the observable fact
+  (the wait started; no later signal was recorded) and treat exit events as
+  best-effort. Distinguish a repeated user experience from duplicate delivery;
+  explain idempotency separately rather than hiding both behind one term.
 
 ## Define tophat override mechanics before presenting expected metrics
 
@@ -441,89 +394,51 @@ concrete DOM anchor over borrowed layout metaphors (`footer`) or generic
 roles (`content`); sibling-prop convention symmetry does not outweigh a
 metaphor that contradicts the parent's own name (a footer inside a header).
 
-## Separate Event Refinery schema approval from client feasibility
+## Event Refinery from admin-web/Signup: contract decisions vs standard execution
 
-Source: user correction while planning payment-wait reporting for #6154,
-2026-08-05.
+Source: #6154 payment-wait reporting, 2026-08-05 — four corrections in one day,
+consolidated 2026-08-17 (superseded intermediate reasoning removed; final rules,
+evidence, and uncertainties kept).
 
-I initially bundled schema/governance approval and the client producer path into
-one Gate 0 epic. That skipped a distinct feasibility question: an approved Event
-Refinery payload does not prove Admin Web—and especially the isolated Signup
-application—can hydrate and send the required envelope.
-
-- Plan schema and governance first: event family, payload shape, accepted user
-  context, consent, warehouse materialization, and downstream compliance.
-- Add a separate follow-up epic to prove the client path, including Admin's
-  existing `makeEnvelope`, Signup's missing feature-proto emitter, staging/FEC
-  delivery, and the fallback if Signup cannot emit compliantly.
-- Only plan production lifecycle instrumentation after both decisions are made;
-  keep warehouse modeling separate because it has different owners and launch
-  controls.
+- Plan schema/governance and client feasibility as separate epics: an approved
+  payload does not prove Admin — and especially the isolated Signup app — can
+  hydrate and send the required envelope. Plan production lifecycle
+  instrumentation only after both decisions; keep warehouse modeling separate
+  (different owners and launch controls).
+- For a durable Admin business fact, first write "one row means ___ happened,"
+  then use the established semantic emitter in
+  `packages/admin/context/observability/index.ts` — feature code passes only
+  the generated payload; the slice owns envelope and FEC transport. Admin keeps
+  using Admin observability because the Dux client-proto middleware
+  deliberately leaves shop and organization null.
+- Keep Dux for bounded UI telemetry and as the separately approved Signup
+  `duxProto` candidate: both wrappers already set `protoEventSource`, and Dux
+  7.6 routes typed `duxProto` payloads through the existing `/.well-known/dux`
+  middleware and FEC envelope path. Distinguish three paths before proposing
+  any new client: automatic Dux events, legacy `trackers.dux(...)` (Monorail),
+  and typed `trackers.duxProto(...)`. Never repurpose `DuxEvent`, Admin
+  search/navigation/runtime events, or a feature-owned `SimpleProtoClient`.
+- Separate contract decisions from standard execution: a new durable proto
+  needs one schema/domain reviewer and one real first consumer; Infra Central
+  topic creation and Factoids ingestion are self-service onboarding, not extra
+  owners. Do not gate on a Dux owner (supported API), a Signup observability
+  owner (Dux suffices), a separate privacy owner (envelope consent plus schema
+  classifications settle it), or a modeled-data owner before a modeled table is
+  required — escalate only when the existing path proves insufficient.
+- A new payload type still creates its own refined/validated topics even though
+  transport is reused; extending `DuxEvent` as a loophole for a stable business
+  fact is rejected by its own schema guidance. Public advisory feedback is not
+  owner approval — expect an actual schema PR and first-consumer review before
+  the governance gate closes.
 - Scope: new Event Refinery integrations from admin-web or another isolated
-  client application, not routine use of an already-proven proto method.
-- Evidence: Admin has `packages/admin/context/observability/index.ts`; Signup has
-  DUX setup but no equivalent feature-proto producer today.
-- Uncertainty: whether Signup can reuse Dux or `@shopify/proto-ts` safely remains
-  unresolved and belongs in the client-feasibility epic, not the schema epic.
-
-**Update 2026-08-05:** I described Signup as having no Event Refinery path,
-which ignored its existing Dux deployment. Signup's `DuxWrapper` already sets
-`protoEventSource="EVENT_APP_ADMIN_WEB"`; Dux 7.6 exposes a typed
-`trackers.duxProto(...)` transport when `enableLogger.duxProto` is enabled.
-Future feasibility work must investigate Dux first and distinguish three paths:
-automatic Dux events forwarded to ER, legacy custom `trackers.dux(...)` events
-that still use Monorail, and typed custom `trackers.duxProto(...)` events routed
-to the proto envelope. Do not propose a second client or claim no ER transport
-until Dux's payload, identity, consent, source, and Signup wrapper constraints
-have been tested. Uncertainty remains around the correct source app, Signup user
-classification, shop context (the current custom proto middleware path sends
-`shopContext: null`), and whether the endpoint has all trusted identifiers.
-
-**Update 2026-08-05 (producer correction):** Investigating Dux first does not
-mean using it first on every surface. I overgeneralized Signup's plausible
-transport into an Admin-first architecture. For a durable Admin business fact,
-first write “one row means \_\_\_ happened,” then use the established semantic
-emitter in `packages/admin/context/observability/index.ts`: feature code passes
-only the generated payload, while the slice owns the envelope and FEC transport.
-Keep Dux for bounded UI telemetry and as a separately approved Signup
-`duxProto` candidate. Never repurpose `DuxEvent`, Admin search/navigation/runtime
-events, or a feature-owned `SimpleProtoClient`. Public advisory feedback is not
-owner approval; Event Refinery conventions may require an actual schema PR and
-first-consumer review before the governance gate closes. Scope: new durable
-Admin semantic events spanning Admin and isolated Signup. Evidence: supplied
-Admin architecture review plus the #6154 public thread. Uncertainty: the final
-Signup producer, employee semantics, consent defaults, raw-table ownership, and
-first-consumer projection still require owners.
-
-**Update 2026-08-05 (coordination correction):** I then treated every downstream
-step as a separate architecture approval and inflated the #6154 owner matrix.
-Dux already gives Admin, Signup, and Guest Checkout an Event Refinery transport:
-both wrappers set `protoEventSource`, and Dux 7.6 routes typed `duxProto` payloads
-through the existing `/.well-known/dux` middleware and FEC envelope path.
-
-- Separate **contract decisions** from **standard execution**. A new durable
-  proto needs one schema/domain reviewer and one real first consumer; Infra
-  Central topic creation and Factoids ingestion are self-service/onboarding
-  workflows, not additional product-design owners.
-- Do not gate on a Dux owner when using the supported `duxProto` API, a Signup
-  observability owner when Dux already suffices, a separate privacy owner when
-  existing envelope consent plus schema classifications settle the contract, or
-  a modeled-data owner before a modeled table is actually required. Escalate
-  each only when the existing path proves insufficient.
-- A new payload type still creates type-specific refined/validated topics even
-  though transport is reused. Reusing the pipe does not mean reusing the
-  `DuxEvent` topic. Extending `DuxEvent` could avoid new topics, but its own
-  schema guidance rejects using the generic substrate as a loophole for a
-  stable, high-value business fact.
-- Admin custom proto emission should keep using Admin observability because the
-  current Dux client-proto middleware deliberately leaves shop and organization
-  null. Signup may use Dux because pre-shop nulls are legitimate, provided its
-  MTT/session/identity contract satisfies the first consumer.
-- Evidence: Admin and Signup `DuxWrapper.tsx`, Dux 7.6 `Track.duxProto`, Dux
-  middleware `ir(...)`, `EVENT_SCHEMA_CONVENTIONS.md`, and issue-on-ramps #865.
-- Uncertainty: whether Signup's Dux MTT/session is enough to join Guest Checkout
-  waits to the later merchant remains a consumer question; only that gap should
-  trigger Signup/Dux envelope work.
+  client application, not routine use of a proven proto method.
+- Evidence: Admin/Signup `DuxWrapper.tsx`, Dux 7.6 `Track.duxProto`, Dux
+  middleware `ir(...)`, `EVENT_SCHEMA_CONVENTIONS.md`, issue-on-ramps #865, and
+  the #6154 public thread.
+- Uncertainty: the final Signup producer, employee semantics, consent defaults,
+  raw-table ownership, first-consumer projection, and whether Signup's Dux
+  MTT/session suffices to join Guest Checkout waits to the later merchant —
+  only that last gap should trigger Signup/Dux envelope work.
 
 ## Keep Slack review requests focused on the decisions
 
@@ -646,3 +561,163 @@ chase HMR/caching. Fix: sign in to accounts.shopify.com with the @shopify.com id
 alongside the merchant account. Also learned: a DOM probe (computed margin/padding walk from a
 found text node) settles "which build is this tab running" faster than screenshot forensics —
 ask for it early; and watch for DevTools console filters hiding output ("returns undefined").
+
+## Use the approved analytics name while documenting browser limits
+
+Source: PR #984365 tophat, 2026-08-11. I named the wait-deactivation event
+`stripe_express_shimmer_page_hidden` to avoid implying abandonment. David chose
+`stripe_express_shimmer_bounce` after comparing it with the existing page-level
+bounce signal and asked for the complete browser-cause contract.
+
+- Follow the approved product/analytics name, but define the directly observed
+  fact separately: an open wait received `visibilitychange`→hidden or
+  `pagehide`; it does not prove permanent abandonment.
+- List which actions usually produce those signals—tab switch, minimize,
+  navigation, reload, tab/browser close—and state that JavaScript cannot
+  reliably distinguish them or survive crash/force-kill/device shutdown.
+- Test both trigger paths, visible-state rejection, deduplication, cleanup, and
+  no emission after resolution; do not treat a name change as string-only.
+- Keep forced-wait tophat helpers uncommitted and verify the remote PR excludes
+  them. This is especially important in this workstream because dev-only Stripe
+  overrides previously escaped onto real branches.
+- Scope: browser lifecycle analytics and local Stripe readiness experiments in
+  admin-web. Evidence is the dual-event local tophat and PR #984365 update.
+  Uncertainty: downstream reporting may later retire the legacy page-level
+  bounce or add a richer, typed exit contract.
+
+## Inventory terminal events before proposing a companion outcome
+
+Source: PR #984365 event-model review, 2026-08-12; consolidated 2026-08-17
+(working-design conduct now lives in commandment #7). I proposed a new
+`checkout_completed` diagnostics event before confirming the existing
+plan-change funnel.
+
+- Check tracker factories and success callbacks before adding outcome events:
+  Signup and Admin already emit
+  `merchant_onboarding_settings_account_start_plan_pressed_success/3.6`, reused
+  by Guest Checkout and Trial Reactivation. Prefer that authoritative
+  attempt/success/error family over a duplicate diagnostics row.
+- Inventory existing correlation keys before adding one. `sessionId` spans many
+  events but is not a checkout-attempt ID (re-entry, reload, and concurrent
+  tabs produce multiple view lifecycles per session); distinguish counting rows
+  from attributing surrounding events to one view — a view ID resolves the
+  latter. Add a companion event only when deterministic correlation is
+  demonstrably required and the identity-and-time join cannot achieve it; make
+  duplicate-counting and semantic-drift costs explicit first. A checkout-submit
+  diagnostic earns its place when it carries the view ID needed to join the
+  authoritative success event — verify it fires at actual submission on every
+  payment path, not a button-click proxy.
+- Encode downstream join requirements as a surface-discriminated
+  event-name-to-fields map, not `{[key: string]: unknown}`. Verify IDs at the
+  adapter boundary: Signup and Guest Checkout emit numeric `userId: 0`, so
+  `storeSignupUuid` is the required key there; `identityUuid` is a distinct,
+  optional Identity-account key and must not be relabeled `userId`. Separate
+  directly emitted events from warehouse classifications (a non-Apple/Google
+  route can be derived from `paymentType`; it proves no extra view).
+- Distinguish temporary deactivation from terminal exit: visibility
+  hidden→visible retains one view ID; modal/route exit or `pagehide` closes it
+  and any re-entry mints a new one; plain `window.blur` is neither. Treat
+  missing-signal classifications as terminal — describe the missing resolution
+  instead of appending impossible follow-on states.
+- Investigate hard-coded identity fallbacks (e.g. required `sessionId: "0"`)
+  before replacing them; history without rationale proves origin, not intent.
+  When a reviewed design supersedes a draft PR, the document is the source of
+  truth and current code is prior art only.
+- Scope: merchant checkout outcome instrumentation in admin-web. Evidence:
+  `getPlanChangeTrackingEvents` and both `getCheckoutTracker` factories.
+  Uncertainty: production validation may show view-level deterministic
+  correlation needs a future schema version; not proven now.
+
+## Create the branch before the first commit of a story
+
+In a Graphite stack it is easy to finish one story, keep working, and commit the
+next story onto the previous story's branch. Nothing warns you: tests pass,
+`fastcheck` passes, and `gt submit` cheerfully pushes the extra commits into the
+open PR of the story below.
+
+Cost when it happened: eight commits of e05s05 landed on the e05s04 branch and
+were pushed to that PR, which had already been reviewed.
+
+Recovery is safe if the commits are contiguous: branch at the current tip, hard
+reset the lower branch to its real boundary commit, then
+`git push --force-with-lease`. `--force-with-lease` will reject with "stale
+info" right after a push; `git fetch <branch>` first, or pin the expectation
+with `--force-with-lease=<branch>:<sha>`.
+
+Future action: run `git branch --show-current` immediately before the first
+commit of a new story, not after.
+
+## write.quick: the editor owns the text once a doc is opened
+
+`content` and `crdtBaseContent` on a `documents` row are only a **seed**. The
+first time someone opens the document, LiveDoc creates a Yjs CRDT row in the
+`__livedoc` collection keyed by `name = <document id>`, and from then on the
+editor renders that CRDT state. Database writes to `content` still succeed, and
+still verify as correct when read back, but are invisible in the browser.
+
+Symptom: "I refreshed and nothing changed" while every read-back check passes.
+
+Fix: back up the `__livedoc` row, `DELETE /api/db/__livedoc/<row id>`, and let
+the editor re-seed from `crdtBaseContent`. Ask the reader to close the tab
+first — an open tab holds the Yjs doc in memory and can re-persist the old
+state.
+
+Future action: after publishing to a doc that has ever been opened, check
+`__livedoc` for a row before claiming the update is live. Verifying the database
+is not the same as verifying what the reader sees.
+
+## Do not rename a production event without a very good reason
+
+A rename splits the reporting flow downstream. Every dashboard, saved query,
+scorecard, and warehouse model keyed to the old name stops at the rename date,
+and anyone comparing across it has to know to UNION two names. The cost is paid
+by people who were not in the conversation, indefinitely.
+
+This came up on `checkout_express_pay_state_at_submit`. After moving it to the
+shared submission fetcher it fires on every payment path, so the name
+under-describes it, and I proposed renaming to `checkout_submitted` on the
+argument that the deploy already breaks the population so we may as well pay one
+discontinuity instead of two.
+
+That argument is wrong. A population change and a name change are not the same
+cost. A population change is a step in a series that still exists and can be
+explained; a rename ends the series. "We are already breaking it" is not a
+licence to break it in a second, worse way.
+
+Future action: treat an event rename as requiring a specific downstream
+justification, not merely a better name.
+
+**The follow-on is sharper than the original lesson.** If a rename is too
+expensive, *moving* the same event to a new call site is not the safe
+alternative — it is worse. A rename fails loudly: queries return zero rows and
+someone notices. A moved call site keeps returning rows that quietly mean
+something else. When the question changes, **add a new event and leave the old
+one alone**; that is what was already done for `checkout_bounce_with_shimmer`.
+
+## Planning capsules must not live inside a repo checkout
+
+**Failure (2026-08-17).** The e05 bigpowers capsule (`specs/epics/e05-*`,
+`specs/verifications/*`, `epic.yaml`, `execution-status.yaml`) lived at
+`areas/clients/admin-web/specs/` inside the World checkout and was gitignored.
+It is now gone — nothing tracked it, so no clean/reset/worktree operation had
+any reason to preserve it. Roughly two weeks of story specs, task YAMLs, the
+five-surface remount audit, and the mutation-testing evidence went with it.
+
+**Why it happened.** Gitignored + inside a checkout is the worst combination:
+git will not restore it because it is untracked, and tooling feels free to
+delete it because it is ignored. This is the same hazard already recorded for
+`tasks/` folders, but I did not generalize the rule to `specs/`.
+
+**Future action.** Durable planning artifacts go in `~/plans/<project>/`, which
+is version-controlled in the brain bank. If a tool insists on a
+checkout-relative path (bigpowers writes to `specs/`), symlink it out to
+`~/plans/<project>/specs/` at setup, before writing anything into it.
+
+**What survived, and why that is the real lesson.** Everything that mattered
+had been pushed to a durable home as it was produced: the spec on write.quick,
+the contract comments on the docs PR, the ACs on the GitHub issues, and the
+evidence tables in the PR bodies. The capsule was the scaffolding, not the
+product. Keep writing conclusions outward as they are reached rather than
+leaving them only in working state.
+
+**Scope.** Any bigpowers/agent capsule in any World zone.

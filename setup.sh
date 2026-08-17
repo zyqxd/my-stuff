@@ -46,6 +46,94 @@ link_agent_skills() {
     done
 }
 
+# qmd powers pi-memory's memory_search (keyword, semantic, and deep modes all
+# require it). Not on Homebrew, and Shopify's toolchain blocks global npm/npx,
+# so it goes in through pnpm. Four things make this more than a one-liner:
+#   1. pnpm 10+ refuses to run native build scripts without an allowlist.
+#   2. That allowlist has to live in pnpm's *global* package.json.
+#   3. better-sqlite3's prebuild-install exits 0 without producing a binary on
+#      Node 24, so its own `|| node-gyp rebuild` fallback never fires.
+#   4. pnpm's global shim resolves its payload from dirname($0), so it cannot be
+#      symlinked onto PATH — it needs a wrapper.
+install_qmd() {
+    if qmd collection list &> /dev/null; then
+        echo "✅ qmd already installed and working"
+        return 0
+    fi
+
+    if ! command -v pnpm &> /dev/null; then
+        echo "⏭️  pnpm not found — skipping qmd (memory_search will be unavailable)"
+        return 0
+    fi
+
+    if ! command -v jq &> /dev/null; then
+        echo "⏭️  jq not found — skipping qmd (needed to allowlist native builds)"
+        return 0
+    fi
+
+    echo "🔍 Installing qmd (search engine for pi-memory)..."
+
+    # pnpm errors out if PNPM_HOME is set but absent from PATH.
+    export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
+    export PATH="$PNPM_HOME:$PATH"
+
+    pnpm add -g @tobilu/qmd || { echo "   ⚠️  Failed to install qmd"; return 0; }
+
+    # Derive the global dir rather than hardcoding it — the `global/<n>` version
+    # segment changes between pnpm majors.
+    local global_root global_dir
+    global_root="$(pnpm root -g 2>/dev/null)" || global_root=""
+    global_dir="$(dirname "$global_root")"
+    if [ ! -f "$global_dir/package.json" ]; then
+        echo "   ⚠️  Could not locate pnpm global dir — skipping native build fixups"
+        return 0
+    fi
+
+    # Allowlist qmd's native deps so pnpm will actually build them, then
+    # reinstall. CI=true avoids ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
+    echo "   🔨 Allowing native builds for qmd dependencies..."
+    if jq '.pnpm.onlyBuiltDependencies = [
+            "better-sqlite3", "node-llama-cpp", "tree-sitter-go",
+            "tree-sitter-javascript", "tree-sitter-python",
+            "tree-sitter-rust", "tree-sitter-typescript"
+        ]' "$global_dir/package.json" > "$global_dir/package.json.tmp"; then
+        mv "$global_dir/package.json.tmp" "$global_dir/package.json"
+    else
+        rm -f "$global_dir/package.json.tmp"
+        echo "   ⚠️  Could not write build allowlist"
+    fi
+    (cd "$global_dir" && CI=true pnpm install) || echo "   ⚠️  Native build pass failed"
+
+    # prebuild-install can exit 0 having produced nothing, which swallows
+    # better-sqlite3's own node-gyp fallback. Check for the binary ourselves.
+    local bs3_dir
+    for bs3_dir in "$global_dir"/.pnpm/better-sqlite3@*/node_modules/better-sqlite3; do
+        [ -d "$bs3_dir" ] || continue
+        if [ ! -f "$bs3_dir/build/Release/better_sqlite3.node" ]; then
+            echo "   🔨 better-sqlite3 binary missing — building from source..."
+            (cd "$bs3_dir" && pnpm dlx node-gyp rebuild --release) \
+                || echo "   ⚠️  better-sqlite3 build failed"
+        fi
+    done
+
+    # pnpm's shim reads dirname($0) to find its payload, so a symlink breaks it.
+    # ~/.local/bin is on PATH via preferences/bash/profile.
+    mkdir -p "$HOME/.local/bin"
+    cat > "$HOME/.local/bin/qmd" <<EOF
+#!/bin/sh
+# pnpm's global shim resolves its payload relative to dirname(\$0), so it cannot
+# be symlinked. Exec it by its real path instead.
+exec "$PNPM_HOME/qmd" "\$@"
+EOF
+    chmod +x "$HOME/.local/bin/qmd"
+
+    if "$HOME/.local/bin/qmd" collection list &> /dev/null; then
+        echo "   ✅ qmd installed ($("$HOME/.local/bin/qmd" --version 2>/dev/null))"
+    else
+        echo "   ⚠️  qmd installed but not runnable — check 'qmd collection list'"
+    fi
+}
+
 # Agent tooling: Shopify installs (pi, brain) plus pi packages and brain wiring.
 # All steps are idempotent; Shopify-only steps are skipped on personal machines.
 setup_agent_tooling() {
@@ -63,10 +151,15 @@ setup_agent_tooling() {
         local pkg
         for pkg in \
             npm:bigpowers \
+            npm:pi-memory \
+            npm:@sentiolabs/pi-frontend-design \
             git:github.com/Shopify/pi-tool-gateway-extension \
             https://github.com/shopify-playground/shop-pi-fy; do
             pi install "$pkg" || echo "   ⚠️  Failed to install pi package $pkg"
         done
+
+        # pi-memory's search modes are dead without qmd.
+        install_qmd
     else
         echo "⏭️  pi not found — skipping pi packages"
     fi

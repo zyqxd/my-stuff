@@ -8,10 +8,12 @@
 brew "bash"
 brew "git"
 brew "node"
+brew "pnpm"
 brew "postgresql@16"
 brew "tfenv"
 brew "yarn"
 brew "openssl@3"
+brew "jq"
 
 # Interactive Git Tools
 brew "lazygit"

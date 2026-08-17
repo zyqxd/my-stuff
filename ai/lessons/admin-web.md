@@ -721,3 +721,33 @@ product. Keep writing conclusions outward as they are reached rather than
 leaving them only in working state.
 
 **Scope.** Any bigpowers/agent capsule in any World zone.
+
+## A "surface"/context enum belongs to the journey, not the call site
+
+**Failure (2026-08-17, #995644).** I added a required `surface` argument to
+every checkout tracker factory and considered the job done. Two factories each
+serve two different merchant journeys, so two surfaces are wrong:
+`getReactivationCheckoutTracker` hardcodes `admin_trial_reactivation` inside
+the wrapper while also serving `/reopen` (cancelled reactivation). My own spec
+said "required at every tracker call site; there is no default" — a constant
+inside a shared wrapper is a default.
+
+**Future action.** When adding a classifier argument, enumerate the *call
+sites* of each factory, not the factories. For each one ask which route or
+journey it runs on, and confirm with the route manifest. If a factory has more
+than one journey, the argument must be a parameter, never a constant inside it.
+
+**Second failure in the same review: I nearly implemented a reviewer's fix
+without verifying their mechanism.** The reviewer said a component "also
+serves" a second route. It does not — the manifest resolves that path to a
+different, legacy component, and production shows 6 rows/day there. They were
+misled by an unreachable pathname predicate left in the component. Verify the
+mechanism, not just the conclusion; otherwise you add dead code and leave the
+real bug in place.
+
+**Verification that worked.** Route manifests answer "what renders here";
+production `payload.pathname` answers "what actually happens". Use both — the
+manifest alone would not have shown the reactivate route is near-dead, and the
+data alone would not have shown which component owns it.
+
+**Scope.** Any enum/classifier threaded through factories in admin-web.

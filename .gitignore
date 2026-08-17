@@ -19,3 +19,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# pi-memory exhaust (drained weekly by refine-memory; MEMORY.md + drain-state.json are versioned)
+ai/memory/daily/
+ai/memory/recovery/
+ai/memory/SCRATCHPAD.md

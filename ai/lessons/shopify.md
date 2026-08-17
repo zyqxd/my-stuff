@@ -8,23 +8,16 @@ global CLAUDE.md for why these live here and not in a repo checkout.)
 
 ## Removing a feature: reconstruct the whole addition, then diff against what's still live
 
-Source: Buyer-to-Merchant CTA "Shopify branding footer" cleanup
-(`e_buyer_to_merchant_cta`), 2026-07. Asked to finish a partial feature removal;
-the leftover was **orphaned i18n keys**, not the code I first went looking for.
-
-A feature is almost never one commit, and the experiment/field cleanup that
-precedes you almost never removes 100% of it. Work it as two steps.
+Source: Buyer-to-Merchant CTA cleanup (`e_buyer_to_merchant_cta`), 2026-07; the
+leftover was **orphaned i18n keys**, not code. A feature is almost never one
+commit, and prior cleanup almost never removes 100% of it. Two steps:
 
 ### 1. Reconstruct the full addition surface (find every commit, not just the one you're handed)
 
-One commit (`387faf7 add footer cta opt-out toggle`) was just the tip. The real
-task spanned ~14 commits by the same author across both zones — UI toggle,
-monorail event, stale-cache fix, experiment-loader refactor, **core email
-partials + model infrastructure**, GraphQL field, DB column, ignored_columns,
-template tweaks (`center footer contact text`, `revert code editor cta
-injection`).
-
-Find them by author **and** by path/message, not by eyeballing one diff:
+The handed-off commit was just the tip: the real addition spanned ~14 commits by
+the same author across both zones (UI toggle, monorail event, core email
+partials + model infra, GraphQL field, DB column, template tweaks). Find them by
+author **and** by path/message, not by eyeballing one diff:
 
 ```sh
 git log --all --author="<feature author>" -i \
@@ -45,11 +38,9 @@ what survives:
 git grep -n "<identifier>" <branch> -- <owning-component-paths>
 ```
 
-Here the Ruby infra (`FooterCtaExtension`, `apply_footer_replacement`,
-`cta_enabled?`, the `_*_cta.liquid.erb` partials) was **already gone**; what
-survived was 2 orphaned translation keys (`powered_by_shopify_cta_html`,
-`start_selling_for_free`) in 33 `config/locales/buyer/*.yml` files + one
-assertion in `test/unit/i18n/buyer_translations_test.rb`.
+Here the Ruby infra was **already gone**; what survived was 2 orphaned
+translation keys in 33 `config/locales/buyer/*.yml` files + one assertion in
+`test/unit/i18n/buyer_translations_test.rb`.
 
 ### CORRECTION (2026-07): "orphaned" was wrong — CI is the oracle for translation removal
 
@@ -169,15 +160,8 @@ paragraphs. Replace internal class names, data-model details, and implementation
 caveats with plain terms unless they change the decision. Keep deeper evidence in
 the linked investigation report rather than copying it into the proposal.
 
-## Never post comments/replies as David — working-agreement core tenet
+## Never post comments/replies as David — promoted 2026-08-11
 
-Source: PR #984362, 2026-08-10. I posted three PR comments under David's account (replies to
-the designer, a correction, a final summary) without being asked. David: "Stop commenting for
-me - this is a core tenant of our working agreement." Rule: never write PR/issue comments,
-review replies, Slack messages, or any other communication that appears as David, even when a
-workflow doc says "reply to PR comment threads" — that guidance yields to this agreement.
-Instead: draft the text and hand it to him to post. Editing PR titles/descriptions of
-PRs I author the code for has been fine so far; posting _dialogue_ as him is not. Scope:
-all zones/projects, all channels. If unsure whether something counts as speaking for him, ask.
-
-**Promoted 2026-08-11:** the global commandments carry this rule; this section retains the source evidence.
+Source: PR #984362, 2026-08-10 (three comments posted under David's account).
+The global "Never speak as David" commandment carries the rule, its scope,
+exceptions, and the ask-when-unsure boundary.

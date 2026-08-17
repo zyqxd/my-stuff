@@ -12,7 +12,18 @@ disable-model-invocation: true
 
 ## Default scope
 
-Audit only `~/Workspace/my-stuff/ai/CLAUDE.md` and `~/Workspace/my-stuff/ai/lessons/*.md`. Treat the first as always-loaded commandments and the second as scoped evidence and patterns.
+Audit `~/Workspace/my-stuff/ai/AGENTS.md` and `~/Workspace/my-stuff/ai/lessons/*.md`. Treat the first as a **constitution** — a short, always-loaded list of commandments, amended rarely — and the second as scoped evidence and patterns. Lessons accumulate weekly; the constitution does not.
+
+### Drain pass
+
+Each run also drains upstream exhaust as **candidate evidence, never authority**:
+
+- `~/Workspace/my-stuff/ai/memory/MEMORY.md` and `ai/memory/daily/*.md` — pi-memory output.
+- The brain personal bank diff since the watermark in `ai/memory/drain-state.json`:
+  `git -C $(brain memory-bank resolve personal) diff <sha>..HEAD -- projects plans`.
+  Exclude `core/dailyContext.md` and history — it is a status view whose durable content already lands in project `decisions.md`.
+
+Route each drained item: behavior → scoped lesson; durable fact → `ai/memory/MEMORY.md` (propose `memory_write`); noise → propose `memory_forget` or skip. Never edit brain files; originals stay in place. Update the watermark and `drained_at` only after approved operations are applied, so a rejected or aborted run re-presents the same material.
 
 Other than this skill's already-loaded instructions and reference, exclude every `skills/` path. Never read, compare, audit, edit, or propose changes to skills or their evals. A procedural lesson remains scoped or is deferred for separate user-directed work.
 
@@ -43,22 +54,30 @@ If compression would lose one of these, preserve the detail. If the lesson lacks
 
 ### 3. Classify candidates
 
+Candidates come from scoped lessons **and from the constitution itself**: re-audit every existing commandment against the format and promotion gate; one that has accreted caveats, extra bullets, or narrow clauses is a rewrite or `demote` candidate.
+
 Group lessons only when they share a trigger, cause, and corrective action. Give every candidate exactly one disposition:
 
-- `promote` — direct commandment that passes every promotion gate.
+- `promote` — amend the constitution; requires a pattern refined through multiple independent lessons and passing every promotion gate.
 - `consolidate` — merge repeated scoped evidence without widening or weakening it.
 - `clarify` — rationale, scope, evidence, or uncertainty is insufficient; ask targeted questions.
+- `demote` — move a commandment that no longer passes every gate back into its scoped lesson file.
 - `keep` — useful scoped lesson that is already clear.
 - `defer` — procedure or on-demand fact stays outside commandments and other stores remain untouched.
 - `remove` — stale, contradicted, redundant, derivable, or transient content with no remaining causal value.
 
-Prefer revising an existing rule over adding a near-duplicate. A one-off correction stays scoped unless the human explicitly declares it durable.
+Prefer revising an existing rule over adding a near-duplicate. A one-off correction stays scoped unless the human explicitly declares it constitutional. The default disposition for a new lesson is `keep` or `consolidate` in its scoped file; amendment is the exception, not the weekly output.
+
+Lessons have a lifecycle too: when a scoped file exceeds roughly 150 lines, propose a consolidation pass for it in the same audit.
 
 ### 4. Synthesize direct rules and compare meaning
 
-- Write in plain, imperative language: **when this happens → do this → verify this → observe this boundary**.
-- Default to one verifiable sentence. Use a heading with 2–4 short bullets when independent dimensions would become vague in one sentence, especially for explicit communication preferences.
-- Map every claimed prevented failure to the exact clause that prevents it; revise any rule whose wording covers less than its rationale claims.
+- Write scoped lessons in plain, imperative language: **when this happens → do this → verify this → observe this boundary**.
+- Write every commandment in the constitution format defined in REFERENCE.md: a bold imperative title plus at most three one-line bullets.
+- When evidence adds an exception to an existing commandment, rewrite it at the level of principle that covers both cases; never append caveats, sub-clauses, or "unless" chains.
+- Amendments default to net-zero growth: pair each addition with a merge, `demote`, or `remove`, and report the footprint delta.
+- On promotion, collapse each source lesson to a one-line provenance pointer to the commandment; never hold the same rule in two layers.
+- Map every claimed prevented failure to the clause that prevents it; principle-level coverage counts, but a clause may never be narrower than the failure it claims to prevent.
 - Compare rules semantically by trigger, prescribed action, scope, and exceptions. Different headings or vocabulary do not make conflicting actions compatible.
 - Preserve uncertainty and next evidence needed; never convert “unknown” into a conclusion merely to make a rule timeless.
 
@@ -66,7 +85,7 @@ For each promotion, state recurrence evidence, scope, shelf life, non-obvious va
 
 ### 5. Write the review artifact and stop
 
-Write `~/plans/DD_MM_YYYY-memory-refinement.md` using the real system date. Start with a short **Human review** section containing the verdict, proposed decisions, risks or unresolved questions, and footprint delta. Put scope, evidence maps, semantic conflict checks, and exact patches afterward.
+Write `~/plans/memory-refinement/YYYY-MM-DD-memory-refinement.md` using the real system date, per the Report Output Convention. Start with a short **Human review** section containing the verdict, proposed decisions, risks or unresolved questions, and footprint delta. Put scope, evidence maps, semantic conflict checks, and exact patches afterward.
 
 Preview the complete proposal and ask the human to approve all, approve selected items, revise, or stop. **Do not edit memory in this turn.**
 

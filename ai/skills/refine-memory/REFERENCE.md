@@ -4,6 +4,7 @@
 
 - Memory layers
 - Lesson sufficiency
+- Constitution format
 - Direct rule synthesis
 - Semantic comparison
 - Promotion gate
@@ -17,12 +18,13 @@ Keep information at the narrowest layer that reliably serves it.
 
 | Layer | Contents | Loading policy |
 |---|---|---|
-| Commandments | Stable, cross-task behavioral rules in `ai/CLAUDE.md` | Always loaded; highest bar |
-| Scoped lessons | Evidence-backed patterns in `ai/lessons/<scope>.md` | Read for relevant work |
+| Constitution | Short list of commandments in `ai/AGENTS.md`, amended rarely | Always loaded; highest bar; net-zero growth |
+| Scoped lessons | Evidence-backed patterns in `ai/lessons/<scope>.md` | Read for relevant work; consolidated when a file grows unwieldy |
+| Memory facts | Durable retrievable facts in `ai/memory/MEMORY.md` (pi-memory) | Searched on demand; drained candidates land here when factual, not behavioral |
 | Skills | Repeatable multi-step workflows and fragile procedures | Excluded: never scan, compare, or edit |
 | Path-scoped rules | Guidance that applies to specific files or zones | Defer to separate user-directed work |
-| Brain knowledge | Durable facts worth retrieving later | Search/read on demand |
-| Project and daily context | Decisions, status, and current work | Project/session only |
+| Brain personal bank | Project docs, decisions, plans reports | Upstream source: drained via watermark diff, never curated here |
+| Daily exhaust | `ai/memory/daily/`, scratchpad, brain dailyContext | Transient; drained (dailyContext excluded) then left to expire |
 | Generated memory | Claude/Codex summaries and extracted observations | Candidate evidence only |
 
 Do not duplicate a lesson into Brain knowledge when existing configuration declares lessons authoritative. Do not promote a factual note merely because it is useful; commandments govern behavior.
@@ -43,6 +45,28 @@ A useful lesson needs enough rationale to change future behavior:
 
 These are information requirements, not a mandatory template. Keep prose compact when it already answers them. If a required field is absent, classify the candidate `clarify`, ask only the missing questions, and preserve the original text. Never invent a cause or delete uncertainty to make a lesson appear complete.
 
+## Constitution format
+
+The always-loaded file is a constitution: a short list of priorities the agent can hold in focus every session. It changes the way a constitution does — through rare amendments, each refined from multiple lessons — never as a weekly changelog of rules and exceptions.
+
+Each commandment is a bold imperative title with at most three one-line bullets:
+
+```markdown
+**Speak plainly**
+- Expand an acronym the first time it appears.
+- Prefer common words to jargon; explain a necessary term once.
+- Lead with behavior and outcomes, not implementation detail.
+```
+
+Format rules:
+
+- One idea per bullet; no sub-bullets, stacked parentheticals, or "unless" chains.
+- An accumulating exception is evidence the rule was written too narrowly: rewrite the commandment at the principle level that covers both cases rather than appending the caveat.
+- Amendments hold total always-loaded footprint flat or smaller by default; to add a commandment, first propose a merge, demotion, or removal.
+- Amendments reuse the constitution's existing stable section headings; a new section is itself an amendment needing the same evidence.
+- Procedures, examples, and evidence live in scoped lessons or skills, never in the constitution.
+- Target under 100 always-loaded lines, measured with `wc -l`; treat the cited 200-line guidance as a hard bound, not a budget to fill. The file trends toward fewer, stronger commandments over time.
+
 ## Direct rule synthesis
 
 Convert rationale into an observable rule:
@@ -53,7 +77,7 @@ When <trigger>, <action>; verify <evidence>; preserve <boundary or exception>.
 
 Prefer a direct imperative over a summary. “Format for the task” is vague; naming paragraphs for explanation, bullets for distinct points, numbered lists for sequence, and tables for comparisons is actionable.
 
-One sentence is the default, not a hard limit. Use one heading with 2–4 short bullets when an explicit preference has independent actions that would become vague if compressed together. Each bullet must still pass the promotion gate.
+This trigger→action shape is for scoped lessons. When a lesson is promoted, compress it into the constitution format above; each bullet must still pass the promotion gate.
 
 For every proposed rule, build a coverage map from each claimed prevented failure to the clause that prevents it. If evidence includes wrong-context edits but the rule starts only before commit, the rule is incomplete.
 
@@ -74,7 +98,7 @@ A conflict exists when the same trigger and scope lead to incompatible actions, 
 
 A commandment must pass **all** criteria:
 
-1. **Evidence** — the human explicitly declared it durable, or at least two independent corrections or outcomes support it; the source and rationale are preserved.
+1. **Evidence** — the human explicitly declared it constitutional, or the same pattern recurred across scopes or across separate refinement cycles — not merely twice in one week; the source and rationale are preserved in the scoped lesson.
 2. **Recurrence** — the prevented failure is likely across future tasks in the destination scope.
 3. **Correct scope** — global memory receives only broadly applicable rules; narrower rules stay scoped.
 4. **Behavioral value** — the rule materially changes an agent action or decision.
@@ -82,10 +106,12 @@ A commandment must pass **all** criteria:
 6. **Durability** — the rule is unlikely to expire with a branch, project phase, person, date, or tool version.
 7. **Non-obviousness** — a capable agent cannot reliably derive it from code, standard practice, or current documentation.
 8. **Consistency** — semantic trigger/action/boundary comparison finds no unresolved duplicate or conflict; revise an existing rule when possible.
-9. **Economy** — use one concise sentence by default, or one 2–4 bullet block when separate actionable dimensions would otherwise become vague. Longer workflows remain scoped or deferred.
+9. **Economy** — the rule fits the constitution format (bold imperative title, at most three one-line bullets) and the amendment keeps the always-loaded footprint flat or smaller. Longer workflows remain scoped or deferred.
 10. **Safety** — it contains no secret, credential, personal data, buyer data, merchant data, or sensitive incident detail.
 
 A failed criterion blocks promotion, not retention. Keep useful evidence in its existing lesson or record; any destination change requires separate user-directed work.
+
+The gate cuts both ways: an existing commandment that fails a criterion on re-audit is a `demote` candidate — move its substance back to the scoped lesson rather than patching it with a caveat.
 
 ## Effectiveness versus efficiency
 

@@ -38,10 +38,9 @@
 
 ### 8. Never Wait on CI
 
-- **David reports CI results.** After pushing, never poll, sleep, loop on `devx ci status`/`agent-ci`, or hold a turn open waiting for a build — no matter how close it looks to finishing.
-- End the turn with an explicit handoff: what was pushed, the new head SHA, and what local evidence already covers it. Then move to the next unblocked task or stop.
-- Local verification is what gates "done" (see 4). CI is confirmation David relays, not proof I wait for.
-- Once he reports a failure or hands over a build URL, pull the logs and fix it autonomously (see 6). Reading CI is expected; waiting on CI is not.
+- After pushing, never poll, sleep, or hold a turn open for a build; David relays CI results.
+- End the turn with a handoff — what was pushed, the head SHA, the local evidence covering it; local verification gates "done".
+- When David reports a failure or build URL, pull the logs and fix autonomously; reading CI is expected, waiting is not.
 
 ## Task Management
 
@@ -49,12 +48,15 @@
 
 ## Memory & Learnings Location
 
-Durable memory lives in the version-controlled `~/Workspace/my-stuff/ai/` repo
-(the same repo as this file, symlinked into `~/.pi/agent/CLAUDE.md`) — **never**
-inside a project/monorepo checkout.
+Durable memory lives in the version-controlled `~/Workspace/my-stuff/ai/`
+directory — **never** inside a project/monorepo checkout. This file
+(`ai/AGENTS.md`) is the canonical constitution behind every per-tool symlink.
 
 - **Lessons:** `~/Workspace/my-stuff/ai/lessons/<project>.md` — one file per
   project or World zone (e.g. `admin-web.md`).
+- **Memory:** `~/Workspace/my-stuff/ai/memory/` — durable facts in `MEMORY.md`
+  (pi-memory store; `~/.pi/agent/memory` symlinks here). Daily logs and
+  scratchpad are unversioned exhaust, drained by the weekly refine-memory run.
 - **Reports & active todos:** `~/plans/` (see Report Output Convention) — a
   symlink into the brain personal bank (`~/.brain/memory-bank/personal/plans/`).
 - **Never** write lessons/scratch/todos to a `tasks/` (or similar) folder inside
@@ -75,7 +77,7 @@ inside a project/monorepo checkout.
   - Lead with the outcome or decision.
   - Use short paragraphs for explanation, bullets for distinct points, numbered lists for sequences, and tables for compact comparisons.
   - Prefer plain words; technical ability does not imply expertise in every field, so explain necessary specialist terms in common words on first use.
-- **Representative evidence:** Treat tests, evaluations, and analysis as proof only when inputs are representative, information-complete, and inspectable; toy or truncated inputs prove mechanics, not the claimed behavior or result.
+- **Verify the evidence channel:** Before interpreting behavior, prove the build, data, or channel observed is the one intended; treat tests and analysis as proof only when inputs are representative, information-complete, and inspectable — toy inputs prove mechanics, not the claim.
 - **Comments — match the codebase (Shopify is light):** Default to none. Add one only to explain a non-obvious constraint or trade-off, never what the code does; refactor or rename unclear code, and put test intent in a descriptive `it(...)` name.
 - **Follow existing patterns:** Match the section/module's file layout and conventions; if a pattern must change, change every instance together. Keep discriminating test data legible at the assertion site.
 

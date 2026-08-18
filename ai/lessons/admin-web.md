@@ -783,3 +783,26 @@ implementation instead of HEAD. Assert the anchor count before writing, and
 after the run verify the implementation is still on disk.
 
 **Scope.** Any mutation-testing or scripted edit/revert loop.
+
+## Verify the branch after `gt checkout` — never swallow its output
+
+**Failure (2026-08-18).** I ran `gt checkout <branch> 2>&1 | tail -1` and read
+the truncated output as success. It had actually failed with "already used by
+worktree at ~/world/trees/root/src" — the root worktree was parked on that
+branch. Every edit for the next ~20 tool calls went to the wrong branch (the top
+of the stack instead of the bottom). Only an unexpected file existing gave it
+away. Nothing was committed, so it was recoverable, but the work had to be
+redone on the right branch.
+
+**Future action.** After any branch switch, assert rather than read:
+`B=$(git branch --show-current); [ "$B" = "<expected>" ] || exit 1`. Never pipe
+`gt checkout` through `tail`/`head`. Keep the root worktree on `main` — a
+feature branch parked there silently blocks the dedicated worktree.
+
+**Related.** In a Graphite stack, a change belongs on the branch that
+*introduces* the thing being changed. I twice fixed test files one branch too
+high, which left the lower branch failing type-check on its own. After a
+stack-wide change, grep every branch with `git grep <pattern> <branch>` and
+confirm each is independently clean.
+
+**Scope.** Any multi-worktree or stacked-branch work in World.

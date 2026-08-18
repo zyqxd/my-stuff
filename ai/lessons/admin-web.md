@@ -751,3 +751,19 @@ manifest alone would not have shown the reactivate route is near-dead, and the
 data alone would not have shown which component owns it.
 
 **Scope.** Any enum/classifier threaded through factories in admin-web.
+
+## Never reuse a reviewer's comment numbers for your own action items
+
+**Failure (2026-08-17, #995644).** I numbered a disposition table 1–4 after the
+reviewer's four comments, then referred to my own separate finding as "Fix 2".
+Comment 2 was the one I had *rejected*. David had to stop and ask "I thought
+you said 2 was a reject?" — the plan read as though I had reversed myself.
+
+**Future action.** When responding to review feedback, keep two namespaces:
+numbers for *their* comments, letters for *my* actions. State the mapping
+explicitly, including comments that produce no action and actions that come
+from no comment. A rejected comment and an accepted action must never be able
+to share a label.
+
+**Scope.** Any review-response writeup, PR reply, or plan derived from
+numbered external feedback.

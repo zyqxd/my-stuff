@@ -839,3 +839,67 @@ in the stack, pushing the other branches with plain `git push` updates their PR
 heads fine and decouples "code pushed" from "PR object repaired".
 
 **Scope.** Graphite stacks in shop/world.
+
+## Distinguish code dependency from feature dependency when reporting isolation (2026-08-17)
+
+**Failure:** On shop/issues-monetization#7256 I described the PR as "self-contained"
+after rebasing onto main. David challenged it — correctly. The change was
+*code*-isolated (branch = main + 1 commit, no symbols from the open #1001312,
+type-check and 1479 tests green) but *feature*-dependent: the issue's acceptance
+criterion needs #1001312 to produce the `?plan=&bp=` URL, so on main alone the
+change is dormant and reachable only by typing the URL.
+
+**Why it matters:** "self-contained" reads as "ready and complete". It invited the
+wrong conclusion about whether the issue could be closed, and made my earlier
+"#7256 depends on #1001312" look like a contradiction when both statements were
+true about different things.
+
+**Future action:** when reporting that work is isolated/unblocked, always answer two
+questions separately and label them:
+1. **Code dependency** — does it compile, type-check and pass tests on the base
+   alone? Prove with symbol audit + green checks.
+2. **Feature dependency** — can a user actually reach the behaviour on the base
+   alone? Prove by tracing the entry point (who navigates/produces the input).
+State the merge-order consequence of each order when they differ.
+
+**Scope:** any stacked/parallel PR work, not just admin-web. Especially where one PR
+supplies a route or URL and another consumes it.
+
+**Evidence:** shop/world#1001494; on main nothing navigates to `/reopen` with
+`plan`/`bp` (only a test fixture matches), the plan link still targets the legacy
+full-page picker.
+
+## Derive PR-body payload claims from test assertions, not from reading the code
+
+**Failure (2026-08-18).** #995644's body claimed Signup "omits `userId`/`shopId`
+rather than sending `0`". The code emits `0` for both, and a test named
+`emits Signup zero join keys and relies on storeSignupUuid to join` asserts
+exactly that. A reviewer caught it. The tophat checklist I wrote — "confirm a
+Signup payload omits userId and shopId entirely" — would have failed on first
+attempt, so the body shipped a verification step that could not pass.
+
+**Root cause: inference stood in for tracing.** Two true facts,
+(a) the builder omits a key when the host supplies `undefined`, and (b) Signup has
+no usable numeric userId, were fused into a false third claim. What was never
+checked is the value Signup actually supplies: `getSharedTrackingPayload` sets
+`isSignupFlow ? {shopId: 0, userId: 0}`, an explicit zero, so the `undefined`
+branch never runs. Reading the mechanism is not the same as tracing the value
+through it.
+
+**The verification I ran could not catch it.** Tests compare code to code; the
+full suite was green while the prose was wrong. Nothing checks prose against
+code, so "PR bodies are verification scripts" had no enforcement behind it.
+
+**Future action.** When a PR body asserts anything about payload shape — a field
+present, absent, zero, or renamed — grep the test file for that field and quote
+the assertion into the body. If no test asserts it, either add one or drop the
+claim. Prefer deriving the body's field table from test names, since a test name
+that contradicts the prose is the cheapest possible signal.
+
+**Second-order.** After any contract change, sweep every PR body and issue in the
+stack for the removed vocabulary, not just the PR being edited. The same
+`customFields.surface` removal left stale claims in three other PR bodies and in
+two issues' acceptance criteria; reviewers then judge code against requirements
+that no longer exist.
+
+**Scope.** Any stacked PR set with a written contract.

@@ -767,3 +767,19 @@ to share a label.
 
 **Scope.** Any review-response writeup, PR reply, or plan derived from
 numbered external feedback.
+
+## Stage your work before mutation-testing
+
+**Failure (2026-08-17, #995644).** I mutation-tested with `git checkout -- <file>`
+as the revert step while my implementation was still unstaged. The first revert
+restored the file to HEAD, silently deleting the real edits to two files. The
+next two mutations then failed to find their anchors and reported against the
+reverted code, which briefly looked like missing test coverage rather than a
+lost implementation.
+
+**Future action.** `git add -A` before the first mutation. `git checkout --`
+restores from the index, so with the work staged the revert puts back the
+implementation instead of HEAD. Assert the anchor count before writing, and
+after the run verify the implementation is still on disk.
+
+**Scope.** Any mutation-testing or scripted edit/revert loop.

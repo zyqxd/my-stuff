@@ -6,27 +6,44 @@
 #   2. Checks which tracked branches still exist on the remote (one ls-remote
 #      round-trip, no object transfer) — a gone upstream usually means the PR merged
 #   3. Prunes remote-tracking refs whose branch was deleted on the remote
-#   4. Removes worktrees whose branch is merged or gone (never dirty or locked)
+#   4. Removes worktrees whose branch is merged or gone (never dirty, locked,
+#      protected, or holding a .env)
 #   5. Deletes local branches that are merged or gone; flags stale ones for review
 #   6. Runs incremental maintenance (never `gc --prune=now`)
 #
 # Every deletion is logged with its SHA to <git-dir>/cleanup.log; recover with
-# `git branch rescue <sha>` within the gc grace period (~2 weeks).
+# `git branch rescue <sha>` within the gc grace period (~2 weeks). That covers
+# commits only: removing a worktree also deletes its ignored files
+# (node_modules, build caches, .env) with no recovery path at all.
+#
+# Protecting a long-lived worktree — a bare-repo layout has no "primary"
+# worktree, so a home checkout is indistinguishable from a throwaway one and
+# needs to say so explicitly:
+#   git worktree lock <path>     preferred; honoured by step 4
+#   touch <path>/.no-cleanup     marker file, same effect
+#   --protect-path ERE           matched against the worktree path
 #
 # Usage: git monorepo-cleanup [-y] [--force-gone] [--main BRANCH] [--remote NAME]
-#                             [--protect ERE] [--stale-days N]
-#   -y            apply changes (default: dry run)
-#   --force-gone  delete gone-upstream branches even when not an ancestor of
-#                 main (required when the host squash-merges PRs)
-#   --main        primary branch (default: main)
-#   --remote      remote name (default: origin)
-#   --protect     ERE of branches never touched (default: main|master|develop|production|staging)
-#   --stale-days  flag branches/worktrees with no commits in N days (default: 45)
+#                             [--protect ERE] [--protect-path ERE] [--drop-env]
+#                             [--stale-days N]
+#   -y             apply changes (default: dry run)
+#   --force-gone   treat a deleted upstream as merged even when the branch is
+#                  not an ancestor of main (required when the host squash-merges
+#                  PRs, since squashing means merged work never becomes an
+#                  ancestor). This widens worktree removal too, not just branches.
+#   --main         primary branch (default: main)
+#   --remote       remote name (default: origin)
+#   --protect      ERE of branch names never touched (default: main|master|develop|production|staging)
+#   --protect-path ERE of worktree paths never removed (default: none)
+#   --drop-env     allow removing a worktree that contains a .env (default: keep,
+#                  because a .env is the one ignored file that cannot be rebuilt)
+#   --stale-days   flag branches/worktrees with no commits in N days (default: 45)
 
 set -euo pipefail
 
-MAIN=main REMOTE=origin STALE_DAYS=45 APPLY=0 FORCE_GONE=0
+MAIN=main REMOTE=origin STALE_DAYS=45 APPLY=0 FORCE_GONE=0 DROP_ENV=0
 PROTECT_RE='^(main|master|develop|production|staging)$'
+PROTECT_PATH_RE=''
 
 while (($#)); do
   case "$1" in
@@ -35,8 +52,11 @@ while (($#)); do
     --main)       MAIN="$2"; shift ;;
     --remote)     REMOTE="$2"; shift ;;
     --protect)    PROTECT_RE="$2"; shift ;;
+    --protect-path) PROTECT_PATH_RE="$2"; shift ;;
+    --drop-env)   DROP_ENV=1 ;;
     --stale-days) STALE_DAYS="$2"; shift ;;
-    -h|--help)    sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    # prints the comment block after the shebang, so it cannot drift out of sync
+    -h|--help)    awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
   shift
@@ -91,6 +111,9 @@ done < "$TMP/tracked" > "$TMP/gone"
 
 is_gone()      { grep -qxF "$1" "$TMP/gone"; }
 is_protected() { printf '%s' "$1" | grep -Eq "$PROTECT_RE"; }
+is_protected_path() {
+  [ -n "$PROTECT_PATH_RE" ] && printf '%s' "$1" | grep -Eq "$PROTECT_PATH_RE"
+}
 is_merged()    { git merge-base --is-ancestor "refs/heads/$1" "refs/remotes/$REMOTE/$MAIN" 2>/dev/null; }
 
 # ------------------------------------------- 3. stale remote-tracking refs
@@ -132,7 +155,22 @@ while IFS=$'\t' read -r wpath wref wflags; do
     echo "    prune  $wpath — directory gone"; continue
   fi
 
-  # -uno: scanning untracked files across a monorepo worktree is glacial
+  # Protection is checked before the reason chain below, not inside it: a
+  # detached HEAD used to short-circuit straight to "remove" and bypass every
+  # protection, so a parked detached worktree was unprotectable.
+  if is_protected_path "$wpath"; then
+    echo "    keep   $wpath ($label) — protected path"; continue
+  fi
+  if [ -e "$wpath/.no-cleanup" ]; then
+    echo "    keep   $wpath ($label) — .no-cleanup marker"; continue
+  fi
+  if [ -n "$branch" ] && is_protected "$branch"; then
+    echo "    keep   $wpath ($label) — protected"; continue
+  fi
+
+  # -uno: scanning untracked files across a monorepo worktree is glacial. This
+  # is deliberately blind to untracked files; `git worktree remove` below is
+  # what refuses those, which is why it must never be given --force.
   if [ -n "$(git -C "$wpath" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
     echo "    KEEP   $wpath ($label) — uncommitted changes"; continue
   fi
@@ -140,8 +178,6 @@ while IFS=$'\t' read -r wpath wref wflags; do
   reason=""
   if [ -z "$branch" ]; then
     reason="detached HEAD, clean"
-  elif is_protected "$branch"; then
-    echo "    keep   $wpath ($label) — protected"; continue
   elif is_merged "$branch"; then
     reason="merged into $REMOTE/$MAIN"
   elif is_gone "$branch"; then
@@ -155,10 +191,39 @@ while IFS=$'\t' read -r wpath wref wflags; do
     continue
   fi
 
+  # Removal also deletes every ignored file in the tree. node_modules and build
+  # caches are only a rebuild; a .env is usually unrecoverable, so it blocks.
+  envf="$(find "$wpath" -maxdepth 4 -name node_modules -prune -o \
+                        -name '.env' -type f -print -quit 2>/dev/null || true)"
+  if [ -n "$envf" ] && ((!DROP_ENV)); then
+    echo "    KEEP   $wpath ($label) — contains $envf (use --drop-env to override)"
+    continue
+  fi
+  nmods="$(find "$wpath" -maxdepth 4 -name node_modules -type d -prune -print 2>/dev/null \
+           | wc -l | tr -d ' ')"
+  if [ "${nmods:-0}" -gt 0 ]; then
+    echo "    note   $wpath — also deletes $nmods ignored node_modules dir(s)"
+  fi
+
+  # SHA must be read before removal; afterwards the worktree is gone.
+  wsha="$(git -C "$wpath" rev-parse HEAD)"
   echo "    remove $wpath ($label) — $reason"
-  note "worktree-remove $wpath $label $(git -C "$wpath" rev-parse HEAD) [$reason]"
-  act git worktree remove "$wpath"
-  if ((APPLY)); then rmdir "$(dirname "$wpath")" 2>/dev/null || true; fi
+  # No --force, by design: see the -uno note above. Adding it would silently
+  # destroy untracked work that the cleanliness check cannot see. That refusal
+  # is expected, not exceptional, so it must not abort the run under set -e.
+  if ! act git worktree remove "$wpath"; then
+    echo "    KEEP   $wpath ($label) — git refused: untracked files the -uno check cannot see"
+    continue
+  fi
+  # note after the fact, so the log only records removals that really happened
+  note "worktree-remove $wpath $label $wsha [$reason]"
+  # The parent is the project folder, not scratch space — report, never delete.
+  if ((APPLY)); then
+    parent="$(dirname "$wpath")"
+    if [ -d "$parent" ] && [ -z "$(ls -A "$parent" 2>/dev/null)" ]; then
+      echo "    note   $parent is now empty — remove it yourself if unwanted"
+    fi
+  fi
 done < "$TMP/wtrec"
 
 act git worktree prune --verbose

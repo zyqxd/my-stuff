@@ -806,3 +806,36 @@ stack-wide change, grep every branch with `git grep <pattern> <branch>` and
 confirm each is independently clean.
 
 **Scope.** Any multi-worktree or stacked-branch work in World.
+
+## Recovering a shop/world PR that Graphite closed by deleting its base
+
+**Failure (2026-08-18).** `gt submit --force` on a stacked branch failed with
+"failed to retarget PR #996927: Server Error". Graphite had retargeted the PR to
+a temporary `graphite-base/996927` branch and then deleted that ref; GitHub
+auto-closes a PR whose base branch is gone. The next `gt submit` refused to run
+at all because it saw a closed PR in the stack, blocking two other branches.
+
+**Recovery, in this order — order matters:**
+
+1. Restore the deleted base ref. `git ls-remote` and the GitHub API may both
+   report it missing while Gitstream still holds it, so a plain push fails
+   "non-fast-forward". Push it with `--force`:
+   `git push --force origin <sha>:refs/heads/graphite-base/<pr>`.
+2. Restore the head branch to the exact SHA it had when the PR closed. GitHub
+   refuses to reopen with "state cannot be changed. The <branch> branch was
+   force-pushed or recreated" otherwise, and no amount of retrying helps.
+3. Reopen with REST: `gh api -X PATCH repos/shop/world/pulls/<pr> -f state=open`.
+   `gh pr reopen` returns an unhelpful "Could not open the pull request".
+4. Only now retarget the base to the real parent — GitHub rejects a base change
+   while the PR is closed.
+5. Force-push the head forward to the current tip.
+
+**Also learned.** `--force-with-lease` reports "stale info" against Gitstream
+even immediately after fetching the exact refs. Verify the remote tip's author
+and that the divergence is your own rebase, then use plain `--force`.
+
+**Prefer plain git to unblock.** When `gt submit` refuses because of one bad PR
+in the stack, pushing the other branches with plain `git push` updates their PR
+heads fine and decouples "code pushed" from "PR object repaired".
+
+**Scope.** Graphite stacks in shop/world.

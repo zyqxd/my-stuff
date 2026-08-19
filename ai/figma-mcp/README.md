@@ -1,162 +1,176 @@
-# figma-mcp — Figma MCP for pi, in one directory
+# pi-figma-mcp
 
-A self-contained pi package that gives pi the same two things Claude Code's
-`figma@claude-plugins-official` plugin gives Claude: **Figma's MCP tools** and
-**Figma's official skills**. Pi has no plugin marketplace and no built-in MCP, so
-the MCP half is provided by the community extension
-[`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter).
+Figma's MCP tools and Figma's official skills, packaged for the
+[pi coding agent](https://pi.dev) — the equivalent of Claude Code's
+`figma@claude-plugins-official` plugin.
 
-Everything lives under this directory. Nothing was written to `~/.config/mcp/`,
-`~/.pi/agent/mcp.json`, or any other ambient location — the only change outside
-this folder is one line in `~/.pi/agent/settings.json` (see [Wiring](#wiring)).
+Pi has no plugin marketplace and no built-in MCP, so this package supplies both
+halves: the MCP client is the community extension
+[`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter), and the skills are
+cloned from [`figma/mcp-server-guide`](https://github.com/figma/mcp-server-guide) at
+the same SHA the official Claude marketplace pins.
+
+## Install
+
+```bash
+pi install git:github.com/zyqxd/pi-figma-mcp@v1
+```
+
+Pi clones the package, installs `pi-mcp-adapter`, and the `postinstall` fetches the
+Figma skills into `vendor/`. Restart pi, then `/mcp` shows the server.
+
+From a local checkout instead: `./setup.sh`.
+
+Uninstall with `pi remove git:github.com/zyqxd/pi-figma-mcp`.
 
 ## Contents
 
 ```
-figma-mcp/
-├── package.json     pi manifest: which extension + which skills to load
-├── index.ts         the extension — hands ./mcp.json to pi-mcp-adapter
-├── mcp.json         the only Figma config (server URL, auth, tool exposure)
-├── setup.sh         reproduces node_modules/ + vendor/ from scratch
-├── node_modules/    pi-mcp-adapter 2.23.0 (gitignored)
-└── vendor/          figma/mcp-server-guide @ 72fcf1f (gitignored)
-    └── figma-mcp-server-guide/skills/   12 official Figma skills
+pi-figma-mcp/
+├── index.ts             the extension — merges config and hands it to pi-mcp-adapter
+├── mcp.json             shipped defaults (safe for everyone)
+├── mcp.local.json       your machine's overrides — gitignored, optional
+├── scripts/
+│   └── fetch-skills.mjs clones Figma's skills at a pinned SHA
+├── setup.sh             manual install
+├── node_modules/        pi-mcp-adapter (gitignored)
+└── vendor/              figma/mcp-server-guide @ 72fcf1f (gitignored)
 ```
 
-`index.ts` passes the config **in memory** (`createMcpAdapter({ config })`), which
-makes the adapter skip all of its normal config discovery. Consequence: this
-package can only ever see the Figma server defined in `mcp.json`, and `/mcp setup`,
-`/mcp enable`, and `/mcp disable` are inert (edit `mcp.json` instead).
+Config is passed to the adapter **in memory** (`createMcpAdapter({ config })`), so it
+never reads ambient MCP config — not `~/.config/mcp/mcp.json`, not `.mcp.json`, not
+host configs. The consequence: `/mcp setup`, `/mcp enable`, and `/mcp disable` are
+inert. Edit `mcp.json` (shared) or `mcp.local.json` (yours) and restart pi.
 
-## Wiring
+`mcp.local.json` is merged over `mcp.json` one level deep per server, and is
+gitignored — put your server choice and any credentials policy there so the shared
+default stays neutral.
 
-Registered with `pi install`, which appended a relative path to the `packages`
-array in `~/.pi/agent/settings.json`:
+## Authentication — read before first use
+
+Figma runs two MCP servers, and **the remote one will not let pi register**.
+
+| Server             | URL                         | Auth                                      | Shipped state      |
+| ------------------ | --------------------------- | ----------------------------------------- | ------------------ |
+| Desktop (Dev Mode) | `http://127.0.0.1:3845/mcp` | none — inherits the desktop app's session | **enabled**        |
+| Remote             | `https://mcp.figma.com/mcp` | OAuth 2.1                                 | `"disabled": true` |
+
+Enable only one: `toolPrefix` is `none`, so both would claim the same tool names.
+
+### Desktop server (default, no decisions required)
+
+Open a design file in the Figma **desktop app** → menu **Figma → Preferences →
+Enable MCP server**. Needs a Dev or Full seat. Then `/mcp reconnect figma`.
+
+You get the whole read path — `get_design_context`, `get_screenshot`, `get_metadata`,
+`get_variable_defs`, Code Connect. You don't get the write-to-canvas tools.
+
+### Remote server (more tools, one uncomfortable step)
+
+It advertises OAuth with dynamic client registration, but Figma's registration
+endpoint allowlists the client. Verified 2026-08-19 — identical request bodies,
+only `client_name` differs:
+
+```
+"Claude Code"                                    -> 200, client_id issued
+"pi" / "Cursor" / "Zed" / "Visual Studio Code"   -> 403 Forbidden
+```
+
+Registering your own app doesn't help either: `mcp:connect` is absent from Figma's
+published OAuth scope list for custom apps. So the only way in today is to register
+under an allowlisted name, in your **`mcp.local.json`**:
 
 ```json
-"packages": ["...", "../../Workspace/my-stuff/ai/figma-mcp"]
+{
+  "mcpServers": {
+    "figma": {"disabled": true},
+    "figma-remote": {
+      "disabled": false,
+      "oauth": {"clientName": "Claude Code", "scope": "mcp:connect"}
+    }
+  }
+}
 ```
 
-Remove it with `pi remove ~/Workspace/my-stuff/ai/figma-mcp`. Deleting this folder
-without that leaves a dangling entry.
+Be clear about what that does. The OAuth grant is still yours — you sign in as
+yourself, consent in the browser, and receive only `mcp:connect`. But Figma's audit
+trail and your _Settings → Connections_ page will record this pi install as
+"Claude Code", which it isn't. That is a misrepresentation to a vendor, it is per
+person, and it is deliberately **not** the shipped default. Decide for yourself.
 
-## Authentication — read this before first use
-
-Figma runs two MCP servers. **The remote one will not let pi register.**
-
-| Server             | URL                         | Auth                                      | Status here                                                                                 |
-| ------------------ | --------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Desktop (Dev Mode) | `http://127.0.0.1:3845/mcp` | none — inherits the desktop app's session | `"disabled": true`; needs _Figma → Preferences → Enable MCP server_ with a design file open |
-| Remote             | `https://mcp.figma.com/mcp` | OAuth 2.1                                 | **enabled**, but registration is refused until a client identity is chosen (below)          |
-
-Enable only one at a time: `toolPrefix` is `none`, so both would claim the same tool
-names. Toggle with the `disabled` field in `mcp.json` — `/mcp enable` and `/mcp disable`
-are unavailable here because the config is supplied in memory.
-
-The remote server advertises OAuth with dynamic client registration, but Figma's
-registration endpoint (`https://api.figma.com/v1/oauth/mcp/register`) allowlists the
-client. Verified 2026-08-19 — identical request bodies, only `client_name` differs:
+Then, once, in an interactive session:
 
 ```
-client_name "Claude Code"        -> 200, client_id issued
-client_name "pi" / "Cursor" / "Zed" / "Visual Studio Code" -> 403 Forbidden
+/mcp-auth figma-remote
 ```
 
-So there are three ways to get the remote server working, in order of how
-comfortable they are:
-
-1. **Use the desktop server instead** (current default). Install the Figma desktop
-   app, enable _Preferences → Enable MCP server_, done — no OAuth, no allowlist.
-   Trade-off: no write-to-canvas tools (`use_figma`, `generate_figma_design`); the
-   read path used for design→code is all there.
-2. **Pre-register your own client.** Likely closed: `mcp:connect` is absent from
-   Figma's published OAuth scope list for custom apps (checked 2026-08-19), so an app
-   from developers.figma.com → My Apps probably cannot request it. If Figma grants it
-   to you anyway:
-   ```json
-   "figma-remote": { "url": "https://mcp.figma.com/mcp", "auth": "oauth",
-     "oauth": { "clientId": "…", "clientSecret": "…", "scope": "mcp:connect" } }
-   ```
-3. **Register under an allowlisted name** — `"oauth": { "clientName": "Claude Code" }`
-   makes registration succeed. **This is what `mcp.json` currently does**, chosen
-   deliberately on 2026-08-19 after routes 1 and 2 were ruled out. It misrepresents
-   the client to Figma: the OAuth grant is still yours, scoped to `mcp:connect`, and
-   consented in your browser, but Figma's audit trail and your _Settings →
-   Connections_ page will show this pi install as "Claude Code". Remove the
-   `clientName` line to back out — registration then 403s again.
-
-After enabling the remote server, authenticate once with `/mcp-auth figma-remote`.
-Tokens go to the macOS keychain (bound to the server URL), never to this folder.
-`autoAuth` is off, so pi will never open a browser on its own.
+Tokens go to the OS keychain, bound to the server URL — never into this repo.
+`autoAuth` is off, so pi never opens a browser on its own. `/mcp logout figma-remote`
+clears them; revoke server-side in Figma → Settings → Connections.
 
 ## Using it
 
-Everything is **lazy** — no connection, and no cost, until you call a tool.
+Everything is lazy — nothing connects, and nothing costs context, until a tool runs.
 
 ```
 /mcp                 server status
 /mcp tools           list every Figma tool
-/mcp-auth <server>   OAuth (remote server only)
+/mcp reconnect figma
 ```
 
-The agent reaches Figma through one proxy tool, `mcp`, which costs ~200 tokens of
-context instead of the ~18 full Figma tool schemas:
+The agent reaches Figma through one proxy tool, `mcp` (~200 tokens), instead of the
+full set of Figma tool schemas:
 
+```js
+mcp({ search: "design context" })
+mcp({ describe: "get_design_context" })
+mcp({ tool: "get_design_context", args: { … } })
 ```
-mcp({ search: "design context" })                          # discover
-mcp({ tool: "get_design_context", args: { … } })           # call
-```
 
-Two tools are promoted to real, directly callable tools because the skills name
-them explicitly: `get_design_context` and `get_screenshot`. They only appear after
-the server has connected once. Change the set with `directTools` in `mcp.json`
-(`true` = all tools direct, `false` = proxy only).
+`get_design_context` and `get_screenshot` are also promoted to real top-level tools
+once the server has connected, because the skills name them directly. Adjust with
+`directTools` per server (`true` = all direct, `false` = proxy only).
 
-Typical flow: copy a Figma frame link, then _"implement this Figma design: <url>"_.
-The `figma-design-to-code` skill fires, tells the model how to call
-`get_design_context` properly, and the result gets adapted to the target codebase.
+Day to day you don't type any of that. Copy a frame link in Figma (`⌘L`) and ask:
+
+> implement this Figma design: https://figma.com/design/…?node-id=1-234
+
+The `figma-design-to-code` skill fires and drives the tools.
 
 ## Skills
 
-Two of Figma's twelve skills are enabled, listed in `package.json` → `pi.skills`:
+Two of Figma's twelve are enabled, in `package.json` → `pi.skills`:
 
 - `figma-design-to-code` — mandatory prerequisite for `get_design_context`
 - `figma-code-connect` — `.figma.ts` component mappings
 
-The other ten stay on disk but out of pi's system prompt (each one's description
-costs context permanently): `figma-use`, `figma-generate-design`,
-`figma-generate-diagram`, `figma-generate-library`, `figma-create-new-file`,
-`figma-implement-motion`, `figma-use-motion`, `figma-swiftui`, `figma-use-slides`,
-`figma-use-figjam`. Enable one by adding its directory to `pi.skills`:
+The rest sit in `vendor/` unloaded, because every enabled skill's description costs
+context permanently: `figma-use`, `figma-generate-design`, `figma-generate-diagram`,
+`figma-generate-library`, `figma-create-new-file`, `figma-implement-motion`,
+`figma-use-motion`, `figma-swiftui`, `figma-use-slides`, `figma-use-figjam`. Enable
+one by adding its directory:
 
 ```json
 "./vendor/figma-mcp-server-guide/skills/figma-use"
 ```
 
 `figma-use` is the prerequisite for the write-path `use_figma` tool — enable it if
-you switch to the remote server and intend to write to Figma. Restart pi after
-editing `package.json`.
+you're on the remote server and intend to write to Figma. Restart pi afterwards.
 
 ## Maintenance
 
-```bash
-./setup.sh                       # reproduce node_modules/ + vendor/ + pi registration
-pnpm update pi-mcp-adapter       # bump the adapter
-```
-
-The Figma skills are pinned to `72fcf1f` (the SHA the official Claude marketplace
-points at). To move: edit `FIGMA_SHA` in `setup.sh` and re-run it.
-
-`pi-mcp-adapter` is pinned at 2.23.0 rather than the current 2.26.1 because
-Shopify's package proxy enforces a minimum dependency age; newer versions become
-available as they age in.
+- Bump the skills: edit `SHA` in `scripts/fetch-skills.mjs`, re-run `pnpm install`.
+- Bump the adapter: `pnpm update pi-mcp-adapter`.
+- `pi-mcp-adapter` is pinned rather than floating so an install is reproducible; some
+  environments (Shopify's package proxy, for one) enforce a minimum dependency age
+  and won't serve the newest release.
 
 ## Security notes
 
-- `pi-mcp-adapter` is third-party (nicobailon, MIT) and, like every pi extension,
-  runs with full access to this machine. It is vendored here in `node_modules/` so
-  the exact code in use is readable and pinned.
+- `pi-mcp-adapter` is third-party (nicobailon, MIT) and, like every pi extension, runs
+  with full access to your machine. Pinned, and readable in `node_modules/`.
 - The MCP server acts as **you** in Figma. On the remote server that includes write
-  tools; `directTools` limits what is convenient, not what is reachable through the
-  proxy. `approveTools` in `mcp.json` can force interactive approval per tool.
-- No Figma credentials are ever stored in this directory.
+  tools; `directTools` limits what's convenient, not what's reachable through the
+  proxy. Use `approveTools` in `mcp.json` to force interactive approval per tool.
+- Figma's skills are cloned, never redistributed here: `figma/mcp-server-guide` ships
+  no LICENSE, so its contents are all-rights-reserved.

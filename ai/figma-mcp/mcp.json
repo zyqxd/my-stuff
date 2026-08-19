@@ -7,17 +7,16 @@
   },
   "mcpServers": {
     "figma": {
-      "disabled": true,
       "url": "http://127.0.0.1:3845/mcp",
       "auth": false,
       "lifecycle": "lazy",
       "directTools": ["get_design_context", "get_screenshot"]
     },
     "figma-remote": {
+      "disabled": true,
       "url": "https://mcp.figma.com/mcp",
       "auth": "oauth",
       "protocolVersion": "auto",
-      "oauth": {"clientName": "Claude Code", "scope": "mcp:connect"},
       "lifecycle": "lazy",
       "directTools": ["get_design_context", "get_screenshot"]
     }

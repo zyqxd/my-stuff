@@ -19,9 +19,53 @@ pi install git:github.com/zyqxd/pi-figma-mcp@v1
 Pi clones the package, installs `pi-mcp-adapter`, and the `postinstall` fetches the
 Figma skills into `vendor/`. Restart pi, then `/mcp` shows the server.
 
-From a local checkout instead: `./setup.sh`.
+Two things every installer does for themselves:
 
-Uninstall with `pi remove git:github.com/zyqxd/pi-figma-mcp`.
+1. Pick a server and get it talking — see [Authentication](#authentication--read-before-first-use).
+   The shipped default is Figma's **desktop** server, which needs
+   _Figma → Preferences → Enable MCP server_ and no OAuth at all.
+2. Put any per-machine overrides in `mcp.local.json` (gitignored), never in
+   `mcp.json` — that keeps the shared default neutral for the next person.
+
+From a local checkout instead: `./setup.sh`. Uninstall with
+`pi remove git:github.com/zyqxd/pi-figma-mcp`.
+
+## Republish
+
+The working copy lives inside a larger personal repo at `ai/figma-mcp`; the published
+repo is a split-out mirror. To cut it the first time:
+
+```bash
+cd ~/Workspace/my-stuff
+git subtree split --prefix=ai/figma-mcp -b figma-mcp-export
+
+gh repo create zyqxd/pi-figma-mcp --private \
+  --description "Figma MCP + Figma's official skills, packaged for the pi coding agent"
+
+git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:main
+git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:refs/tags/v1
+```
+
+After later edits, commit them in the working copy and repeat the split and push,
+moving the tag:
+
+```bash
+git branch -D figma-mcp-export
+git subtree split --prefix=ai/figma-mcp -b figma-mcp-export
+git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:main --force
+git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:refs/tags/v2
+```
+
+Pi pins refs, so installers stay on `@v1` until they're told to move — bump the tag
+rather than relying on `main`. `pi update --extensions` reconciles an existing clone
+to its configured ref; it does not jump to a newer tag on its own.
+
+**Keep the repo private unless the README is trimmed.** The
+[remote-server section](#remote-server-more-tools-one-uncomfortable-step) documents,
+with reproducible evidence, how to get past Figma's client allowlist. Internally that
+reads as an honest record of a trade-off; published openly it reads as a how-to. For
+a public version, cut it back to "Figma allowlists registration, use the desktop
+server" and drop the working recipe.
 
 ## Contents
 

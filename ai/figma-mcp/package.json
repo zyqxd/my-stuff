@@ -1,0 +1,22 @@
+{
+  "name": "figma-mcp-pi",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "pi-mcp-adapter": "2.23.0"
+  },
+  "description": "Self-contained pi package: Figma's MCP server (via pi-mcp-adapter) + Figma's official skills.",
+  "keywords": [
+    "pi-package"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "skills": [
+      "./vendor/figma-mcp-server-guide/skills/figma-design-to-code",
+      "./vendor/figma-mcp-server-guide/skills/figma-code-connect"
+    ]
+  }
+}

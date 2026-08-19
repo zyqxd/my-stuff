@@ -30,66 +30,6 @@ Two things every installer does for themselves:
 From a local checkout instead: `./setup.sh`. Uninstall with
 `pi remove git:github.com/zyqxd/pi-figma-mcp`.
 
-## Republish
-
-The working copy lives inside a larger personal repo at `ai/figma-mcp`; the published
-repo is a split-out mirror. To cut it the first time:
-
-```bash
-cd ~/Workspace/my-stuff
-git subtree split --prefix=ai/figma-mcp -b figma-mcp-export
-
-gh repo create zyqxd/pi-figma-mcp --private \
-  --description "Figma MCP + Figma's official skills, packaged for the pi coding agent"
-
-git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:main
-git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:refs/tags/v1
-```
-
-After later edits, commit them in the working copy and repeat the split and push,
-moving the tag:
-
-```bash
-git branch -D figma-mcp-export
-git subtree split --prefix=ai/figma-mcp -b figma-mcp-export
-git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:main --force
-git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:refs/tags/v2
-```
-
-Pi pins refs, so installers stay on `@v1` until they're told to move — bump the tag
-rather than relying on `main`. `pi update --extensions` reconciles an existing clone
-to its configured ref; it does not jump to a newer tag on its own.
-
-**Keep the repo private unless the README is trimmed.** The
-[remote-server section](#remote-server-more-tools-one-uncomfortable-step) documents,
-with reproducible evidence, how to get past Figma's client allowlist. Internally that
-reads as an honest record of a trade-off; published openly it reads as a how-to. For
-a public version, cut it back to "Figma allowlists registration, use the desktop
-server" and drop the working recipe.
-
-## Contents
-
-```
-pi-figma-mcp/
-├── index.ts             the extension — merges config and hands it to pi-mcp-adapter
-├── mcp.json             shipped defaults (safe for everyone)
-├── mcp.local.json       your machine's overrides — gitignored, optional
-├── scripts/
-│   └── fetch-skills.mjs clones Figma's skills at a pinned SHA
-├── setup.sh             manual install
-├── node_modules/        pi-mcp-adapter (gitignored)
-└── vendor/              figma/mcp-server-guide @ 72fcf1f (gitignored)
-```
-
-Config is passed to the adapter **in memory** (`createMcpAdapter({ config })`), so it
-never reads ambient MCP config — not `~/.config/mcp/mcp.json`, not `.mcp.json`, not
-host configs. The consequence: `/mcp setup`, `/mcp enable`, and `/mcp disable` are
-inert. Edit `mcp.json` (shared) or `mcp.local.json` (yours) and restart pi.
-
-`mcp.local.json` is merged over `mcp.json` one level deep per server, and is
-gitignored — put your server choice and any credentials policy there so the shared
-default stays neutral.
-
 ## Authentication — read before first use
 
 Figma runs two MCP servers, and **the remote one will not let pi register**.
@@ -162,6 +102,9 @@ Everything is lazy — nothing connects, and nothing costs context, until a tool
 /mcp reconnect figma
 ```
 
+`/mcp enable` and `/mcp disable` do nothing here — config is supplied in memory, so
+switching servers means editing `mcp.local.json` and restarting pi.
+
 The agent reaches Figma through one proxy tool, `mcp` (~200 tokens), instead of the
 full set of Figma tool schemas:
 
@@ -180,6 +123,66 @@ Day to day you don't type any of that. Copy a frame link in Figma (`⌘L`) and a
 > implement this Figma design: https://figma.com/design/…?node-id=1-234
 
 The `figma-design-to-code` skill fires and drives the tools.
+
+## Republish
+
+The working copy lives inside a larger personal repo at `ai/figma-mcp`; the published
+repo is a split-out mirror. To cut it the first time:
+
+```bash
+cd ~/Workspace/my-stuff
+git subtree split --prefix=ai/figma-mcp -b figma-mcp-export
+
+gh repo create zyqxd/pi-figma-mcp --private \
+  --description "Figma MCP + Figma's official skills, packaged for the pi coding agent"
+
+git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:main
+git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:refs/tags/v1
+```
+
+After later edits, commit them in the working copy and repeat the split and push,
+moving the tag:
+
+```bash
+git branch -D figma-mcp-export
+git subtree split --prefix=ai/figma-mcp -b figma-mcp-export
+git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:main --force
+git push git@github.com:zyqxd/pi-figma-mcp.git figma-mcp-export:refs/tags/v2
+```
+
+Pi pins refs, so installers stay on `@v1` until they're told to move — bump the tag
+rather than relying on `main`. `pi update --extensions` reconciles an existing clone
+to its configured ref; it does not jump to a newer tag on its own.
+
+**Keep the repo private unless the README is trimmed.** The
+[remote-server section](#remote-server-more-tools-one-uncomfortable-step) documents,
+with reproducible evidence, how to get past Figma's client allowlist. Internally that
+reads as an honest record of a trade-off; published openly it reads as a how-to. For
+a public version, cut it back to "Figma allowlists registration, use the desktop
+server" and drop the working recipe.
+
+## Contents
+
+```
+pi-figma-mcp/
+├── index.ts             the extension — merges config and hands it to pi-mcp-adapter
+├── mcp.json             shipped defaults (safe for everyone)
+├── mcp.local.json       your machine's overrides — gitignored, optional
+├── scripts/
+│   └── fetch-skills.mjs clones Figma's skills at a pinned SHA
+├── setup.sh             manual install
+├── node_modules/        pi-mcp-adapter (gitignored)
+└── vendor/              figma/mcp-server-guide @ 72fcf1f (gitignored)
+```
+
+Config is passed to the adapter **in memory** (`createMcpAdapter({ config })`), so it
+never reads ambient MCP config — not `~/.config/mcp/mcp.json`, not `.mcp.json`, not
+host configs. The consequence: `/mcp setup`, `/mcp enable`, and `/mcp disable` are
+inert. Edit `mcp.json` (shared) or `mcp.local.json` (yours) and restart pi.
+
+`mcp.local.json` is merged over `mcp.json` one level deep per server, and is
+gitignored — put your server choice and any credentials policy there so the shared
+default stays neutral.
 
 ## Skills
 

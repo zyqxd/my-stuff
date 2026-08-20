@@ -903,3 +903,124 @@ two issues' acceptance criteria; reviewers then judge code against requirements
 that no longer exist.
 
 **Scope.** Any stacked PR set with a written contract.
+
+## "does not provide an export named" after switching branches = stale Vite dep cache (2026-08-17)
+
+**Symptom:** browser console on local `dev assets`:
+`Uncaught SyntaxError: The requested module '/vite/assets/build/cache/vite8/admin/deps/<pkg>.js?v=...' does not provide an export named 'X'`.
+
+**Cause:** switching a worktree between branches whose lockfiles pin different
+versions of a package. `dev up --bare` installs the new version but leaves the old
+one orphaned in `node_modules/.pnpm/`, and Vite's optimized-deps cache keeps
+pointing at the orphan. Seen with `@shopify/extensibility-host-shared` 0.9.0 (no
+`POS_EXTENSION_TARGETS`) vs 0.8.11 (has it).
+
+**Diagnose before deleting anything** — prove it is staleness, not a real conflict:
+1. `grep -c <SYMBOL> node_modules/<pkg>/build/esm/index.js` — installed copy has it?
+2. `grep -c <SYMBOL> build/cache/vite8/admin/deps/<pkg>.js` — cached prebundle lacks it?
+3. `build/cache/vite8/admin/deps/_metadata.json` — the entry's `src` names the wrong
+   version's `.pnpm` path. This is the smoking gun.
+4. `pnpm why <pkg>` — if it reports one version, the other is an orphan.
+
+**Fix:** `rm -rf build/cache/vite8`, then restart `dev assets`. The cache is ~186MB of
+regenerable build output; no source or config lives there. Leave the orphaned
+`.pnpm/` directory alone — unreferenced, and hand-deleting inside `.pnpm/` risks
+confusing pnpm's bookkeeping.
+
+**Note:** the `cross-zone-package-linking` skill matches this error string, but it
+only covers `LOCAL_PACKAGES`/`link:` for the polaris/sidekick/analytics groups. If the
+package is outside those groups and you are not source-linking, suspect the dep cache.
+
+**Scope:** any admin-web worktree reused across branches.
+
+## Currency formatting: `form: 'explicit'` already handles symbol == currency code
+
+**Fact (verified 2026-08-19 against the installed package):**
+`@shopify-internal/i18n`'s `formatCurrency(locale, amount, {currency, form: 'explicit'})`
+has the symbol-equals-code case built in. Do **not** hand-roll it (as Brochure had to):
+
+```js
+function formatCurrencyExplicit(locale, amount, options = {}) {
+  const formattedCurrency = formatCurrencyShort(locale, amount, options);
+  if (formattedCurrency.includes(options.currency)) return formattedCurrency; // CHF, OMR
+  return `${formattedCurrency} ${options.currency}`;                          // USD, EUR, DKK
+}
+```
+
+`getShortCurrencySymbol` deliberately returns the full code for currencies whose symbol
+*is* the code ("Some currency symbols are just the currency code, e.g. CHF and OMR").
+
+Measured output at 39 units:
+
+| currency | `short` | `explicit` |
+| --- | --- | --- |
+| USD (en-US) | `$39.00` | `$39.00 USD` |
+| CHF (en-US) | `CHF 39.00` | `CHF 39.00` — not doubled |
+| OMR (en-US) | `OMR 39.000` | `OMR 39.000` |
+| CHF (de-DE) | `39,00 CHF` | `39,00 CHF` |
+| DKK / SEK (en-US) | `kr 39.00` | `kr 39.00 DKK` |
+
+**Two traps this creates for custom rendering**, both hit in
+`CancelledReactivationCheckout` (#7343):
+
+1. `explicit` **always suffixes** the code — there is no locale branch. Any design that
+   wants a leading code is a local override, not something the formatter does.
+2. When the code is already inside the short form, splitting it into a smaller `<span>`
+   silently does not happen, so CHF/OMR render the code at full size, and in
+   suffix locales it lands on the opposite side from every other currency.
+   Fix: lift the code out of the formatted string
+   (`splitCurrencyDisplay(short, code)`) rather than conditionally appending it.
+
+**Scope:** any admin-web surface that styles the currency code differently from the
+amount. #lesson
+
+## A blocker must record *why*, or logistics harden into a dependency
+
+**Failure (2026-08-19 → 2026-08-20, #7343 s05).** I finished a small CHF/OMR
+currency fix in the root worktree. Mid-task David switched that worktree to
+another issue's branch (`reopen-honour-plan-period-7256`), so I moved my two
+untracked files out to `~/plans/.../patches/pending-currency-fix/` to keep his
+branch clean — correct in the moment. Then I wrote the story up as:
+
+```yaml
+blocked_by: 'deferred until #7256 lands (David, 2026-08-19)'
+```
+
+That sentence is false in the way that matters. Nothing in the currency fix
+needed anything from #7256; the files were parked because a *shared checkout
+moved*, which is a fact about my afternoon, not about the code. For a full day
+the plan, the epic file, and the daily context all reported a functional
+dependency, and the work sat finished-but-unshipped behind two unmerged PRs.
+The ordering was also backwards: #7256 was itself queued behind another open
+PR, so the branch I was "waiting for" was going to land *after* mine.
+
+**Why it survived a day.** A `blocked_by` line with a date and a name reads as
+though someone decided it. Nobody re-derives a blocker that looks adjudicated —
+I didn't, until asked "why does this depend on #7256?", and the answer took two
+minutes to find in my own log.
+
+**Future action.**
+
+1. Write blockers so they can be falsified: name the artifact and the mechanism
+   (`needs the X field added by #NNNN`), never just a date or a branch name. If
+   the sentence cannot say what breaks without the other change, it is not a
+   dependency — it is sequencing, and sequencing goes in a `notes:` field.
+2. Distinguish the three kinds explicitly, because only the first is a blocker:
+   **functional** (needs their code), **conflict adjacency** (same lines, so
+   whoever is second rebases — costs time, blocks nothing), and **logistics**
+   (worktree/branch/machine state — never a property of the work).
+3. When a shared worktree moves under an in-flight change, the recovery is a
+   *dedicated worktree for that change*, not a patch parked in `~/plans`.
+   Parking defers the work; branching preserves it. David is planning a
+   worktree-switch skill — it should make "give this change its own tree" the
+   default path, and never leave finished code outside a branch.
+4. Re-read every `blocked_by` at session start on that project and ask whether
+   the stated cause is still true. Blockers rot silently; nothing fails when
+   one is stale.
+
+**Related.** "Verify the branch after `gt checkout`" above — same root cause
+(the root worktree is shared state that moves between turns), different
+symptom. Keep the root worktree on `main`.
+
+**Scope.** Any planning artifact with a `blocked_by`/`depends_on` field, and any
+work parked because of checkout state rather than code.

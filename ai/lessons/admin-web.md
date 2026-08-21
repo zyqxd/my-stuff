@@ -1024,3 +1024,36 @@ symptom. Keep the root worktree on `main`.
 
 **Scope.** Any planning artifact with a `blocked_by`/`depends_on` field, and any
 work parked because of checkout state rather than code.
+
+## Thread only what the page cannot answer
+
+**Failure (2026-08-18).** #995644 threaded four identity fields from each host
+tracker into a diagnostics context. A reviewer asked whether other emitters
+needed `sessionId` too. They did — 46 emit sites existed and only 10 had a
+context, so 36 reported the constant `'0'`. My first answer defended a scope
+boundary from the contract doc, which governs new `customFields` and says
+nothing about a pre-existing field being a useless constant.
+
+**Root cause.** `sessionId` and `identityUuid` are identical for every event on a
+page, and both already arrive in the serialized `server-data` node — the same
+node `AdminContext.serverData` reads. Threading them created an obligation at
+every call site for values that were already reachable. `payload.pathname` is the
+tell: it is required on every row and nobody threads it, because the builder
+reads `window.location`.
+
+**Future action.** Before adding a parameter to carry a value, ask whether the
+value varies per call site. If it is constant for the page, read it where it is
+consumed. Thread only what the consumer genuinely cannot answer — here that was
+`userId` (Signup deliberately zeroes it), `shopId`, and `countryCode`, all
+shop-scoped and absent from `server-data`.
+
+**Also.** A reviewer asking "does X need this too?" is often reporting that the
+design has an N-call-site obligation, not asking for N edits. Check whether the
+obligation itself can be removed.
+
+**Verification note.** A bare `type-check.sh` run reported clean while
+`fastcheck branch` found three errors — the incremental cache lied. Trust
+fastcheck. And after changing a type in a package with generated `.d.ts`,
+regenerate with `pnpm run -r generate-dts` or every consumer error is a phantom.
+
+**Scope.** admin-web diagnostics; the principle is general.

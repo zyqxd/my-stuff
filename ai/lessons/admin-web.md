@@ -1057,3 +1057,87 @@ fastcheck. And after changing a type in a package with generated `.d.ts`,
 regenerate with `pnpm run -r generate-dts` or every consumer error is a phantom.
 
 **Scope.** admin-web diagnostics; the principle is general.
+
+## Review a PR's *unresolved* threads, not all its comments (2026-08-21)
+
+**Failure.** Asked to review binks' review on #1001494, I pulled
+`GET /pulls/:n/comments` and analysed all five findings — including one David had
+already fixed and resolved days earlier. He had to correct me: "I think you
+looked at all comments instead of what was open."
+
+**Why it happened.** The REST review-comments endpoint has no resolved/outdated
+field. Resolution lives on the GraphQL `reviewThreads` connection
+(`isResolved`, `isOutdated`). REST silently returns settled threads as if live.
+
+**Future action.** For "review the review", query unresolved threads:
+
+```graphql
+{ repository(owner:"shop",name:"world") { pullRequest(number:N) {
+  reviewThreads(first:50) { nodes { isResolved isOutdated path line
+    comments(first:1){nodes{author{login} body}} } } } } }
+```
+
+Filter `isResolved == false`. Report the count reviewed vs skipped so the
+mismatch surfaces immediately if the filter is wrong.
+
+**Scope.** Any "look at the review feedback" request on a PR with history.
+Fresh PRs are unaffected, which is why this stayed hidden.
+
+## Let the repo's own lint adjudicate a style finding (2026-08-21)
+
+Binks asked for `margin: -1px` on a `.VisuallyHidden` block. I built a case from
+convention (22 of 25 in-repo blocks omit it) and from CSS semantics (the element
+is `position: absolute`, so it is out of flow and cannot shift siblings — the
+finding's stated harm does not follow). Both true, both arguable.
+
+Then stylelint settled it: `polaris/space/declaration-property-unit-disallowed-list`
+rejects `px` units on `margin`. Keeping the change required a `stylelint-disable`,
+which AGENTS.md bans. The suggestion was unimplementable, not merely unidiomatic.
+
+**Lesson.** On a contested style point, run the linter before writing the
+argument. A objective "the build rejects this" closes a thread that prose cannot,
+and it takes one command. #lesson
+
+## Re-assert the branch before every write, not once after checkout
+
+**Failure (2026-08-21, #7256 a11y).** I checked out
+`reopen-announce-selection-7256` in the root worktree and asserted the branch
+name — correctly, per the earlier `gt checkout` lesson. Some tool calls later
+the root worktree was on `6154-signup-shared-emitter` instead (David moved it
+while I was working). Every subsequent `git reset --hard` and
+`git commit --amend` therefore rewrote **his** branch, walking PR #1008555's
+tip off `d14d484c`.
+
+**How it presented, and why I misdiagnosed it.** After the amend I compared the
+committed blobs against what I had built and found a file matching *none* of
+base, PR head, or my new version. I concluded "`git commit` rewrote the tree",
+went looking for a pre-commit hook, found only git-lfs, and burned about eight
+tool calls on a theory that could not be true. The "impossible fifth blob" was
+simply another branch's copy of the same path. **When git content matches no
+expected version, suspect the ref you are standing on before you suspect git.**
+
+**Two things saved it.** The remote was never clobbered — the one bare
+`git push` that would have done it was rejected for an unrelated reason — and
+`git reflog show <branch>` still had `d14d484c`, so the restore was exact.
+
+**Future action.**
+
+1. Assert the branch *immediately before* every mutating git command in a long
+   session — `reset`, `commit`, `amend`, `push` — not once after checkout. A
+   shared worktree is mutable state owned by someone else; its branch is only
+   true for the tool call that read it.
+2. **Never bare `git push`.** With `push.default=matching` it attempts every
+   branch whose name exists on the remote, including ones this session damaged.
+   Always `git push origin <branch>`, and pair force with
+   `--force-with-lease=<branch>:<sha>`.
+3. Verify a rewritten commit by **blob hash**, not by the tool's own output:
+   `git rev-parse HEAD:<path>` against the hash you intended. Message text and
+   "HEAD is now at …" say nothing about content.
+4. Before rewriting an existing PR branch, record the old SHA in the transcript
+   so the lease has a value and recovery is one command.
+
+**Related.** "Verify the branch after `gt checkout`" above — same root cause,
+one step further on: checking once is not enough when the worktree is shared.
+The real fix is a dedicated worktree per change.
+
+**Scope.** Any multi-step git work in a shared or root World worktree.

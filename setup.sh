@@ -46,6 +46,26 @@ link_agent_skills() {
     done
 }
 
+# pi auto-discovers ~/.pi/agent/extensions/*.ts and */index.ts. Link each entry
+# individually rather than the whole directory, so pi packages and Nix-managed
+# extensions can keep living alongside ours.
+link_agent_extensions() {
+    local target_dir="$1"
+    local extension
+    local target_path
+
+    mkdir -p "$target_dir"
+    for extension in "$REPO_DIR"/ai/extensions/*; do
+        [ -f "$extension/index.ts" ] || [ -f "$extension" ] || continue
+        target_path="$target_dir/$(basename "$extension")"
+        if [ -e "$target_path" ] && [ ! -L "$target_path" ]; then
+            echo "❌ Error: Cannot link $extension over existing path $target_path" >&2
+            return 1
+        fi
+        ln -sfn "$extension" "$target_path"
+    done
+}
+
 # qmd powers pi-memory's memory_search (keyword, semantic, and deep modes all
 # require it). Not on Homebrew, and Shopify's toolchain blocks global npm/npx,
 # so it goes in through pnpm. Four things make this more than a one-liner:
@@ -351,6 +371,7 @@ echo "🥧 Setting up pi agent preferences..."
 mkdir -p "$HOME/.pi/agent"
 ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.pi/agent/CLAUDE.md"
 link_agent_skills "$HOME/.pi/agent/skills"
+link_agent_extensions "$HOME/.pi/agent/extensions"
 
 # Agent tooling (pi, brain, pi packages) — also runnable alone: ./setup.sh agents
 setup_agent_tooling

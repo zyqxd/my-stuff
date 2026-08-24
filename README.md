@@ -51,7 +51,8 @@ cd my-stuff
 - Configures fonts and keyboard repeat settings (key-repeat speed-up; requires a logout to take effect)
 - Generates a user-specific iTerm2 prefs copy and prompts for the working directory new tabs open in
 - Sets up shared Claude Code and pi agent rules
-- Symlinks local Agent Skills from `skills/` into both agents' global skill directories
+- Symlinks local Agent Skills from `ai/skills/` into both agents' global skill directories
+- Symlinks pi extensions from `ai/extensions/` into `~/.pi/agent/extensions/`
 - Installs the pi package set and `qmd` (see [Agent tooling](#agent-tooling))
 
 It also prompts (default yes) before these optional steps:

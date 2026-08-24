@@ -35,7 +35,7 @@ link_agent_skills() {
     local target_path
 
     mkdir -p "$target_dir"
-    for skill_dir in "$REPO_DIR"/skills/*; do
+    for skill_dir in "$REPO_DIR"/ai/skills/*; do
         [ -f "$skill_dir/SKILL.md" ] || continue
         target_path="$target_dir/$(basename "$skill_dir")"
         if [ -e "$target_path" ] && [ ! -L "$target_path" ]; then

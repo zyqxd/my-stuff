@@ -7,14 +7,27 @@
 #      round-trip, no object transfer) — a gone upstream usually means the PR merged
 #   3. Prunes remote-tracking refs whose branch was deleted on the remote
 #   4. Removes worktrees whose branch is merged or gone (never dirty, locked,
-#      protected, or holding a .env)
+#      protected, holding unrecoverable files, or parked on unreachable commits)
 #   5. Deletes local branches that are merged or gone; flags stale ones for review
 #   6. Runs incremental maintenance (never `gc --prune=now`)
+#
+# It does NOT move your local `main`. Step 1 updates refs/remotes/<remote>/<main>
+# only, and `main` is protected by default, so rebase onto `origin/main` — a
+# local `main` can sit thousands of commits behind and this tool will not say so.
 #
 # Every deletion is logged with its SHA to <git-dir>/cleanup.log; recover with
 # `git branch rescue <sha>` within the gc grace period (~2 weeks). That covers
 # commits only: removing a worktree also deletes its ignored files
 # (node_modules, build caches, .env) with no recovery path at all.
+#
+# Two guards exist because a worktree, unlike a branch, can hold state that no
+# ref and no remote knows about:
+#   * unrecoverable files — the test is whether git tracks the file, not what it
+#     is named. A tracked .env is one checkout away; an ignored .env.local six
+#     directories down is gone for good.            override: --drop-env
+#   * unreachable commits — a detached worktree is the only place a commit can
+#     live with nothing pointing at it. If HEAD is neither in main nor contained
+#     by any ref, removal leaves it reflog-only.    override: --drop-orphan
 #
 # Protecting a long-lived worktree — a bare-repo layout has no "primary"
 # worktree, so a home checkout is indistinguishable from a throwaway one and
@@ -25,7 +38,7 @@
 #
 # Usage: git monorepo-cleanup [-y] [--force-gone] [--main BRANCH] [--remote NAME]
 #                             [--protect ERE] [--protect-path ERE] [--drop-env]
-#                             [--stale-days N]
+#                             [--drop-orphan] [--stale-days N] [--list-stale]
 #   -y             apply changes (default: dry run)
 #   --force-gone   treat a deleted upstream as merged even when the branch is
 #                  not an ancestor of main (required when the host squash-merges
@@ -35,13 +48,17 @@
 #   --remote       remote name (default: origin)
 #   --protect      ERE of branch names never touched (default: main|master|develop|production|staging)
 #   --protect-path ERE of worktree paths never removed (default: none)
-#   --drop-env     allow removing a worktree that contains a .env (default: keep,
-#                  because a .env is the one ignored file that cannot be rebuilt)
+#   --drop-env     allow removing a worktree holding untracked/ignored .env files
+#                  (default: keep, because git cannot put them back)
+#   --drop-orphan  allow removing a detached worktree whose HEAD no ref contains
+#                  (default: keep, because removal leaves it reflog-only)
 #   --stale-days   flag branches/worktrees with no commits in N days (default: 45)
+#   --list-stale   list the stale branches instead of only counting them
 
 set -euo pipefail
 
 MAIN=main REMOTE=origin STALE_DAYS=45 APPLY=0 FORCE_GONE=0 DROP_ENV=0
+DROP_ORPHAN=0 LIST_STALE=0
 PROTECT_RE='^(main|master|develop|production|staging)$'
 PROTECT_PATH_RE=''
 
@@ -54,6 +71,8 @@ while (($#)); do
     --protect)    PROTECT_RE="$2"; shift ;;
     --protect-path) PROTECT_PATH_RE="$2"; shift ;;
     --drop-env)   DROP_ENV=1 ;;
+    --drop-orphan) DROP_ORPHAN=1 ;;
+    --list-stale) LIST_STALE=1 ;;
     --stale-days) STALE_DAYS="$2"; shift ;;
     # prints the comment block after the shebang, so it cannot drift out of sync
     -h|--help)    awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
@@ -69,19 +88,49 @@ NOW=$(date +%s)
 CUTOFF=$(( NOW - STALE_DAYS * 86400 ))
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
-act()  { if ((APPLY)); then "$@"; else printf '    [dry-run] %s\n' "$*"; fi; }
+# In dry run act() stays silent: every action already has a human-readable line
+# above it, and echoing the raw git command doubled the length of the report.
+act()  { if ((APPLY)); then "$@"; fi; }
 note() { if ((APPLY)); then printf '%s\t%s\n' "$(date -u +%FT%TZ)" "$*" >> "$LOG"; fi; }
 
+# Reports are buffered per section so removals can be listed before keeps, and
+# so the stale wall can be collapsed to a count. Printing inline made the two
+# lines that mattered impossible to find among sixty that did not.
+# Padding is skipped when there is no third column, so lines never carry
+# trailing whitespace into a diff or a paste.
+row() {
+  if [ -n "${3:-}" ]; then printf '    %-7s %-50s %s\n' "$1" "$2" "$3"
+  else printf '    %-7s %s\n' "$1" "$2"; fi
+}
+short() { printf '%s' "${1/#$HOME/\~}"; }
+# Progress only on a terminal: piped or captured output would keep the raw
+# escapes and the half-written line.
+progress() { [ -t 2 ] || return 0; printf '    %-7s %s\r' "$1" "$2" >&2; }
+progress_clear() { [ -t 2 ] || return 0; printf '\033[2K' >&2; }
+count() { wc -l < "$1" | tr -d ' '; }
+plural() {
+  [ "$1" = 1 ] && { printf '%s' "$2"; return; }
+  case "$2" in *ch|*s|*x) printf '%ses' "$2" ;; *) printf '%ss' "$2" ;; esac
+}
+
 # ------------------------------------------------------------------ 1. fetch
-echo "==> Fetching $REMOTE/$MAIN (single ref)"
-git fetch --no-tags --no-write-fetch-head --quiet "$REMOTE" \
+# The forced-update check is already off via fetch.showForcedUpdates, but git
+# still prints three lines of advice about it on every fetch. Silencing the
+# advice (not the check) keeps the report to signal only.
+git -c advice.fetchShowForcedUpdates=false \
+    fetch --no-tags --no-write-fetch-head --no-show-forced-updates --quiet "$REMOTE" \
     "+refs/heads/$MAIN:refs/remotes/$REMOTE/$MAIN"
+printf '==> %s/%s  %s\n' "$REMOTE" "$MAIN" \
+    "$(git log -1 --format='%h  %cd' --date=format:'%Y-%m-%d %H:%M' "refs/remotes/$REMOTE/$MAIN")"
+# --force-gone changes what counts as disposable, so it must not be invisible.
+((FORCE_GONE)) && echo "    --force-gone active: a deleted upstream counts as merged"
+((DROP_ENV))   && echo "    --drop-env active: unrecoverable files will NOT block removal"
+((DROP_ORPHAN))&& echo "    --drop-orphan active: unreachable commits will NOT block removal"
 
 # ---------------------------------------------------- 2. gone-upstream check
 # Upstreams are read from branch.* config, not %(upstream:*) atoms: with a
 # narrowed fetch refspec git cannot map config to a remote-tracking ref, so
 # the atoms (and "[gone]") come back empty.
-echo "==> Checking which tracked branches still exist on $REMOTE"
 git config --get-regexp '^branch\.' 2>/dev/null | awk -v r="$REMOTE" '
   /^branch\..*\.remote /{n=$1; sub(/^branch\./,"",n); sub(/\.remote$/,"",n); rem[n]=$2}
   /^branch\..*\.merge / {n=$1; sub(/^branch\./,"",n); sub(/\.merge$/,"",n);  mrg[n]=$2}
@@ -95,8 +144,14 @@ git for-each-ref "refs/remotes/$REMOTE" --format='%(refname)' \
   | grep -v -x -e "refs/remotes/$REMOTE/$MAIN" -e "refs/remotes/$REMOTE/HEAD" \
   > "$TMP/rt-refs" || true
 
-{ cut -f2 "$TMP/tracked"; sed "s|^refs/remotes/$REMOTE/|refs/heads/|" "$TMP/rt-refs"; } \
-  | sort -u > "$TMP/query"
+# Every local branch name is queried too, not just configured upstreams. It costs
+# nothing (same batched round-trip) and is the only way to say anything useful
+# about the ~75% of branches that have no upstream config at all — tophat and
+# review checkouts, which can never be gone-detected and so pile up as STALE.
+{ cut -f2 "$TMP/tracked"
+  sed "s|^refs/remotes/$REMOTE/|refs/heads/|" "$TMP/rt-refs"
+  sed 's|^|refs/heads/|' "$TMP/heads"
+} | sort -u > "$TMP/query"
 
 if [ -s "$TMP/query" ]; then
   xargs -n 500 git ls-remote --heads "$REMOTE" < "$TMP/query" \
@@ -110,23 +165,58 @@ while IFS=$'\t' read -r br up; do
 done < "$TMP/tracked" > "$TMP/gone"
 
 is_gone()      { grep -qxF "$1" "$TMP/gone"; }
+on_origin()    { grep -qxF "refs/heads/$1" "$TMP/existing"; }
 is_protected() { printf '%s' "$1" | grep -Eq "$PROTECT_RE"; }
 is_protected_path() {
   [ -n "$PROTECT_PATH_RE" ] && printf '%s' "$1" | grep -Eq "$PROTECT_PATH_RE"
 }
 is_merged()    { git merge-base --is-ancestor "refs/heads/$1" "refs/remotes/$REMOTE/$MAIN" 2>/dev/null; }
 
+# Removing a worktree deletes its ignored files too, so the question is whether
+# git can put a file back — not what it is called. A *tracked* .env is one
+# checkout away; an ignored .env.local six directories down is gone for good.
+# The previous guard got both halves wrong: capped at -maxdepth 4 and matching
+# only the exact name ".env", it missed config/env/.env.development while
+# blocking on a tracked .env. Full-depth find costs ~10-25s, which is why it runs
+# only for worktrees already chosen for removal.
+unrecoverable_file() {
+  local wt="$1" abs rel
+  while IFS= read -r abs; do
+    rel="${abs#"$wt"/}"
+    git -C "$wt" ls-files --error-unmatch -- "$rel" >/dev/null 2>&1 && continue
+    printf '%s' "$rel"; return 0
+  done < <(find "$wt" -name node_modules -prune -o \
+                      \( -name '.env' -o -name '.env.*' \) -type f -print 2>/dev/null)
+  return 1
+}
+
+# A detached worktree is the only place a commit can live with nothing pointing
+# at it. --contains catches descendants too, so work that was rebased onto a
+# branch still counts as reachable; a true orphan survives only in the reflog,
+# which expires. Losing that silently is the failure this guard exists for.
+is_orphan_head() {
+  git merge-base --is-ancestor "$1" "refs/remotes/$REMOTE/$MAIN" 2>/dev/null && return 1
+  [ -z "$(git for-each-ref --contains "$1" --count=1 --format='%(refname)' 2>/dev/null)" ]
+}
+
 # ------------------------------------------- 3. stale remote-tracking refs
+: > "$TMP/rt-pruned"
 while read -r rt; do
   src="refs/heads/${rt#refs/remotes/"$REMOTE"/}"
   grep -qxF "$src" "$TMP/existing" && continue
-  echo "    prune  $rt — deleted on $REMOTE"
+  printf '%s\n' "${rt#refs/remotes/}" >> "$TMP/rt-pruned"
   note "rtref-delete $rt $(git rev-parse "$rt")"
   act git update-ref -d "$rt"
 done < "$TMP/rt-refs"
 
+if [ -s "$TMP/rt-pruned" ]; then
+  n=$(count "$TMP/rt-pruned")
+  printf '\n==> Remote-tracking refs\n'
+  row prune "$n $(plural "$n" branch) deleted on $REMOTE" "local bookmarks only, no content"
+  sed 's|^|              |' "$TMP/rt-pruned"
+fi
+
 # -------------------------------------------------------------- 4. worktrees
-echo "==> Worktrees"
 git worktree list --porcelain > "$TMP/wt"
 # "-" placeholders: tab is IFS whitespace, so empty fields would collapse
 awk '
@@ -138,6 +228,11 @@ awk '
   END           { if (p) rec() }
 ' "$TMP/wt" | tail -n +2 > "$TMP/wtrec"   # tail: never touch the main/bare entry
 
+# wt-doomed feeds the branch pass below: a branch checked out in a worktree we
+# are about to remove is no longer pinned by it, so it must not be skipped.
+: > "$TMP/wt-act"; : > "$TMP/wt-keep"; : > "$TMP/wt-doomed"
+keep_wt() { row keep "$(short "$1")" "$2" >> "$TMP/wt-keep"; }
+
 while IFS=$'\t' read -r wpath wref wflags; do
   branch="${wref#refs/heads/}"
   { [ "$branch" = "$wref" ] || [ "$wref" = "-" ]; } && branch=""
@@ -145,122 +240,174 @@ while IFS=$'\t' read -r wpath wref wflags; do
   label="${branch:-<detached>}"
 
   case "$wflags" in *locked*)
-    echo "    keep   $wpath ($label) — locked"; continue ;;
+    keep_wt "$wpath" "locked"; continue ;;
   esac
   case "$wflags" in *prunable*)
-    echo "    prune  $wpath — gitdir missing"; continue ;;   # worktree prune below
+    row prune "$(short "$wpath")" "gitdir missing" >> "$TMP/wt-act"; continue ;;
   esac
 
   if [ ! -d "$wpath" ]; then
-    echo "    prune  $wpath — directory gone"; continue
+    row prune "$(short "$wpath")" "directory gone" >> "$TMP/wt-act"; continue
   fi
 
   # Protection is checked before the reason chain below, not inside it: a
   # detached HEAD used to short-circuit straight to "remove" and bypass every
   # protection, so a parked detached worktree was unprotectable.
   if is_protected_path "$wpath"; then
-    echo "    keep   $wpath ($label) — protected path"; continue
+    keep_wt "$wpath" "protected path"; continue
   fi
   if [ -e "$wpath/.no-cleanup" ]; then
-    echo "    keep   $wpath ($label) — .no-cleanup marker"; continue
+    keep_wt "$wpath" ".no-cleanup marker"; continue
   fi
   if [ -n "$branch" ] && is_protected "$branch"; then
-    echo "    keep   $wpath ($label) — protected"; continue
+    keep_wt "$wpath" "protected branch $branch"; continue
   fi
 
   # -uno: scanning untracked files across a monorepo worktree is glacial. This
   # is deliberately blind to untracked files; `git worktree remove` below is
   # what refuses those, which is why it must never be given --force.
   if [ -n "$(git -C "$wpath" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
-    echo "    KEEP   $wpath ($label) — uncommitted changes"; continue
+    keep_wt "$wpath" "uncommitted changes"; continue
   fi
 
   reason=""
   if [ -z "$branch" ]; then
+    whead="$(git -C "$wpath" rev-parse HEAD 2>/dev/null || true)"
+    if [ -n "$whead" ] && ((!DROP_ORPHAN)) && is_orphan_head "$whead"; then
+      n=$(git rev-list --count "refs/remotes/$REMOTE/$MAIN..$whead" 2>/dev/null || echo '?')
+      keep_wt "$wpath" "unreachable HEAD — $n $(plural "$n" commit) on no ref (--drop-orphan)"
+      continue
+    fi
     reason="detached HEAD, clean"
   elif is_merged "$branch"; then
     reason="merged into $REMOTE/$MAIN"
   elif is_gone "$branch"; then
     if ((FORCE_GONE)); then reason="upstream gone"
-    else echo "    KEEP   $wpath ($label) — upstream gone but unmerged (use --force-gone)"; continue; fi
+    else keep_wt "$wpath" "upstream gone but unmerged (--force-gone)"; continue; fi
   else
     last=$(git -C "$wpath" log -1 --format=%ct 2>/dev/null || echo "$NOW")
+    age=$(( (NOW - last) / 86400 ))
     if [ "$last" -lt "$CUTOFF" ]; then
-      echo "    STALE  $wpath ($label) — no commits in ${STALE_DAYS}d, review manually"
+      keep_wt "$wpath" "stale ${age}d on $label — review manually"
+    else
+      # Previously a silent `continue`, which made healthy worktrees vanish from
+      # the report entirely and an empty Worktrees section look like a bug.
+      keep_wt "$wpath" "active ${age}d on $label"
     fi
     continue
   fi
 
-  # Removal also deletes every ignored file in the tree. node_modules and build
-  # caches are only a rebuild; a .env is usually unrecoverable, so it blocks.
-  envf="$(find "$wpath" -maxdepth 4 -name node_modules -prune -o \
-                        -name '.env' -type f -print -quit 2>/dev/null || true)"
-  if [ -n "$envf" ] && ((!DROP_ENV)); then
-    echo "    KEEP   $wpath ($label) — contains $envf (use --drop-env to override)"
-    continue
+  if ((!DROP_ENV)); then
+    progress scan "$(short "$wpath") — checking for unrecoverable files..."
+    unrec="$(unrecoverable_file "$wpath" || true)"
+    progress_clear
+    if [ -n "$unrec" ]; then
+      keep_wt "$wpath" "untracked $unrec — git cannot restore it (--drop-env)"
+      continue
+    fi
   fi
+  # node_modules and build caches are only a rebuild, so they inform rather than
+  # block. Depth 4 is fine here: this is a hint, not a safety guard.
   nmods="$(find "$wpath" -maxdepth 4 -name node_modules -type d -prune -print 2>/dev/null \
            | wc -l | tr -d ' ')"
-  if [ "${nmods:-0}" -gt 0 ]; then
-    echo "    note   $wpath — also deletes $nmods ignored node_modules dir(s)"
-  fi
+  extra=""
+  [ "${nmods:-0}" -gt 0 ] && extra="  [+$nmods node_modules]"
 
   # SHA must be read before removal; afterwards the worktree is gone.
   wsha="$(git -C "$wpath" rev-parse HEAD)"
-  echo "    remove $wpath ($label) — $reason"
   # No --force, by design: see the -uno note above. Adding it would silently
   # destroy untracked work that the cleanliness check cannot see. That refusal
   # is expected, not exceptional, so it must not abort the run under set -e.
   if ! act git worktree remove "$wpath"; then
-    echo "    KEEP   $wpath ($label) — git refused: untracked files the -uno check cannot see"
+    keep_wt "$wpath" "git refused: untracked files the -uno check cannot see"
     continue
   fi
+  row remove "$(short "$wpath")" "$reason$extra" >> "$TMP/wt-act"
+  printf '%s\n' "$wpath" >> "$TMP/wt-doomed"
   # note after the fact, so the log only records removals that really happened
   note "worktree-remove $wpath $label $wsha [$reason]"
   # The parent is the project folder, not scratch space — report, never delete.
   if ((APPLY)); then
     parent="$(dirname "$wpath")"
     if [ -d "$parent" ] && [ -z "$(ls -A "$parent" 2>/dev/null)" ]; then
-      echo "    note   $parent is now empty — remove it yourself if unwanted"
+      row note "$(short "$parent")" "now empty — remove it yourself if unwanted" >> "$TMP/wt-act"
     fi
   fi
 done < "$TMP/wtrec"
 
-act git worktree prune --verbose
+act git worktree prune
+
+printf '\n==> Worktrees (%s)\n' "$(count "$TMP/wtrec")"
+cat "$TMP/wt-act" "$TMP/wt-keep"
 
 # --------------------------------------------------------------- 5. branches
-echo "==> Branches"
 # worktreepath last: it is often empty, and tab-IFS collapses empty fields
 git for-each-ref refs/heads \
     --format='%(refname:short)%09%(committerdate:unix)%09%(objectname)%09%(worktreepath)' \
   > "$TMP/br"
 
+: > "$TMP/br-del"; : > "$TMP/br-gone"; : > "$TMP/br-stale"
+
 while IFS=$'\t' read -r br cdate sha wtp; do
   is_protected "$br" && continue
-  [ -n "$wtp" ] && continue                # still checked out somewhere
+  # A worktree removed above no longer pins its branch. Skipping on a non-empty
+  # worktreepath alone made the dry run under-report: the worktrees still existed,
+  # so branches that -y would delete in the same pass were invisible.
+  if [ -n "$wtp" ] && ! grep -qxF "$wtp" "$TMP/wt-doomed"; then continue; fi
+  pin=""; [ -n "$wtp" ] && pin="  (worktree removed above)"
 
   if is_merged "$br"; then
     reason="merged into $REMOTE/$MAIN"
   elif is_gone "$br"; then
     if ((FORCE_GONE)); then reason="upstream gone"
-    else echo "    KEEP   $br — upstream gone but unmerged (use --force-gone); $sha"; continue; fi
+    else printf '%s\n' "              $br  ${sha:0:8}" >> "$TMP/br-gone"; continue; fi
   elif [ "$cdate" -lt "$CUTOFF" ]; then
-    echo "    STALE  $br — last commit $(( (NOW - cdate) / 86400 ))d ago, review manually"
+    # on_origin is the actionable half: a stale branch that no longer exists on
+    # the remote is almost always a finished tophat or review checkout.
+    mark="on $REMOTE"; on_origin "$br" || mark="not on $REMOTE"
+    printf '%s\t%s\n' "$mark" \
+      "$(printf '              %-58s %s  %dd  %s' "$br" "${sha:0:8}" "$(( (NOW - cdate) / 86400 ))" "$mark")" \
+      >> "$TMP/br-stale"
     continue
   else
     continue
   fi
 
-  echo "    delete $br ($reason) $sha"
+  printf '%s\n' "              $(printf '%-58s %s  %s' "$br" "${sha:0:8}" "$reason$pin")" >> "$TMP/br-del"
   note "branch-delete $br $sha [$reason]"
   act git branch -D "$br"
 done < "$TMP/br"
 
+printf '\n==> Branches (%s local)\n' "$(count "$TMP/br")"
+n_del=$(count "$TMP/br-del"); n_gone=$(count "$TMP/br-gone"); n_stale=$(count "$TMP/br-stale")
+if [ "$n_del" -gt 0 ]; then
+  row delete "$n_del $(plural "$n_del" branch) merged or gone"
+  cat "$TMP/br-del"
+fi
+if [ "$n_gone" -gt 0 ]; then
+  row keep "$n_gone upstream gone but unmerged" "use --force-gone to delete"
+  cat "$TMP/br-gone"
+fi
+if [ "$n_stale" -gt 0 ]; then
+  n_off=$(grep -c "^not on $REMOTE" "$TMP/br-stale" || true)
+  row review "$n_stale stale (>${STALE_DAYS}d), $n_off no longer on $REMOTE" \
+      "$( ((LIST_STALE)) || echo 'use --list-stale to see them')"
+  # Ascending on the "not on <remote>" / "on <remote>" marker, so the branches
+  # that no longer exist on the remote — the actionable ones — come first.
+  ((LIST_STALE)) && sort "$TMP/br-stale" | cut -f2-
+fi
+
 # ------------------------------------------------------------ 6. maintenance
-echo "==> Incremental maintenance (never gc --prune=now)"
 act git maintenance run --task=pack-refs --task=commit-graph \
                         --task=loose-objects --task=incremental-repack
 
-echo
-if ((APPLY)); then echo "Done. Deletions logged to $LOG"
-else echo "Dry run complete. Re-run with -y to apply."; fi
+n_wt=$(count "$TMP/wt-act"); n_rt=$(count "$TMP/rt-pruned")
+printf '\n==> Summary\n'
+printf '    %s remote %s · %s %s · %s %s deleted · %s to review\n' \
+  "$n_rt" "$(plural "$n_rt" ref)" "$n_wt" "$(plural "$n_wt" worktree)" \
+  "$n_del" "$(plural "$n_del" branch)" "$n_stale"
+if ((APPLY)); then
+  echo "    Applied. Deletions logged with SHAs to $LOG"
+else
+  echo "    DRY RUN — nothing changed. Re-run with -y to apply."
+fi

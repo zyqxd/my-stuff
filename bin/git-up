@@ -1,17 +1,58 @@
 #!/usr/bin/env bash
 # git-up [branch] [remote] — update BRANCH (default: main) with a single-ref,
-# no-tags fetch. Fast-forwards if BRANCH is checked out here; otherwise just
-# updates the remote-tracking ref and prints the rebase hint.
+# no-tags fetch, then move the local branch to match.
+#
+# The old `merge --ff-only` path only fired when the *current* worktree was on
+# BRANCH. In a bare + worktrees layout BRANCH is only ever "checked out" in the
+# bare entry, where `git merge` cannot run — so the path was dead code and the
+# local branch silently froze while every fetch reported success. Three cases:
+#   * checked out in a real worktree  -> fast-forward it with merge --ff-only
+#   * bare-only or not checked out    -> move the ref directly (see below)
+#   * diverged                        -> report and stop; never force
 set -euo pipefail
 
 b="${1:-main}"
 remote="${2:-origin}"
+lref="refs/heads/$b"
+rref="refs/remotes/$remote/$b"
 
-git fetch --no-tags --no-write-fetch-head "$remote" \
-    "+refs/heads/$b:refs/remotes/$remote/$b"
+# advice is silenced, not the check: git prints three lines about
+# fetch.showForcedUpdates on every fetch once that config is off.
+git -c advice.fetchShowForcedUpdates=false \
+    fetch --no-tags --no-write-fetch-head --no-show-forced-updates \
+    "$remote" "+refs/heads/$b:$rref"
 
-if [ "$(git symbolic-ref --short -q HEAD || true)" = "$b" ]; then
-  git merge --ff-only "$remote/$b"
+if ! git show-ref --verify -q "$lref"; then
+  echo "$remote/$b updated; no local $b — rebase with: git rebase $remote/$b"
+  exit 0
+fi
+
+target="$(git rev-parse "$rref")"
+if [ "$(git rev-parse "$lref")" = "$target" ]; then
+  echo "$b already up to date with $remote/$b ($(git rev-parse --short "$target"))"
+  exit 0
+fi
+
+# Ancestry, not commit counts, decides whether this is a fast-forward. Anything
+# else means local commits exist only here and moving the ref would orphan them.
+if ! git merge-base --is-ancestor "$lref" "$rref"; then
+  ahead="$(git rev-list --count "$rref..$lref")"
+  behind="$(git rev-list --count "$lref..$rref")"
+  echo "$b has diverged from $remote/$b: $ahead ahead, $behind behind." >&2
+  echo "Refusing to move it. Inspect with: git log --oneline $rref..$lref" >&2
+  exit 1
+fi
+
+behind="$(git rev-list --count "$lref..$rref")"
+wt="$(git for-each-ref "$lref" --format='%(worktreepath)')"
+
+if [ -n "$wt" ] && [ -d "$wt" ] &&
+   [ "$(git -C "$wt" rev-parse --is-bare-repository 2>/dev/null || echo true)" = false ]; then
+  # A real checkout has an index and working tree that must move with the ref.
+  git -C "$wt" merge --ff-only "$rref"
 else
-  echo "$remote/$b updated — rebase with: git rebase $remote/$b"
+  # A bare entry has no index or working tree to desync, so moving the ref is
+  # safe here — and it is the only option, since `git merge` needs a work tree.
+  git update-ref "$lref" "$target"
+  echo "$b fast-forwarded $behind commit(s) to $(git rev-parse --short "$target")"
 fi

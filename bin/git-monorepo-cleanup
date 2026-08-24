@@ -12,8 +12,8 @@
 #   6. Runs incremental maintenance (never `gc --prune=now`)
 #
 # It does NOT move your local `main`. Step 1 updates refs/remotes/<remote>/<main>
-# only, and `main` is protected by default, so rebase onto `origin/main` — a
-# local `main` can sit thousands of commits behind and this tool will not say so.
+# only, and `main` is protected by default, so rebase onto `origin/main`. Drift
+# of the local branch is reported in the header; `git up` is what moves it.
 #
 # Every deletion is logged with its SHA to <git-dir>/cleanup.log; recover with
 # `git branch rescue <sha>` within the gc grace period (~2 weeks). That covers
@@ -122,6 +122,22 @@ git -c advice.fetchShowForcedUpdates=false \
     "+refs/heads/$MAIN:refs/remotes/$REMOTE/$MAIN"
 printf '==> %s/%s  %s\n' "$REMOTE" "$MAIN" \
     "$(git log -1 --format='%h  %cd' --date=format:'%Y-%m-%d %H:%M' "refs/remotes/$REMOTE/$MAIN")"
+
+# A stale local MAIN is otherwise invisible: this tool protects it by design, so
+# it freezes while every run reports success. Report only — moving it is
+# `git up`'s job, and quietly mutating a protected branch here would contradict
+# the whole point of PROTECT_RE.
+if git show-ref --verify -q "refs/heads/$MAIN"; then
+  m_behind=$(git rev-list --count "refs/heads/$MAIN..refs/remotes/$REMOTE/$MAIN" 2>/dev/null || echo 0)
+  m_ahead=$(git rev-list --count "refs/remotes/$REMOTE/$MAIN..refs/heads/$MAIN" 2>/dev/null || echo 0)
+  if [ "$m_ahead" -gt 0 ]; then
+    printf '    local %s DIVERGED: %s ahead, %s behind — do not use it as a base\n' \
+      "$MAIN" "$m_ahead" "$m_behind"
+  elif [ "$m_behind" -gt 0 ]; then
+    printf '    local %s is %s %s behind — run: git up\n' \
+      "$MAIN" "$m_behind" "$(plural "$m_behind" commit)"
+  fi
+fi
 # --force-gone changes what counts as disposable, so it must not be invisible.
 ((FORCE_GONE)) && echo "    --force-gone active: a deleted upstream counts as merged"
 ((DROP_ENV))   && echo "    --drop-env active: unrecoverable files will NOT block removal"

@@ -9,7 +9,7 @@ shell aliases, never in the scripts.
 
 | Command | What it does |
 |---|---|
-| `git up [branch]` | Update main with a single-ref, no-tags fetch; fast-forwards if checked out here |
+| `git up [branch]` | Update main with a single-ref, no-tags fetch, then fast-forward the local branch (works in a bare + worktrees layout); refuses if diverged |
 | `git grab <branch>` | Fetch one remote branch and switch to it (no wide refspec needed) |
 | `git wt <branch> [name]` | Same, but into a new worktree; layout from `monorepo.wtroot`/`monorepo.wtsub` |
 

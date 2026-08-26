@@ -172,6 +172,7 @@ setup_agent_tooling() {
         for pkg in \
             npm:bigpowers \
             npm:pi-memory \
+            npm:pi-subagents \
             npm:@sentiolabs/pi-frontend-design \
             git:github.com/Shopify/pi-tool-gateway-extension \
             https://github.com/shopify-playground/shop-pi-fy; do
@@ -372,6 +373,15 @@ mkdir -p "$HOME/.pi/agent"
 ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.pi/agent/CLAUDE.md"
 link_agent_skills "$HOME/.pi/agent/skills"
 link_agent_extensions "$HOME/.pi/agent/extensions"
+
+# Subagent definitions (pi-subagents discovers ~/.pi/agent/agents/**/*.md).
+# Whole-dir symlink so agents written there by tooling (e.g. `subagent eject`)
+# land in the repo and stay versioned.
+if [ -e "$HOME/.pi/agent/agents" ] && [ ! -L "$HOME/.pi/agent/agents" ]; then
+    echo "❌ Error: ~/.pi/agent/agents exists and is not a symlink — move its contents into ai/agents/ first" >&2
+else
+    ln -sfn "$REPO_DIR/ai/agents" "$HOME/.pi/agent/agents"
+fi
 
 # Agent tooling (pi, brain, pi packages) — also runnable alone: ./setup.sh agents
 setup_agent_tooling

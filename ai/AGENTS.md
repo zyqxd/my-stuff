@@ -42,6 +42,20 @@
 - End the turn with a handoff — what was pushed, the head SHA, the local evidence covering it; local verification gates "done".
 - When David reports a failure or build URL, pull the logs and fix autonomously; reading CI is expected, waiting is not.
 
+## Subagent routing (pi-subagents)
+
+When a task calls for delegation — or a bigpowers skill references the "Agent tool" — use the `subagent` tool. Route by role:
+
+- Ambiguous ask, scoping, planning from vague requirements → `shaper` (writes plan.md)
+- Codebase recon before planning or implementation → `scout` (writes context.md)
+- External facts, docs, or library research → `researcher`
+- Implementation of a scoped brief → `worker`; Figma design-to-code → `design-worker`
+- Review of diffs, plans, or proposals (request-review, audit-code) → `reviewer`; parallel reviewers for large diffs
+- Second opinion or drift check before a risky decision → `oracle` (forks context)
+- Generic isolated errand → `delegate`
+
+Defaults: dispatch `shaper` at the start of orchestrating ambiguous work; `scout` before non-trivial implementation in unfamiliar code; a fresh `reviewer` before declaring multi-file work done. bigpowers task_brief format (goal, in_scope, out_of_bounds, verify) remains the brief protocol.
+
 ## Task Management
 
 - For non-trivial work, write a checkable plan in `~/plans/<project>/todo.md` outside the checkout and check in before implementation; update it during execution, explain progress, and add the final review. Focused sub-plans go in `~/plans/<project>/<topic>-todo.md`.

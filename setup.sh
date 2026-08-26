@@ -175,9 +175,27 @@ setup_agent_tooling() {
             npm:pi-subagents \
             npm:@sentiolabs/pi-frontend-design \
             git:github.com/Shopify/pi-tool-gateway-extension \
+            https://github.com/shopify-playground/pi-minerva-auth \
+            git:github.com/shopify-playground/pi-figma-mcp@v1 \
             https://github.com/shopify-playground/shop-pi-fy; do
             pi install "$pkg" || echo "   ⚠️  Failed to install pi package $pkg"
         done
+
+        # Model pins for the pi-subagents roster (ai/agents/ carries the custom
+        # agents; frontmatter there beats these overrides). Deep-merged so other
+        # settings survive; re-runs converge to the same state.
+        local pi_settings="$HOME/.pi/agent/settings.json"
+        local subagent_pins='{"subagents":{"agentOverrides":{"scout":{"model":"claude-sonnet-5"},"researcher":{"model":"claude-opus-5"},"worker":{"model":"gpt-5.6-sol","fallbackModels":["claude-opus-5"]},"reviewer":{"model":"claude-opus-5"},"oracle":{"model":"claude-fable-5"},"gpt-pro":{"disabled":true}}}}'
+        if command -v jq &> /dev/null; then
+            if [ -f "$pi_settings" ]; then
+                jq -s '.[0] * .[1]' "$pi_settings" <(echo "$subagent_pins") > "${pi_settings}.tmp" \
+                    && mv "${pi_settings}.tmp" "$pi_settings"
+            else
+                echo "$subagent_pins" | jq . > "$pi_settings"
+            fi
+        else
+            echo "   ⚠️  jq not found — skipping subagent model pins"
+        fi
 
         # pi-memory's search modes are dead without qmd.
         install_qmd
@@ -349,7 +367,7 @@ fi
 # Claude Code setup
 echo "🤖 Setting up Claude Code preferences..."
 mkdir -p "$HOME/.claude"
-ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+ln -sf "$REPO_DIR/ai/AGENTS.md" "$HOME/.claude/CLAUDE.md"
 ln -sf "$REPO_DIR/ai/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
 link_agent_skills "$HOME/.claude/skills"
 
@@ -367,10 +385,10 @@ fi
 # pi agent setup
 # pi loads global context from ~/.pi/agent/CLAUDE.md (or AGENTS.md) at startup.
 # Symlink the same shared rules used by Claude Code so both agents stay in sync
-# from a single source of truth (ai/CLAUDE.md).
+# from a single source of truth (ai/AGENTS.md).
 echo "🥧 Setting up pi agent preferences..."
 mkdir -p "$HOME/.pi/agent"
-ln -sf "$REPO_DIR/ai/CLAUDE.md" "$HOME/.pi/agent/CLAUDE.md"
+ln -sf "$REPO_DIR/ai/AGENTS.md" "$HOME/.pi/agent/CLAUDE.md"
 link_agent_skills "$HOME/.pi/agent/skills"
 link_agent_extensions "$HOME/.pi/agent/extensions"
 

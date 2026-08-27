@@ -185,7 +185,10 @@ setup_agent_tooling() {
         # agents; frontmatter there beats these overrides). Deep-merged so other
         # settings survive; re-runs converge to the same state.
         local pi_settings="$HOME/.pi/agent/settings.json"
-        local subagent_pins='{"subagents":{"agentOverrides":{"scout":{"model":"claude-sonnet-5"},"researcher":{"model":"claude-opus-5"},"worker":{"model":"gpt-5.6-sol","fallbackModels":["claude-opus-5"]},"reviewer":{"model":"claude-opus-5"},"oracle":{"model":"claude-fable-5"},"gpt-pro":{"disabled":true}}}}'
+        # Model ids stay provider-qualified: a bare id that exists under several
+        # providers only resolves when one of them is the session's own provider,
+        # so `gpt-5.6-sol` dies as `Unknown subagent model` in an anthropic session.
+        local subagent_pins='{"subagents":{"agentOverrides":{"scout":{"model":"anthropic/claude-sonnet-5"},"researcher":{"model":"anthropic/claude-opus-5"},"worker":{"model":"openai/gpt-5.6-sol","fallbackModels":["anthropic/claude-opus-5"]},"reviewer":{"model":"anthropic/claude-opus-5"},"oracle":{"model":"anthropic/claude-fable-5"},"gpt-pro":{"disabled":true}}}}'
         if command -v jq &> /dev/null; then
             if [ -f "$pi_settings" ]; then
                 jq -s '.[0] * .[1]' "$pi_settings" <(echo "$subagent_pins") > "${pi_settings}.tmp" \

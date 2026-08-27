@@ -2,8 +2,8 @@
 name: shaper
 description: Scoping and planning agent for ambiguous work — turns a vague ask into a scoped, decision-explicit plan before implementation
 aliases: scoper, planner-intent
-model: claude-fable-5
-fallbackModels: gpt-5.6-sol
+model: anthropic/claude-fable-5
+fallbackModels: openai/gpt-5.6-sol
 thinking: medium
 systemPromptMode: replace
 inheritProjectContext: true

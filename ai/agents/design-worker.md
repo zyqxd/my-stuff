@@ -2,8 +2,8 @@
 name: design-worker
 description: Implementation agent for Figma design-to-code tasks — follows the figma-design-to-code workflow and adapts designs to the project's real components and tokens
 aliases: figma-worker
-model: gpt-5.6-sol
-fallbackModels: claude-opus-5
+model: openai/gpt-5.6-sol
+fallbackModels: anthropic/claude-opus-5
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: true

@@ -9,7 +9,6 @@ systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false
 tools: read, grep, find, ls, bash, write, contact_supervisor
-output: plan.md
 defaultProgress: true
 ---
 

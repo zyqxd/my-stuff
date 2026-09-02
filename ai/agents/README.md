@@ -24,6 +24,44 @@ Dispatch briefs give each child an explicit absolute output path into the unit's
 `/Users/david.yq.zhang/plans/improve-cancellation-reactivation/7529/inbox/scout-context.md`
 — never a relative path or one the child invents.
 
+## Config traps (full roster scan, 2026-09-01)
+
+- **A declared tool name does not load the code that registers it.** `tools:` is a strict
+  allowlist. An *unknown* name fails the launch loudly ("requested unavailable child
+  tools"); a *known builtin* name whose provider is missing is dropped **silently** and the
+  agent carries on without it. `web_search`, `fetch_content`, `get_search_content` are in
+  pi-subagents' read-only builtin set, so `researcher` silently lost them for weeks and
+  answered from memory. They need `npm:pi-web-access` (in `setup.sh`; zero-config search
+  via Exa MCP, no key required). Verified working 2026-09-01.
+- **MCP direct tools cannot reach a child without `pi-mcp-adapter`.** `get_design_context`
+  and `get_screenshot` come from the Figma MCP server and exist only in the orchestrator's
+  session. `design-worker` declared them and therefore **failed every launch**. Pointing
+  `subagentOnlyExtensions` at `pi-figma-mcp/index.ts` does not help — that file starts an
+  MCP server, it does not register tools. The orchestrator calls them and passes the
+  result in the brief.
+- **`bash` makes an agent mutation-capable**, so a read-only advisor needs
+  `completionGuard: false` (and `acceptanceRole: read-only`) or it is judged an
+  implementation agent. `reviewer` and `researcher` had it; `oracle` did not.
+- **Never use `~` in `subagentOnlyExtensions`.** `pi-args.ts` forwards the value to `-e`
+  with no tilde expansion. Absolute paths only.
+- **Never give an agent a relative `output:` in frontmatter.** It resolves against the cwd,
+  so the child writes into whatever repo the parent is in — and it silently overrides the
+  absolute path in the dispatch brief. `researcher` (`research.md`) and `shaper`
+  (`plan.md`) both had this. Omit `output:`; let the brief carry an absolute path.
+- **`defaultContext: fork` forces `thinking: off` for an Anthropic child.** Forking
+  sanitizes the parent's signed thinking blocks and an Anthropic child cannot resume such
+  a transcript with thinking on. `oracle` is pinned `anthropic/claude-fable-5` with
+  `thinking: xhigh` and runs at **off** on its default path; the same launch with
+  `context: fresh` runs at `xhigh`. Unresolved trade-off — fork buys inherited state and
+  costs the reasoning that is oracle's whole purpose. Pass `context: "fresh"` and put the
+  state in the brief when the verdict needs depth.
+- **Relative `defaultReads` miss our layout.** `worker` and `design-worker` read
+  `context.md, plan.md` relative to cwd, but briefs put those in
+  `~/plans/<project>/<unit>/inbox/`. Harmless when absent, but they never fire. Left as-is.
+- Model pins are provider-qualified in both `~/.pi/agent/settings.json` and `setup.sh`,
+  and no agent sets `extensions:` (which would set `disableAmbientExtensions` and kill the
+  shopify-proxy provider in the child). Both verified clean.
+
 ## Operational notes
 
 - `runs.all` children of the same agent type collide on that agent's default

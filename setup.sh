@@ -177,6 +177,7 @@ setup_agent_tooling() {
             git:github.com/Shopify/pi-tool-gateway-extension \
             https://github.com/shopify-playground/pi-minerva-auth \
             git:github.com/shopify-playground/pi-figma-mcp@v1 \
+            npm:pi-web-access \
             https://github.com/shopify-playground/shop-pi-fy; do
             pi install "$pkg" || echo "   ⚠️  Failed to install pi package $pkg"
         done

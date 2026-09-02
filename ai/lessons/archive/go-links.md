@@ -24,3 +24,8 @@
 - Keep hosting setup scoped to provisioning and configuration when the user excludes documentation changes; do not add doc cleanup to the critical path.
 - Do not use Services DB for new World services; onboard directly with `dev infra onboard --vault-team`, keep ownership in World slices/Vault, and operate runtimes through Production Registry and Infra Central.
 - Treat Minerva as a required final application control for go-links; do not frame the transitional redirect-route bypass as the intended design.
+
+---
+**Archived 2026-09-01** (refine-memory). No entry in this file carried a date, source,
+or evidence field, so none could be verified as a real correction rather than a
+synthesized checklist. Kept for reference; not loaded as an active lesson file.

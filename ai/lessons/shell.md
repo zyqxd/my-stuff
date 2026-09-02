@@ -29,3 +29,48 @@ not rebasing onto main. David's standard World lifecycle:
   `areas/tools/go-links/`); untracked files carry over untouched — leave them.
 - `git-wt`/`git-grab` in my-stuff/bin cover creation/fetch only; the move-back
   is plain git as above.
+
+## Never put backticks in a double-quoted `git commit -m` message
+
+Source: monet-slack commit ee32d51, 2026-08-18 (self-caught).
+
+Writing `git commit -q -m "... strips mona's `[loop]` diagnostics ..."` inside
+double quotes makes bash run `[loop]` as command substitution. The token is
+silently deleted from the message (`mona's  stdout diagnostics`) and bash prints
+`[loop]: command not found` — easy to miss among push output.
+
+- **Future action:** for any commit message containing backticks, brackets, `$`,
+  or `!`, write it with a quoted heredoc (`git commit -F - <<'MSG'`) or a temp
+  file. Never rely on double quotes.
+- Verify with `git log -1 --format=%B` before pushing, not after.
+- Amending is not worth a force-push once pushed; the loss is cosmetic if the
+  real content also lives in a doc/ADR — but the check is free beforehand.
+
+## Never pass a literal `~` to a tool path
+
+Source: found 2026-08-28 in the admin-web checkout — a past session had created
+`areas/clients/admin-web/~/plans/stripe-express-ready-metrics/` inside the World tree.
+
+Only an interactive shell expands `~`. Tool paths (`write`, `edit`) and quoted
+`mkdir -p '~/x'` do not, so the tilde becomes a real directory name. Inside the
+monorepo that is an untracked-but-not-ignored folder — a commit hazard, and exactly
+the "never write memory into a checkout" failure the constitution bans.
+
+- **Future action:** write `$HOME/...` or the full absolute path in every tool call.
+  Reserve bare `~` for text a human will read.
+- Verify with `ls -d ~/plans/<x>` (expanded) rather than trusting the write succeeded;
+  a write to the wrong place still reports success.
+
+## A stale reftable lock blocks every commit in the repo
+
+Source: 2026-08-24, `~/world/git/reftable/tables.list.lock` — 0 bytes, 38h old,
+no holder. Every commit failed with `fatal: cannot lock references`.
+
+Git's reftable backend does not clear a lock left by a crashed process, and the
+error names the ref, not the lock, so it reads like repo corruption.
+
+- **Diagnose before deleting:** `lsof` the lock (must show no holder) and confirm
+  `tables.list` was last written *before* the lock's ctime. Both must hold.
+- Back the lock up (`/tmp/...bak`), remove it, then `git fsck --connectivity-only`.
+- Scope: the shared `~/world/git` store, so a stale lock blocks every worktree at
+  once — the blast radius is the whole monorepo, not one branch.

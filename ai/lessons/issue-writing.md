@@ -39,3 +39,17 @@
 - Cut the issue to the spec; file genuinely interesting adjacencies
   (e.g. `checkout_apple_pay_init_error`, largest uncovered event, emit site
   already has the tracker) as follow-ups with their own evidence.
+
+## Cross-repo `Closes #N` never auto-closes
+
+Source: 2026-08-21. shop/world #995644 merged carrying
+`Closes shop/issues-monetization#7237`; #7237 stayed open.
+
+GitHub's close-on-merge keyword only fires within one repository. Across repos it
+renders as a plain reference, which looks identical in the PR body — so the issue
+silently stays open and the work looks unfinished on the board.
+
+- **Future action:** after merging a PR that closes an issue in another repo, read
+  the issue's state from the host and close it. Do not treat the merged body as proof.
+- Applies to every shop/world → shop/issues-monetization pair, which is the normal
+  shape of this team's work.

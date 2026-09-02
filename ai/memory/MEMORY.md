@@ -15,9 +15,8 @@
 <!-- 2026-08-17 refine-memory (approved audit 2026-08-17) -->
 ## Agent tooling facts (2026-08-17)
 
-- Agent-file symlinks: `~/.pi/agent/CLAUDE.md`, `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` → `my-stuff/ai/AGENTS.md`; `~/.pi/agent/memory` → `ai/memory`; skills linked per-directory from `ai/skills/`.
+- Symlink map moved to `ai/README.md` on 2026-09-01 (derivable from `ls -la ~/.pi/agent/`).
 - **pnpm global fragility:** a future `pnpm add -g <pkg>` can rewrite pnpm's global `package.json` and drop `pnpm.onlyBuiltDependencies`; `setup.sh agents` won't repair it (the qmd short-circuit passes). Symptom: `better_sqlite3.node` "tries" stack trace after a qmd upgrade; fix: `pnpm dlx node-gyp rebuild --release` in its `.pnpm` dir.
-
 
 <!-- 2026-08-18 09:56:22 [01a01013] -->
 ## world worktree cleanup — `git-monorepo-cleanup` (2026-08-18)
@@ -41,22 +40,6 @@
 - **Verifying "no work will be lost" is one command:** `git rev-list --count origin/main..<branch>`. `merged into origin/main` is a real `merge-base --is-ancestor` test against a just-fetched ref, not a PR-status guess. Non-ancestry does **not** mean unique work — check patch-ids before believing a detached HEAD holds something new.
 - Running the script from the **bare** dir (`~/world/git`) dies with `cd: null directory` and prints nothing, because `git rev-parse --show-toplevel` fails there. Run it from a worktree (the alias uses `git -C`). Still unfixed.
 
-
-<!-- 2026-08-18 20:56:46 [01a0177d] -->
-## Prior art for Mona-supporting-ATC (#help-monetization) — 3 repos (2026-08-18)
-
-Report: `~/plans/monet-slack/2026-08-18-prior-art-mona-atc-repos.md`. Consumed by [[monet-slack]].
-
-- **`~/Workspace/verdant-help-monetization-grokt`** = a checkout of **`Shopify/verdant-web` (Verdant Express / "Vex")**, the org-wide **production** Slack support-bot platform, + 3 local unpushed commits registering **Grokt MCP scoped to `C026ATXN24C` (#help-monetization)**. Vex is the **incumbent** doing what Monet is proving. The `#help-monetization` intake bot ("Monet Bot": urgency prompt, assignment, ":white_check_mark: marked … as resolved") is a **Verdant-family bot** — its texts match `app/models/messages/{urgency_prompt,bot_resolution}.rb`. Vex supports **per-channel MCP scoping** and **Streamable HTTP MCP only**. #decision-input
-- **Vex judge**: `BotAccuracy` scores 0–100 in 6 config-driven bands (`config/bot_accuracy_ranges.yml`). Production distribution is **bimodal with an 85–89 "rubber stamp" cluster vs 95–100 "actually great"** ⇒ `MINIMUM_GOLDEN_SCORE = 95`. **Look for the score cliff; never pick a judge threshold a priori.** Accuracy is skipped when `Resolution.kind == "bot"` or channel is FAQ-mode (don't grade the bot against itself / verbatim content). #lesson
-- **Resolution ground truth ranking** (from mona-catalog): deterministic intake-bot **marker = 0 false positives** > conservative LLM assessment for 7-day-stale threads (`confidence ≥ 90` only) > free LLM opinion (advisory field only, ~14% resolve in-thread with no marker). #lesson
-- **`~/Workspace/mona-vex-answer-api-poc`** = `Shopify/monetization` + POC branch adding **`tools/mona-cloud` `POST /internal/v1/answers`** — a stateless HTTP Mona answer API (read-only `monetization-support` profile, 2 repo tools, `contextVersion` SHA excluding the caller prompt, 8-tool budget, 180s shared deadline, Cloud Run IAM/OIDC + **non-personal team token from Secret Manager**). **This is monet-slack ADR-0006 option 2, already drafted.** Named gaps: no `requestId` idempotency record, raw freshness string, no circuit breaker.
-- **`mona.shopify.io` cannot host Mona** — it is a WebSocket relay to a **laptop bridge routed by email**. The Mona **assistant WebSocket** (`ws://localhost:3847/ws`) has **no `allowedTools`/`disabledTools`** (only `browserEnabled`, `disabledSkills`) and core tools include `bash`/`write`/`edit`/`slack` ⇒ the only safe posture over WS is rejecting tool-call events. Use the **in-process `loop({tools})`** or the HTTP answer API. #decision
-- **Quick is not compute**: static hosting + browser-side APIs (`quick.db`/`quick.ai`/`quick.user`), **no server-side execution and no server-side write path**; `quick serve` 307-redirects `/client/quick.js` to an IAP-gated URL, so you must **develop against the deployed `*.quick.shopify.io` site**. #lesson
-- **Evaluator design that works** (mona-catalog e01s16): synthesize the reference resolution **once** (3–5 sentences, ≤35 words each, cited transcript line numbers), freeze it, and re-run only candidate + scorer per prompt version. The prior regenerate-and-re-judge-every-run design hit 3,000+ lines and ~70 min for 21 cases with no usable metric. Score on **4 anchored tiers** + normalized completion `sum/(3×eligible)`; resume by `case_id`+`source_sha`+`prompt_hash`; changed identity ⇒ **new output file, don't mix**. #lesson
-- **Never persist a partial/errored row over a good one** — mona-catalog corrupted ~885 rows because a failed categorization still wrote and `quick.db.update()` **merges** (stale labels + new provenance). #lesson #bug
-
-
 <!-- 2026-08-19 15:06:13 [01a01a64] -->
 
 ## admin-web currency formatting (2026-08-19)
@@ -64,12 +47,10 @@ Report: `~/plans/monet-slack/2026-08-18-prior-art-mona-atc-repos.md`. Consumed b
 - **`@shopify-internal/i18n` `formatCurrency(..., {form: 'explicit'})` has the symbol==currencyCode case built in** — it calls `formatCurrencyShort` and only appends the code when the short form does not already contain it. So CHF/OMR render `CHF 39.00`, never `CHF 39.00 CHF`. Do **not** hand-roll this in admin-web (Brochure had to; admin-web does not). #lesson
 - Corollary trap: `explicit` **always suffixes** the code (no locale branch), and when the code is already inside the short form it cannot be split into a smaller span — so a design that styles the code differently must lift it out of the formatted string, not conditionally append it. Full detail in `~/Workspace/my-stuff/ai/lessons/admin-web.md`.
 
-
 <!-- 2026-08-20 09:43:43 [01a01f68] -->
 
 <!-- pi package removal -->
 - **`pi remove` can fail to match relative path packages** in `~/.pi/agent/settings.json` (e.g. `../../Workspace/pi-figma-mcp` → "No matching package found", even with the exact string). Fix: edit the `packages` array in `~/.pi/agent/settings.json` directly, then verify with `pi list`. Deleting the target directory alone does NOT remove the entry, and the stale entry still causes duplicate tool/flag registration errors (`Tool "mcp" conflicts with ...`). #lesson #bug
-
 
 <!-- 2026-08-20 15:27:34 [01a0205e] -->
 ## Impact attribution habits (2026-08-20) #preference [[impact-attribution]]
@@ -91,7 +72,6 @@ David wants attribution-to-impact baked into his workflow. Enforce during work, 
 - **Stack is a map, never an explanation.** Prose narrating sequencing, coupling, prerequisites, or overlap is a defect — that's back-stacking design, not reviewer information. Route it: "don't merge yet" → the callout; "a prerequisite exists" → the `Status` cell; "why the stack is shaped this way" → the issue or a PR comment. If the callout already carries the blocker, the Stack section usually earns deletion.
 - Budgets: Summary lead ≤60w / 3 sentences (was 200w — that cap licensed run-on paragraphs); Summary bullets ≤25w, no rationale or file-by-file tour; Context ≤80w / 1 para. **Tophat has no cap** — David wants reproducible testing instructions.
 - #lesson When editing a skill's rules, check its `evals/` in the same pass. describe-pr's evals had drifted a full rule-change behind the SKILL.md before anyone noticed.
-
 
 <!-- 2026-08-21 18:04:23 [01a0252d] -->
 
@@ -131,7 +111,6 @@ shadowenv exec -- gem install --local "$CUR/cache/sidekiq-pro-X.Y.Z.gem" --ignor
 shadowenv exec -- bundle check     # => "The Gemfile's dependencies are satisfied"
 ```
 Local only — CI and any fresh env still fail until procurement restores the license.
-
 
 <!-- 2026-08-24 10:50:01 [01a0252d] -->
 
@@ -174,3 +153,215 @@ sibling declarations of any shape you are narrowing before you narrow it.
 - **`git worktree add -b NEW <path>` bases on the *invoking worktree's* HEAD**, not on local `main` — so stale main is mostly harmless from a worktree, but bases on **stale local main** when run from inside the bare dir. Verified with distinct commits; an earlier test was confounded because the worktree happened to sit on the same commit as stale main. #lesson
 - **OPEN: `git-wt`'s new-branch path has no explicit base** — `git worktree add -b "$b" "$path"` inherits the invoking worktree's HEAD, so `git wt new-thing` from a feature worktree silently stacks on that feature branch. Should base on `refs/remotes/origin/main`. Not yet fixed.
 - `monorepo-cleanup` reports main drift in its header (`local main is N commits behind — run: git up`) but never moves it; `main` is in `PROTECT_RE` and mutating a protected branch inside a destructive-hygiene tool would contradict that list. #decision
+
+<!-- 2026-08-24 19:47:24 [01a03618] -->
+
+<!-- communication preference, 2026-08-24 -->
+<!-- merged 2026-09-01 from five entries: 08-24 response shape, 08-25 park-the-findings
+     (its "park in the report file" clause RETRACTED same day), 08-25 correction,
+     08-26 inform-don't-perform, 08-27 recurrence. Promoted to AGENTS.md §Communication. -->
+## David — reply shape #preference #lesson
+
+The rule now lives in the constitution (`ai/AGENTS.md` → **Communication**). It was
+promoted on 2026-09-01 because it failed four times in four days while sitting in
+searched memory. This entry keeps the evidence and the sharp edges.
+
+**The single test of a reply: did David understand the answer to his question?**
+Everything else is optional and must *look* optional.
+
+- **Trigger.** A question shaped `why… / where… / have you… / is it… / which…` is a
+  single-fact question. Answer the fact. Stop.
+- **Answer first, complete, and alone** — nothing interleaved. No caveats mid-answer,
+  no adjacent findings, no implications woven in. Lead with the verdict, including
+  disagreement: a flat "no, because X" beats "right instinct, wrong lever" hedging.
+- **Then a distinct, clearly skippable section** under its own heading. Never above the
+  answer, never mixed into it. **The extras are wanted** — do not suppress them and do
+  not exile them to a report file. Volume was never the complaint; placement was.
+- **Every sentence hands over a fact.** Delete sentences whose job is effect: teasers,
+  suspense, throat-clearing ("It's worth noting"), restating what's coming, praising the
+  artifact's own virtues ("it caught a subtlety I'd have missed").
+- **Calibrated words.** A size or importance claim is a measurement or it is dropped.
+  Banned: goldmine, game-changer, crucially, "the real problem", "not just X", massive,
+  dramatically. The `X, not just Y` sentence frame is banned even without the phrase.
+- **Machine-like = template over thought:** bold-label bullet walls, three bullets that
+  could be one sentence, formulaic transitions. Prefer plain declarative sentences.
+- **When corrected, acknowledge in one line.** A post-mortem about being too long is the
+  same mistake wearing a hat.
+
+**Test before sending:** strike every clause that would still be true if the underlying
+fact were wrong. If a sentence survives only as commentary, delete it.
+
+**Root cause, and it is not verbosity.** Finding something adjacent while answering feels
+like value. Thoroughness in *investigation* is the job; thoroughness in *the reply* is
+friction.
+
+**Recurrences:** 08-25 one-question ask answered with a table + two ambiguity classes + a
+re-query plan + a design implication (he asked twice); same day on "have you pushed the
+branch" and "give me a table"; 08-26 clickbait framing; 08-27 self-praise on the #7239 plan
+handoff.
+
+Applied to context-switching STATE summaries ([[context-switching]]): 5 fixed slots, one
+line each, concrete identifiers only (PR#/SHA/path/count), `next` starts with a verb, facts
+not significance ("228/228" not "great shape"). Banned-word grep + line cap as deterministic
+lint. Test: resume in 30s from the head alone.
+
+Full lesson: `~/Workspace/my-stuff/ai/lessons/admin-web.md` → "Answer the question first; keep the findings, move them".
+
+<!-- 2026-08-25 16:29:19 [01a034b6] -->
+
+<!-- code-comment bar, 2026-08-25 -->
+## Comment bar — the code has to be unreadable without it #preference
+
+#7343 shipped 61 added comment lines; David cut it to **11** over two rounds of raising the bar. "Explains why not what" and even "would someone undo this?" are both too lenient — I can always imagine someone undoing something.
+
+**Cut it if** a shared variable already enforces the invariant, a named `it(...)` already documents it, the effect is visible on page load, or it explains an *absence*.
+
+**Keep it for** a magic constant's derivation (`calc(20 + 4)` → "chevron icon + its gap"), a rule that exists for one surface only (`[mobile-bridge]`), a normative requirement (a WCAG criterion number), an identity behind a boolean, or a format quirk that explains why a function exists.
+
+Root cause: I write comments while reasoning, so notes-to-self survive into the diff. **The reasoning goes in `~/plans/<project>/`, not the source.**
+
+Also: never gut someone else's comment — compress and flag it. And match whole blocks when editing comments programmatically; matching a tail leaves dangling half-sentences.
+
+Full lesson: `~/Workspace/my-stuff/ai/lessons/admin-web.md` → "The comment bar".
+
+<!-- 2026-08-26 16:00:32 [01a03f28] -->
+<!-- 2026-08-27 16:33:19 [01a03f28] -->
+<!-- build-loop protocol, 2026-08-27 -->
+## David — build-loop review protocol #preference
+
+For orchestrated builds ([[context-switching]] and future projects): **every task/story ends with a fresh reviewer subagent** auditing the commit against the story's acceptance + verify block (reviewer re-runs verify itself, never trusts the implementer's paste; verdict-first protocol, one fix round then fail-fast). **Every sprint/epic boundary ends with an oracle** (forked context) reviewing correctness of the whole increment against the ADRs/specs — not just per-story compliance. Set 2026-08-27 during context-switching phase-4 build.
+
+<!-- 2026-08-27 16:55:04 [01a044ee] -->
+<!-- 2026-08-27 17:18:38 [01a04505] -->
+<!-- pi-subagents model pins + reviewer gate, 2026-08-27 -->
+## pi-subagents: bare model ids break, and the reviewer needed bash #lesson #decision
+
+**Resolved the "worker agent is broken" mystery** (earlier notes blamed a missing model — wrong).
+`gpt-5.6-sol` exists in the registry under **9 providers** (openai, openai-codex, azure-openai-responses,
+amazon-bedrock, cloudflare-ai-gateway, github-copilot, opencode, openrouter, vercel-ai-gateway).
+`resolveBaseModelCandidate` (`pi-subagents/src/runs/shared/model-fallback.ts:100-138`) resolves a bare id
+only if the session's own provider matches one of them, or exactly one candidate exists. From an
+`anthropic` session, 9 non-anthropic candidates → `undefined` → the misleading throw
+`Unknown subagent model '<id>' in the active Pi model registry`. Documented behaviour: `docs/models.md:142`.
+Bare `claude-*` pins worked only because the session provider is `anthropic`.
+
+**`fallbackModels` never rescues a bad primary.** `buildModelCandidates` (same file, ~:277-295) uses the
+*throwing* resolver for index 0 and the warn-and-skip resolver for fallbacks. A mispinned primary dies at
+candidate-construction time, before any provider call. `docs/agents.md:202` listing "unavailable model" as a
+fallback trigger means runtime failures only.
+
+**Rule: always write model pins as `provider/id`** — in `~/.pi/agent/settings.json`, in `ai/agents/*.md`
+frontmatter (`model` *and* `fallbackModels`), and in `my-stuff/setup.sh` (the `subagent_pins` JSON there
+re-seeds settings and had silently re-broken worker; fixed + commented).
+
+**`worker` runs with thinking `off` despite `thinking: high`** — it has `defaultContext: fork`, and forking an
+Anthropic parent's signed thinking blocks into an OpenAI model drops reasoning. `design-worker` (same model,
+fresh context) keeps `high`. Mechanism inferred, not traced.
+
+**reviewer now has `bash`** (`ai/agents/reviewer.md`): the build-loop protocol requires the reviewer to re-run
+verify itself, which was impossible with `read, grep, find, ls`. Added `bash` plus `completionGuard: false`
+(`docs/agents.md:287` — bash makes an agent mutation-capable and it would otherwise be judged an
+implementation agent) and `acceptanceRole: read-only` (`docs/tool-reference.md:290`). Prompt now says: re-run
+verify yourself, never accept a pasted result, bash is observation-only, name mutating commands for the
+supervisor. Verified: 6 bash calls, zero mutations, acceptance inferred `read-only/reviewer-style agent`.
+Tradeoff accepted — reviewer is read-only by instruction now, not structurally.
+
+**`design-worker` still cannot run**: it requests `get_design_context`/`get_screenshot`, but `tools` is a strict
+allowlist that does not load extension code. Needs `subagentOnlyExtensions` pointing at
+`~/.pi/agent/git/github.com/shopify-playground/pi-figma-mcp/index.ts`. Not yet fixed.
+
+
+<!-- 2026-08-27 20:40:32 [01a044ee] -->
+<!-- reviewer cannot persist artifacts, 2026-08-27 -->
+## `reviewer` has bash but no write — orchestrator must persist review artifacts #lesson #pi
+
+Supersedes nothing about `bash`: reviewer gained `bash` + `acceptanceRole: read-only` + `completionGuard: false` on 2026-08-27 17:16. It still has **no `write`/`edit` tool**, and it treats read-only as winning over any instruction to save a file.
+
+Briefing a reviewer to "write findings to `<path>`" produces compliance-with-the-ban instead: it returns the artifact verbatim with a note like *"Review-only role: I could not write … no-edit wins over artifact-writing. The full review artifact is returned … for the runtime to persist."* Correct behaviour, but the file never appears.
+
+**Consequence for workflowScript:** `runs.run(...).output` is the only copy. `status.json` does not retain full child transcripts, so a review not captured from the return value is unrecoverable after the run. When review records must persist, write `.output` from the script or the parent — do not ask the child to.
+
+
+<!-- 2026-08-31 11:04:29 [01a0584f] -->
+## Subagents die with "No API key found for anthropic" — it is never /login (2026-08-31) #lesson #pi #subagents
+
+`auth.json = {}` and no `ANTHROPIC_API_KEY` is the **correct** state on this machine. Auth comes from
+two things, both outside pi's own auth store:
+1. env credential exported by the tec/`dev` shell activation — `PI_PROXY_API_KEY` / `PI_PROXY_AUTH_HEADER`
+   (short-lived, ~18h; the token embeds an `expiry`), and
+2. the nix-managed **`shopify-proxy` extension** at `~/.pi/agent/extensions/shopify-proxy ->
+   /nix/store/<hash>-pi/config/extension`, which at activation calls `pi.registerProvider("anthropic", {
+   baseUrl: "https://proxy.shopify.ai/apis/anthropic", apiKey: "$PI_PROXY_API_KEY" })` plus openai/google/
+   groq/xai/fireworks variants. Pi core knows nothing about `PI_PROXY_*`.
+
+So **any child pi process that does not load that extension talks to real api.anthropic.com and dies with
+"No API key found for anthropic. Use /login…"**. Verified reproductions of that exact message:
+`pi -p --no-extensions …` and `env -u PI_PROXY_API_KEY pi -p …`. Running `/login` would be actively wrong
+(stores a personal vendor key and bypasses the proxy).
+
+Three ways a subagent loses the proxy:
+- **Agent frontmatter `extensions:`** — pi-subagents sets `disableAmbientExtensions = denyExtensions === true
+  || input.extensions !== undefined`, which passes `--no-extensions` to the child (`src/runs/shared/pi-args.ts`).
+  Declaring `extensions:` to grant one extension therefore silently kills the proxy. Use
+  **`subagentOnlyExtensions:`** instead — it adds `-e` paths without disabling ambient discovery.
+- **`capabilityCeiling.denyExtensions`** — same effect.
+- **Stale nix symlink**: a *dangling* symlink in `~/.pi/agent/extensions/` is **silently skipped** (verified),
+  while an extension that *throws* is fatal with a clear "Failed to load extension" message. A long-lived pi
+  session keeps working after the store path is GC'd (providers already registered in memory) while **every
+  newly spawned child fails** — parent healthy, 100% of subagents dead, misleading /login advice.
+  This is exactly what hit the 2026-08-31 10:47 `delegate` run (meta showed `disableAmbientExtensions: false`,
+  model `anthropic/claude-opus-5`, exit 1); the toolchain re-activation at 10:53 repointed the symlink and
+  subagents worked again on the next test.
+
+Triage order when a child dies at spawn: (1) `ls -l ~/.pi/agent/extensions/` — is `shopify-proxy` a live
+symlink? (2) `echo ${PI_PROXY_API_KEY:+set}` in the parent's env; (3) `cat <artifacts>/<run>_meta.json` →
+`launchResolvedExtensions.disableAmbientExtensions`; (4) `pi -p --no-tools --model anthropic/claude-opus-5
+'Reply OK'` from a fresh shell as the isolated control. Fix is re-activating the toolchain shell / restarting
+pi, never `/login`.
+
+**Never conclude "credential expired" while the parent is still completing calls** — parent-healthy plus
+children-dead is diagnostic of load-time extension loss, not auth. (First hit 2026-08-29; David's diagnosis
+beat mine, which wrongly blamed the credential.)
+
+Corollary: children inherit the parent's env snapshot, so a pi session left running past the credential's
+`expiry` will start failing with 401s (not "no API key") until pi is restarted in a freshly activated shell.
+
+
+<!-- 2026-09-01 13:25:58 [01a05dee] -->
+
+<!-- gs submit false-alarm under Gitstream mirror mode, 2026-09-01 -->
+## `gs submit --force-with-lease` can push successfully and *then* report a false "remote moved" halt #lesson #gitstream #gs
+
+Symptom (2026-09-01, PR #2022969 after a rebase): `gs submit --force-with-lease` halted with
+"remote branch origin/<branch> moved from planned submit head <NEW local sha> to <OLD sha> during
+submit; run `gs abort` and rerun". Then plain `git push --force-with-lease ... HEAD:refs/heads/<branch>`
+said **"Everything up-to-date"** — which looks like the push never happened, because `git ls-remote origin`
+still showed the OLD sha.
+
+Cause: this checkout is in **Gitstream mirror mode** (`dev gitstream info`): `origin` *fetches* from
+GitHub but *pushes* to gitstream.shopify.io. The push to Gitstream landed; gs then re-read the tip
+from the **stale GitHub mirror** and mistook mirror lag for a concurrent remote update. `git ls-remote
+origin` reads GitHub too, so it agrees with the stale view. The subsequent plain push was correctly a
+no-op because Gitstream already had the new sha.
+
+Settle it with the mirror engine, not with `ls-remote`:
+`dev gitstream push-status <branch>` → `outcome: mirrored`, `old_sha` → `new_sha`, `lease_requested: true`.
+That is authoritative. Then confirm the PR object: `gs pr view <N>` head sha.
+
+**Do not** re-push, `gs get --force`, or reset the branch on the strength of `ls-remote` alone — you
+risk clobbering a push that already succeeded. Also note World checkouts fetch only
+`+refs/heads/main:refs/remotes/origin/main`, so `origin/<feature-branch>` legitimately does not
+resolve locally; that absence is not a symptom.
+
+Related: `devx ci run` with no args failed with "Cannot trigger CI on main or release branches" on a
+feature branch in this state — `devx ci run --pr <N> --no-local-checks` worked.
+
+<!-- 2026-09-01 refine-memory (approved audit 2026-09-01) -->
+<!-- drained from ~/plans/stripe-express-ready-metrics/2026-08-18-country-code-queries.md -->
+## BigQuery: `monorail_merchant_checkout_diagnostics_1` quirks (2026-08-18)
+
+`sdp-ingest.monorail.monorail_merchant_checkout_diagnostics_1`:
+
+- **No `_PARTITIONTIME` column.** Filter on `DATE(event_timestamp)` or the query scans the whole table.
+- **`payload.countryCode` is a required schema field**, so "missing" means the empty string, not `NULL`.
+  Absence checks must test `IS NULL OR = ''` — testing `IS NULL` alone silently returns zero rows.

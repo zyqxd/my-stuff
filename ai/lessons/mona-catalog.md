@@ -127,3 +127,41 @@ Vex, when it actually bypasses Mona and lets Vex independently search one of Mon
 2. Explain that 0–3 grades a candidate response against the answer key; it is not confidence in the resolution.
 3. Describe human review as optional benchmark calibration or hardening, not as the purpose of candidate scoring.
 4. Keep the three stages explicit: synthesize fixed answer key once, generate a candidate per prompt, score candidate coverage for comparison and optimization.
+
+## L12 — Pick a judge threshold from the score cliff, never a priori (2026-08-18)
+**Symptom:** I reached for a round judge threshold before looking at the distribution.
+Vex's `BotAccuracy` (0–100, 6 bands in `config/bot_accuracy_ranges.yml`) is **bimodal in
+production** — an 85–89 "rubber stamp" cluster against a 95–100 "actually great" cluster —
+which is what puts `MINIMUM_GOLDEN_SCORE` at 95.
+**Rules for myself:**
+1. Plot the production distribution first; set the threshold at the cliff between clusters.
+2. Skip accuracy scoring where it is circular — Vex skips it when `Resolution.kind == "bot"`
+   or the channel is FAQ-mode, so the bot is never graded against itself or verbatim content.
+**Scope:** any LLM-judge threshold in this project family, not only Vex.
+**Source:** `~/plans/monet-slack/2026-08-18-prior-art-mona-atc-repos.md`, 2026-08-18.
+
+## L13 — Rank resolution ground truth by false-positive rate, not by richness (2026-08-18)
+Deterministic intake-bot **marker = 0 false positives** > conservative LLM assessment for
+7-day-stale threads (`confidence ≥ 90` only) > free LLM opinion, which stays an advisory field
+(~14% of threads resolve in-thread with no marker).
+**Rule:** prefer the narrow deterministic signal as ground truth and let the model fill only the
+residual, tagged as advisory.
+**Source:** as L12.
+
+## L14 — Freeze the reference once; re-run only candidate and scorer (2026-08-18)
+**Symptom:** the regenerate-and-re-judge-every-run evaluator hit 3,000+ lines and ~70 min for 21
+cases and produced no usable metric.
+**Rules for myself:**
+1. Synthesize the reference resolution **once** (3–5 sentences, ≤35 words each, cited transcript
+   line numbers) and freeze it; per prompt version, re-run only candidate + scorer.
+2. Score on 4 anchored tiers plus normalized completion `sum/(3×eligible)`.
+3. Resume by `case_id` + `source_sha` + `prompt_hash`; a changed identity means a **new output
+   file** — never mix runs.
+**Source:** as L12 (mona-catalog e01s16).
+
+## L15 — Never persist a partial or errored row over a good one (2026-08-18)
+**Symptom:** ~885 rows corrupted — a failed categorization still wrote, and `quick.db.update()`
+**merges**, so stale labels survived next to fresh provenance and looked authoritative.
+**Rule:** on the error path, write nothing. A merging update makes a partial write worse than no
+write, because the row keeps the shape of a good one.
+**Source:** as L12. #bug

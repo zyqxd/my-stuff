@@ -15,3 +15,7 @@
 - Do not assume advertised signup credits, trial balances, or promotions apply to the user's existing vendor accounts. Treat them as unavailable until account-level entitlement is measured.
 - Do not declare the just-in-time data-connection gate reached while the concrete build boundary and system architecture remain unconfirmed. Define what is being built, compare architecture options, and select boundaries before connecting production data.
 - Do not ask the user to approve architecture before presenting a concrete research algorithm and trading-policy candidate. Product behavior, hypothesis search, admission, entry, risk, exit, and promotion logic must be reviewable first.
+
+---
+**Archived 2026-09-01** (refine-memory). Same reason as `go-links.md`: no dated
+sources or evidence on any line. Kept for reference, not active.

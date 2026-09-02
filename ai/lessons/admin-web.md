@@ -6,6 +6,11 @@ start; append after any correction. (Moved out of the in-repo `tasks/lessons.md`
 
 ---
 
+> Split on 2026-09-01: git/worktree lessons moved to `world-git.md`, build and
+> verification lessons to `world-verification.md`, metric-contract lessons to
+> `checkout-metrics.md`. This file keeps UI, CSS, component, copy, and
+> working-process lessons.
+
 ## Don't patch a small state machine one failure-path at a time (whack-a-mole)
 
 Source: PR #899093 + stacked #906638 (ACH bank accounts in subscription
@@ -57,15 +62,11 @@ Rules for myself:
   patch.** After the 2nd finding on one block, stop and redesign toward a single
   source of truth instead of patching path #3, #4, #5.
 
-## Promoted code-review conventions
+## Promoted code-review conventions — promoted 2026-07-09
 
-Source: reviewer feedback on PR #899093 (2026-07-09).
-
-- Comments should explain only a non-obvious constraint or trade-off; refactor or rename instead of narrating the code, and put test intent in `it(...)`/`describe(...)` names.
-- Match the section's established file organization instead of creating a one-off variation; change every instance together if the pattern must change.
-- Keep discriminating fixture data legible at the assertion site.
-
-The global commandments carry these rules; this section retains their source evidence.
+Source: reviewer feedback on shop/world PR #899093, 2026-07-09 (comments, file
+organization, fixture legibility). The global commandments in `ai/AGENTS.md`
+→ Core Principles carry the rules; no admin-web-specific nuance beyond them.
 
 ## Core (`//areas/core/shopify`) auto-reformats `db/data/*.yml` on save
 
@@ -80,25 +81,6 @@ spurious diff.
 - Restore only watcher-generated unstaged changes afterward
   (`git restore --worktree -- <files>`); never discard pre-existing work.
 
-## Fresh World worktrees have no generated GraphQL/TS declarations
-
-`dev up --bare` does NOT start the dts daemon, so type-check fails with
-"Cannot find module '\*.graphql'" / cross-project `.d.ts` missing.
-
-- `pnpm run -r ... generate-dts` (packages) + `node scripts/typescript/generate-dts.ts <files>`
-  (app projects) + `pnpm run refresh-graphql document-types` (generates `*.graphql.d.ts`).
-- `changed-files.sh` chokes on untracked non-TS files (e.g. a stray `tasks/todo.md`); pass
-  explicit admin-web-relative paths instead. (Keeping scratch/lessons out of the
-  checkout — per the new memory location — also avoids this.)
-
-## Removing a core GraphQL field consumed by admin-web = 3 single-zone PRs
-
-Cross-zone PR restriction forbids one PR touching core + admin-web. Order:
-admin-web (stop selecting) → core (remove field + regen `admin_schema_*` dumps) →
-admin-web (`refresh-graphql` / resync `protocols/graphql/core.*` + `core-types`).
-Reverse schema-dump hunks precisely from the field-add commit; verify against
-_current_ content (`.graphql` sorts fields alphabetically, `.json` uses definition order).
-
 ## PR description corrections from the B2M and Stripe Express stacks
 
 Sources: B2M CTA restack (#907101/#915894), 2026-07-13; user edits to Stripe Express #937049, 2026-07-15.
@@ -109,28 +91,6 @@ Sources: B2M CTA restack (#907101/#915894), 2026-07-13; user edits to Stripe Exp
 - Explain compatibility decisions in reviewer terms, and prefer concrete reader language such as `2+` instead of symbolic `N`.
 - Treat those headings and ordering as case evidence, not a universal template; choose sections that orient reviewers to the current change.
 
-## Stripe Express ready metrics — trace component nesting before claiming a metric gap
-
-- Never analyze paired-metric emission (ReadyResult vs ReadyDuration) by
-  reading each file in isolation: the INNER `StripeExpressAdminCheckout.handleReady`
-  emits Duration, then calls `onReady`, which makes the OUTER `ExpressPayButtons`
-  emit Result(success) — both fire once, paired across parent+child. Trace
-  `onReady`/callback nesting before asserting "this surface emits X but not Y".
-- Product fact: there is NO standalone "add Apple Pay / Google Pay as a payment
-  method" flow; Stripe Express wallets render only when the merchant/device has
-  that wallet set up (availability-gated). `StripeExpressAdminCheckout` is only
-  the inner button under `ExpressPayButtons` on the billing checkout page.
-- Real ReadyResult/ReadyDuration discrepancies are narrow (Result carries
-  `surface`, Duration doesn't; duration skew across paths; rare
-  double-ready/late-ready count edges), not a "success emits only one metric" gap.
-
-## Keep development-only changes off real PR branches
-
-Source: Stripe Express ready-metrics stack, 2026-07-16; the same temporary tophat patch reached real branches twice.
-
-- Before committing or pushing after cherry-picked tophatting, inspect recent commits and the branch diff for `[DO NOT MERGE]` markers or development-only helpers; remove them first.
-- Verify the pushed diff contains no development-only files; correct the branch immediately if one escaped.
-
 ## Honor the #937051 review handoff contract
 
 Source: user correction on Stripe Express #937051, 2026-07-16. Added prop/test comments despite standing workstream guidance and replied to binks twice; the same handoff required review fixes to be squashed.
@@ -138,56 +98,6 @@ Source: user correction on Stripe Express #937051, 2026-07-16. Added prop/test c
 - For this workstream, add no code or test comments unless explicitly requested; use clear names and test descriptions instead.
 - Do not reply to Binks or poll/wait for its re-review; fix the code, push, and hand off immediately. David will surface any new Binks comments.
 - Squash review fixes into one clean commit per PR before handoff.
-
-## Do not retain synonymous metric labels without auditing reporting consumers
-
-Source: user correction on PR #937049, 2026-07-27. I kept both `surface` and
-`source` on `StripeExpressPayElementReadyResult` (same Admin-versus-Signup
-value) as a compatibility hedge — two names that could conflict and no single
-reporting contract. Make one canonical and audit consumers before removing the
-other.
-
-Rules for myself:
-
-- **One semantic dimension gets one metric label.** Do not preserve synonymous
-  labels indefinitely to avoid a migration; choose the canonical label and
-  migrate consumers.
-- **Before changing a metric label, use Monitoring API metric references** to
-  inventory every alert, SLO, and Grafana dashboard, then inspect each exact
-  expression/panel query.
-- **Do not globally replace same-named labels.** ReadyResult `surface` was
-  redundant, while `merchantCheckoutEvent.surface` has a separate valid
-  taxonomy (`optional_checkout`, `admin_checkout`, trial-reactivation flows).
-- **Plan the historical-series transition.** If old series have only the legacy
-  label, use a temporary dual-read/normalization query through the longest alert
-  window; otherwise the schema cleanup creates a monitoring blind spot.
-- **Do not add a new alert dimension casually.** Grouping by `wallet` changes
-  the per-series sample floor and alert sensitivity; measure volume and
-  recalibrate thresholds separately from the label rename.
-
-## Do not defer a directly related, low-risk metric schema correction mechanically
-
-Source: user correction on PR #937051, 2026-07-28. I took a reviewer's
-"non-blocking; include it in the follow-up" as a reason not to fix a
-high-cardinality `duration` label in a PR that already touched every emitter.
-
-- A reviewer allowing a follow-up is permission, not a requirement; prefer the
-  active PR when the fix is small, cohesive, and all emitters and types are
-  already in scope — especially before emission volume expands.
-- Verify alerts, SLOs, and exact dashboard queries first; if no consumer
-  filters or groups by the label, do not invent compatibility risk to justify
-  deferral.
-
-## Keep review fixes scoped to the reviewed emission condition
-
-Source: user correction on PR #937051, 2026-07-28. A comment on removing
-synthetic timeout ReadyDuration samples drew a redesign of post-timeout
-duration capture — outside the requested comment.
-
-- Limit the fix and discussion to the commented condition unless the user asks
-  for a redesign; do not turn an adjacent observability idea into scope.
-- State shared-path coverage explicitly: `useExpressPayConfig` serves Signup
-  and MerchantCheckout; `ExpressPayButtons` is the separate Admin Billing path.
 
 ## Keep semantic booleans in component APIs; encode HTML sentinels at the DOM boundary
 
@@ -204,22 +114,6 @@ Rules for myself:
   the concrete HTML element that receives the attribute.
 - Do not make intermediate components and tests understand browser/React
   serialization sentinels.
-
-## State metric timing anchors explicitly when comparing surfaces
-
-Source: user review on Stripe Express ready-metric PR #937051, 2026-07-30.
-
-Admin Billing measures readiness from child mount, while the shared Signup and
-MerchantCheckout flow measures from timeout-arm time. Both approximate wallet
-probe start, but they are not byte-for-byte identical clocks.
-
-Rules for myself:
-
-- Before claiming cross-surface latency comparability, trace and name each
-  surface's exact start and end boundaries.
-- Align timing anchors when practical; when lifecycle architecture makes a small
-  difference intentional, document it in the metric contract and reporting.
-- Do not hide a semantic timing difference behind a shared metric name.
 
 ## Distinguish an extraction from a future-consumer component scaffold
 
@@ -269,39 +163,6 @@ capsule. That made a personal agent artifact part of the production diff.
 - Prefer `~/plans` for durable local planning when no existing global exclusion
   already protects an in-checkout specs directory.
 
-## Verify local-assets transport and backend access before asking for login
-
-Source: user correction while tophatting ReactivationScene PR #962857, 2026-07-30.
-
-I opened `local.preview.admin.shopify.com` and treated Shopify Identity login as
-the only blocker. After login, the page still could not load: Chrome could not
-fetch the local Vite modules, and once those were proxied, local-preview GraphQL
-requests returned 403. The same profile also lacked access to the production
-store.
-
-- Distinguish `dev assets`/local-preview from the supported `pnpm prod vite`
-  local-assets-against-production setup; do not assume they use the same backend.
-- Before asking the user to authenticate, verify the Vite module URLs load in
-  Chrome, the target account can open the production store, and one core Admin
-  GraphQL request succeeds.
-- If an existing asset server owns the required port, do not replace it silently;
-  report the conflict and ask the user whether to stop it or use another setup.
-
-## Scope manual tophats to risks not already proven by tests
-
-Source: user challenge on ReactivationScene PR #962857, 2026-07-30.
-
-I proposed manually checking Mobile Bridge, incentive bundles, and the child dialog
-because each is a TRN variant. That repeated existing integration coverage rather
-than focusing manual effort on what this extraction could uniquely break.
-
-- For behavior-preserving extractions, require manual checks only for changed
-  contracts that jsdom cannot prove, especially responsive/native CSS.
-- Treat variants already covered by representative integration tests as optional
-  smoke checks unless their runtime boundary changed.
-- Explain why each tophat case is necessary; remove it if the rationale is only
-  “the route supports this state.”
-
 ## Talk normally — mechanics (principle is constitutional)
 
 Sources: repeated corrections on the #6154 shimmer-data report, 2026-07-31, and
@@ -326,17 +187,6 @@ principle; these mechanics stay scoped.
   (the wait started; no later signal was recorded) and treat exit events as
   best-effort. Distinguish a repeated user experience from duplicate delivery;
   explain idempotency separately rather than hiding both behind one term.
-
-## Define tophat override mechanics before presenting expected metrics
-
-Source: user correction on Stripe Express ready-metric PR #937051, 2026-07-30.
-
-I used “show,” “timeout,” and “hide” as table cases without defining how the dev-only monkeypatch changes probe mounting, readiness callbacks, and timeout expectations. That made `hide` look like Stripe reporting an unavailable wallet, contradicting the documented contract that an unavailable provider still records `onReady` duration.
-
-- Define each override in lifecycle terms: whether the provider mounts, remains expected by the timeout, and can deliver `onReady`.
-- Distinguish “probe omitted” from “probe mounted and Stripe reports unavailable”; they have different metrics despite both producing no visible wallet.
-- Include the real unavailable-provider case in the matrix when it is central to the metric contract, even if the monkeypatch cannot force the provider response.
-- Explain why omitted probes produce neither success nor timeout metrics so a correct tophat result is not mistaken for a regression.
 
 ## Auth-gated content: ask for the artifact, never drive a sign-in
 
@@ -366,79 +216,21 @@ from scope the user had requested.
 - Apply this rule to issue investigations and PR plans. A linked issue may still
   explain an API choice, but it must not silently expand the diff.
 
-## Name positional slot props by role, not `content`
+## Name a positional slot after its concrete DOM anchor
 
-Source: user correction on shop/world PR #975744 (#6928), 2026-08-04.
+Source: two user corrections on shop/world PR #975744 (#6928), 2026-08-04 and 08-05.
 
-I shipped a new optional slot on `CheckoutLayout.mobileHeader` as `content`
-even though it renders in one specific position (directly after the mobile
-headline/subtitle). David corrected: `content` is not the right name when the
-slot's placement is specific.
+A new optional slot on `CheckoutLayout.mobileHeader` went through three names before
+it was right: `content` (rejected — generic, and the slot has a fixed position), then
+`footer` (rejected — "not the appropriate name for header content"), finally
+**`belowSubtitle`**, which names the required sibling `subtitle` prop it renders
+directly after.
 
-- A generic `content` name is only right for a component's main body; a slot
-  with a fixed position needs a role/position name.
-- Prefer names that match sibling conventions in the same API surface — here
-  `leftPanel: {content, footer}` already established `footer` as the trailing
-  slot, so `mobileHeader.footer` was the consistent choice.
-- Check whether the name creates useful symmetry for known future callers
-  (cancelled flow pairs desktop `leftPanel.footer` with mobile
-  `mobileHeader.footer`).
-- Uncertainty: David approved the direction but didn't explicitly ratify
-  `footer` over positional names like `belowHeadline`; confirm if it recurs.
-
-**Update 2026-08-05:** `footer` was also rejected — "not the appropriate name
-for header content". Final name: `belowSubtitle`, chosen because it names the
-slot's DOM anchor (the required sibling `subtitle` prop it renders directly
-after). Refined principle: for a positional slot, prefer the name of its
-concrete DOM anchor over borrowed layout metaphors (`footer`) or generic
-roles (`content`); sibling-prop convention symmetry does not outweigh a
-metaphor that contradicts the parent's own name (a footer inside a header).
-
-## Event Refinery from admin-web/Signup: contract decisions vs standard execution
-
-Source: #6154 payment-wait reporting, 2026-08-05 — four corrections in one day,
-consolidated 2026-08-17 (superseded intermediate reasoning removed; final rules,
-evidence, and uncertainties kept).
-
-- Plan schema/governance and client feasibility as separate epics: an approved
-  payload does not prove Admin — and especially the isolated Signup app — can
-  hydrate and send the required envelope. Plan production lifecycle
-  instrumentation only after both decisions; keep warehouse modeling separate
-  (different owners and launch controls).
-- For a durable Admin business fact, first write "one row means ___ happened,"
-  then use the established semantic emitter in
-  `packages/admin/context/observability/index.ts` — feature code passes only
-  the generated payload; the slice owns envelope and FEC transport. Admin keeps
-  using Admin observability because the Dux client-proto middleware
-  deliberately leaves shop and organization null.
-- Keep Dux for bounded UI telemetry and as the separately approved Signup
-  `duxProto` candidate: both wrappers already set `protoEventSource`, and Dux
-  7.6 routes typed `duxProto` payloads through the existing `/.well-known/dux`
-  middleware and FEC envelope path. Distinguish three paths before proposing
-  any new client: automatic Dux events, legacy `trackers.dux(...)` (Monorail),
-  and typed `trackers.duxProto(...)`. Never repurpose `DuxEvent`, Admin
-  search/navigation/runtime events, or a feature-owned `SimpleProtoClient`.
-- Separate contract decisions from standard execution: a new durable proto
-  needs one schema/domain reviewer and one real first consumer; Infra Central
-  topic creation and Factoids ingestion are self-service onboarding, not extra
-  owners. Do not gate on a Dux owner (supported API), a Signup observability
-  owner (Dux suffices), a separate privacy owner (envelope consent plus schema
-  classifications settle it), or a modeled-data owner before a modeled table is
-  required — escalate only when the existing path proves insufficient.
-- A new payload type still creates its own refined/validated topics even though
-  transport is reused; extending `DuxEvent` as a loophole for a stable business
-  fact is rejected by its own schema guidance. Public advisory feedback is not
-  owner approval — expect an actual schema PR and first-consumer review before
-  the governance gate closes.
-- Scope: new Event Refinery integrations from admin-web or another isolated
-  client application, not routine use of a proven proto method.
-- Evidence: Admin/Signup `DuxWrapper.tsx`, Dux 7.6 `Track.duxProto`, Dux
-  middleware `ir(...)`, `EVENT_SCHEMA_CONVENTIONS.md`, issue-on-ramps #865, and
-  the #6154 public thread.
-- Uncertainty: the final Signup producer, employee semantics, consent defaults,
-  raw-table ownership, first-consumer projection, and whether Signup's Dux
-  MTT/session suffices to join Guest Checkout waits to the later merchant —
-  only that last gap should trigger Signup/Dux envelope work.
+- **Rule:** for a positional slot, prefer the name of its concrete DOM anchor over a
+  borrowed layout metaphor or a generic role.
+- Sibling-prop symmetry is not enough to justify a name — `leftPanel: {content, footer}`
+  made `mobileHeader.footer` look consistent, but a metaphor that contradicts the
+  parent's own name (a footer inside a header) loses to the anchor name.
 
 ## Keep Slack review requests focused on the decisions
 
@@ -506,147 +298,6 @@ Source: issue #7058, PR shop/world#984362, 2026-08-10 (two corrections, same fai
 - Measuring the design screenshot is a real check, not busywork: decoding the PNG, classifying the hatched spacing bands, and calibrating against a numeric badge visible in the same image ("20") put the true total at ~26–30px and ruled out 48px before any CSS was written.
 - Corollary that worked: because the harness reported `gapRow1to2` as a number, the fix was verifiable in one run. Keep measuring geometry, not just type.
 
-## Verify the tophat build actually serves your code before debugging its behaviour
-
-Source: TRN mNative "black screen", 2026-08-10 (PRs #987320 / #987620).
-
-A `/webmanifest` mNative tophat black-screened. I spent several rounds theorising
-about WebKit compositing (`position: fixed` scroller, fixed `BackgroundScene`
-painting over content), then built an on-screen diagnostics overlay — all for a
-page that was never served. Simulator `log stream` showed the truth immediately:
-
-```
-isMainResource=1 ... didReceiveResponse: (httpStatusCode=400, MIMEType=text/html)
-```
-
-Root cause: the webmanifest sends header `Shopify-Web-Manifest: <branch-name>`,
-but the **web assets/manifest must be uploaded by a separate manual Buildkite
-gate** ("Upload Assets and Manifests?" in `world-web-ci-builder`). I never ran CI
-on the branch, so no manifest existed for that ID → server 400 → blank webview.
-`devx ci status -b <branch>` said `Commit not found`, which was the tell.
-
-Rules for myself:
-
-- **Before diagnosing rendered behaviour on a tophat build, prove the build
-  serves your commit.** For webmanifest: CI has run on the branch AND the
-  "Upload Assets and Manifests?" step completed AND the PR comment shows a
-  manifest value. `devx ci status -b <branch>` returning `Commit not found`
-  means nothing was built.
-- **Check the transport before the CSS.** One `xcrun simctl spawn booted log
-stream --predicate 'processImagePath CONTAINS[c] "Shopify" OR ... "WebContent"'`
-  capture beats any amount of static CSS reasoning. Grep `isMainResource=1` for
-  the document status first.
-- **Verify the environment is alive first.** The same session had a wedged
-  simulator: `simctl io screenshot` → "Timeout waiting for screen surfaces",
-  `shutdown` → "current state: Shutdown" (it had died), Safari → "couldn't
-  connect to the server". A plain `simctl shutdown && boot` (never `erase`) fixed
-  all of it. A dead simulator renders black and mimics a real bug.
-- **`/webmanifest` requires the `//areas/clients/admin-mobile` label** on the PR.
-  Without it the mobile snapshot may build while the web manifest never does.
-- I can drive the simulator directly from the shell — `simctl list devices
-booted`, `io screenshot`, `openurl`, `launch`, `log stream`. Use it to observe
-  instead of relaying commands. Loading the URL in the simulator's own Safari is
-  the cheapest web-vs-native isolation test.
-
-## local.preview serves production assets unless the session is @shopify.com
-
-Source: PR #984362 tophat, 2026-08-10. Changes "didn't appear" despite a correct Vite server
-(curl showed fresh CSS), hard refreshes, and a served-code audit. Root cause was server-side:
-`shouldUseCustomCdn` on `local.preview.admin.shopify.com` returns
-`isShopifyEmailAddressSession(ctx)` — logged in as only a test-merchant (Genghis) account, the
-page silently gets PRODUCTION assets, and remote/PR-preview manifests are ignored on that host
-too. Debug order for "stale code" reports: (1) `[...document.scripts].map(s=>s.src)` —
-cdn.shopify.com means wrong session, vite.local.shop.dev means real staleness; (2) only then
-chase HMR/caching. Fix: sign in to accounts.shopify.com with the @shopify.com identity
-alongside the merchant account. Also learned: a DOM probe (computed margin/padding walk from a
-found text node) settles "which build is this tab running" faster than screenshot forensics —
-ask for it early; and watch for DevTools console filters hiding output ("returns undefined").
-
-## Use the approved analytics name while documenting browser limits
-
-Source: PR #984365 tophat, 2026-08-11. I named the wait-deactivation event
-`stripe_express_shimmer_page_hidden` to avoid implying abandonment. David chose
-`stripe_express_shimmer_bounce` after comparing it with the existing page-level
-bounce signal and asked for the complete browser-cause contract.
-
-- Follow the approved product/analytics name, but define the directly observed
-  fact separately: an open wait received `visibilitychange`→hidden or
-  `pagehide`; it does not prove permanent abandonment.
-- List which actions usually produce those signals—tab switch, minimize,
-  navigation, reload, tab/browser close—and state that JavaScript cannot
-  reliably distinguish them or survive crash/force-kill/device shutdown.
-- Test both trigger paths, visible-state rejection, deduplication, cleanup, and
-  no emission after resolution; do not treat a name change as string-only.
-- Keep forced-wait tophat helpers uncommitted and verify the remote PR excludes
-  them. This is especially important in this workstream because dev-only Stripe
-  overrides previously escaped onto real branches.
-- Scope: browser lifecycle analytics and local Stripe readiness experiments in
-  admin-web. Evidence is the dual-event local tophat and PR #984365 update.
-  Uncertainty: downstream reporting may later retire the legacy page-level
-  bounce or add a richer, typed exit contract.
-
-## Inventory terminal events before proposing a companion outcome
-
-Source: PR #984365 event-model review, 2026-08-12; consolidated 2026-08-17
-(working-design conduct now lives in commandment #7). I proposed a new
-`checkout_completed` diagnostics event before confirming the existing
-plan-change funnel.
-
-- Check tracker factories and success callbacks before adding outcome events:
-  Signup and Admin already emit
-  `merchant_onboarding_settings_account_start_plan_pressed_success/3.6`, reused
-  by Guest Checkout and Trial Reactivation. Prefer that authoritative
-  attempt/success/error family over a duplicate diagnostics row.
-- Inventory existing correlation keys before adding one. `sessionId` spans many
-  events but is not a checkout-attempt ID (re-entry, reload, and concurrent
-  tabs produce multiple view lifecycles per session); distinguish counting rows
-  from attributing surrounding events to one view — a view ID resolves the
-  latter. Add a companion event only when deterministic correlation is
-  demonstrably required and the identity-and-time join cannot achieve it; make
-  duplicate-counting and semantic-drift costs explicit first. A checkout-submit
-  diagnostic earns its place when it carries the view ID needed to join the
-  authoritative success event — verify it fires at actual submission on every
-  payment path, not a button-click proxy.
-- Encode downstream join requirements as a surface-discriminated
-  event-name-to-fields map, not `{[key: string]: unknown}`. Verify IDs at the
-  adapter boundary: Signup and Guest Checkout emit numeric `userId: 0`, so
-  `storeSignupUuid` is the required key there; `identityUuid` is a distinct,
-  optional Identity-account key and must not be relabeled `userId`. Separate
-  directly emitted events from warehouse classifications (a non-Apple/Google
-  route can be derived from `paymentType`; it proves no extra view).
-- Distinguish temporary deactivation from terminal exit: visibility
-  hidden→visible retains one view ID; modal/route exit or `pagehide` closes it
-  and any re-entry mints a new one; plain `window.blur` is neither. Treat
-  missing-signal classifications as terminal — describe the missing resolution
-  instead of appending impossible follow-on states.
-- Investigate hard-coded identity fallbacks (e.g. required `sessionId: "0"`)
-  before replacing them; history without rationale proves origin, not intent.
-  When a reviewed design supersedes a draft PR, the document is the source of
-  truth and current code is prior art only.
-- Scope: merchant checkout outcome instrumentation in admin-web. Evidence:
-  `getPlanChangeTrackingEvents` and both `getCheckoutTracker` factories.
-  Uncertainty: production validation may show view-level deterministic
-  correlation needs a future schema version; not proven now.
-
-## Create the branch before the first commit of a story
-
-In a Graphite stack it is easy to finish one story, keep working, and commit the
-next story onto the previous story's branch. Nothing warns you: tests pass,
-`fastcheck` passes, and `gt submit` cheerfully pushes the extra commits into the
-open PR of the story below.
-
-Cost when it happened: eight commits of e05s05 landed on the e05s04 branch and
-were pushed to that PR, which had already been reviewed.
-
-Recovery is safe if the commits are contiguous: branch at the current tip, hard
-reset the lower branch to its real boundary commit, then
-`git push --force-with-lease`. `--force-with-lease` will reject with "stale
-info" right after a push; `git fetch <branch>` first, or pin the expectation
-with `--force-with-lease=<branch>:<sha>`.
-
-Future action: run `git branch --show-current` immediately before the first
-commit of a new story, not after.
-
 ## write.quick: the editor owns the text once a doc is opened
 
 `content` and `crdtBaseContent` on a `documents` row are only a **seed**. The
@@ -666,92 +317,6 @@ Future action: after publishing to a doc that has ever been opened, check
 `__livedoc` for a row before claiming the update is live. Verifying the database
 is not the same as verifying what the reader sees.
 
-## Do not rename a production event without a very good reason
-
-A rename splits the reporting flow downstream. Every dashboard, saved query,
-scorecard, and warehouse model keyed to the old name stops at the rename date,
-and anyone comparing across it has to know to UNION two names. The cost is paid
-by people who were not in the conversation, indefinitely.
-
-This came up on `checkout_express_pay_state_at_submit`. After moving it to the
-shared submission fetcher it fires on every payment path, so the name
-under-describes it, and I proposed renaming to `checkout_submitted` on the
-argument that the deploy already breaks the population so we may as well pay one
-discontinuity instead of two.
-
-That argument is wrong. A population change and a name change are not the same
-cost. A population change is a step in a series that still exists and can be
-explained; a rename ends the series. "We are already breaking it" is not a
-licence to break it in a second, worse way.
-
-Future action: treat an event rename as requiring a specific downstream
-justification, not merely a better name.
-
-**The follow-on is sharper than the original lesson.** If a rename is too
-expensive, *moving* the same event to a new call site is not the safe
-alternative — it is worse. A rename fails loudly: queries return zero rows and
-someone notices. A moved call site keeps returning rows that quietly mean
-something else. When the question changes, **add a new event and leave the old
-one alone**; that is what was already done for `checkout_bounce_with_shimmer`.
-
-## Planning capsules must not live inside a repo checkout
-
-**Failure (2026-08-17).** The e05 bigpowers capsule (`specs/epics/e05-*`,
-`specs/verifications/*`, `epic.yaml`, `execution-status.yaml`) lived at
-`areas/clients/admin-web/specs/` inside the World checkout and was gitignored.
-It is now gone — nothing tracked it, so no clean/reset/worktree operation had
-any reason to preserve it. Roughly two weeks of story specs, task YAMLs, the
-five-surface remount audit, and the mutation-testing evidence went with it.
-
-**Why it happened.** Gitignored + inside a checkout is the worst combination:
-git will not restore it because it is untracked, and tooling feels free to
-delete it because it is ignored. This is the same hazard already recorded for
-`tasks/` folders, but I did not generalize the rule to `specs/`.
-
-**Future action.** Durable planning artifacts go in `~/plans/<project>/`, which
-is version-controlled in the brain bank. If a tool insists on a
-checkout-relative path (bigpowers writes to `specs/`), symlink it out to
-`~/plans/<project>/specs/` at setup, before writing anything into it.
-
-**What survived, and why that is the real lesson.** Everything that mattered
-had been pushed to a durable home as it was produced: the spec on write.quick,
-the contract comments on the docs PR, the ACs on the GitHub issues, and the
-evidence tables in the PR bodies. The capsule was the scaffolding, not the
-product. Keep writing conclusions outward as they are reached rather than
-leaving them only in working state.
-
-**Scope.** Any bigpowers/agent capsule in any World zone.
-
-## A "surface"/context enum belongs to the journey, not the call site
-
-**Failure (2026-08-17, #995644).** I added a required `surface` argument to
-every checkout tracker factory and considered the job done. Two factories each
-serve two different merchant journeys, so two surfaces are wrong:
-`getReactivationCheckoutTracker` hardcodes `admin_trial_reactivation` inside
-the wrapper while also serving `/reopen` (cancelled reactivation). My own spec
-said "required at every tracker call site; there is no default" — a constant
-inside a shared wrapper is a default.
-
-**Future action.** When adding a classifier argument, enumerate the *call
-sites* of each factory, not the factories. For each one ask which route or
-journey it runs on, and confirm with the route manifest. If a factory has more
-than one journey, the argument must be a parameter, never a constant inside it.
-
-**Second failure in the same review: I nearly implemented a reviewer's fix
-without verifying their mechanism.** The reviewer said a component "also
-serves" a second route. It does not — the manifest resolves that path to a
-different, legacy component, and production shows 6 rows/day there. They were
-misled by an unreachable pathname predicate left in the component. Verify the
-mechanism, not just the conclusion; otherwise you add dead code and leave the
-real bug in place.
-
-**Verification that worked.** Route manifests answer "what renders here";
-production `payload.pathname` answers "what actually happens". Use both — the
-manifest alone would not have shown the reactivate route is near-dead, and the
-data alone would not have shown which component owns it.
-
-**Scope.** Any enum/classifier threaded through factories in admin-web.
-
 ## Never reuse a reviewer's comment numbers for your own action items
 
 **Failure (2026-08-17, #995644).** I numbered a disposition table 1–4 after the
@@ -767,107 +332,6 @@ to share a label.
 
 **Scope.** Any review-response writeup, PR reply, or plan derived from
 numbered external feedback.
-
-## Stage your work before mutation-testing
-
-**Failure (2026-08-17, #995644).** I mutation-tested with `git checkout -- <file>`
-as the revert step while my implementation was still unstaged. The first revert
-restored the file to HEAD, silently deleting the real edits to two files. The
-next two mutations then failed to find their anchors and reported against the
-reverted code, which briefly looked like missing test coverage rather than a
-lost implementation.
-
-**Future action.** `git add -A` before the first mutation. `git checkout --`
-restores from the index, so with the work staged the revert puts back the
-implementation instead of HEAD. Assert the anchor count before writing, and
-after the run verify the implementation is still on disk.
-
-**Scope.** Any mutation-testing or scripted edit/revert loop.
-
-## Verify the branch after `gt checkout` — never swallow its output
-
-**Failure (2026-08-18).** I ran `gt checkout <branch> 2>&1 | tail -1` and read
-the truncated output as success. It had actually failed with "already used by
-worktree at ~/world/trees/root/src" — the root worktree was parked on that
-branch. Every edit for the next ~20 tool calls went to the wrong branch (the top
-of the stack instead of the bottom). Only an unexpected file existing gave it
-away. Nothing was committed, so it was recoverable, but the work had to be
-redone on the right branch.
-
-**Future action.** After any branch switch, assert rather than read:
-`B=$(git branch --show-current); [ "$B" = "<expected>" ] || exit 1`. Never pipe
-`gt checkout` through `tail`/`head`. Keep the root worktree on `main` — a
-feature branch parked there silently blocks the dedicated worktree.
-
-**Related.** In a Graphite stack, a change belongs on the branch that
-*introduces* the thing being changed. I twice fixed test files one branch too
-high, which left the lower branch failing type-check on its own. After a
-stack-wide change, grep every branch with `git grep <pattern> <branch>` and
-confirm each is independently clean.
-
-**Scope.** Any multi-worktree or stacked-branch work in World.
-
-## Recovering a shop/world PR that Graphite closed by deleting its base
-
-**Failure (2026-08-18).** `gt submit --force` on a stacked branch failed with
-"failed to retarget PR #996927: Server Error". Graphite had retargeted the PR to
-a temporary `graphite-base/996927` branch and then deleted that ref; GitHub
-auto-closes a PR whose base branch is gone. The next `gt submit` refused to run
-at all because it saw a closed PR in the stack, blocking two other branches.
-
-**Recovery, in this order — order matters:**
-
-1. Restore the deleted base ref. `git ls-remote` and the GitHub API may both
-   report it missing while Gitstream still holds it, so a plain push fails
-   "non-fast-forward". Push it with `--force`:
-   `git push --force origin <sha>:refs/heads/graphite-base/<pr>`.
-2. Restore the head branch to the exact SHA it had when the PR closed. GitHub
-   refuses to reopen with "state cannot be changed. The <branch> branch was
-   force-pushed or recreated" otherwise, and no amount of retrying helps.
-3. Reopen with REST: `gh api -X PATCH repos/shop/world/pulls/<pr> -f state=open`.
-   `gh pr reopen` returns an unhelpful "Could not open the pull request".
-4. Only now retarget the base to the real parent — GitHub rejects a base change
-   while the PR is closed.
-5. Force-push the head forward to the current tip.
-
-**Also learned.** `--force-with-lease` reports "stale info" against Gitstream
-even immediately after fetching the exact refs. Verify the remote tip's author
-and that the divergence is your own rebase, then use plain `--force`.
-
-**Prefer plain git to unblock.** When `gt submit` refuses because of one bad PR
-in the stack, pushing the other branches with plain `git push` updates their PR
-heads fine and decouples "code pushed" from "PR object repaired".
-
-**Scope.** Graphite stacks in shop/world.
-
-## Distinguish code dependency from feature dependency when reporting isolation (2026-08-17)
-
-**Failure:** On shop/issues-monetization#7256 I described the PR as "self-contained"
-after rebasing onto main. David challenged it — correctly. The change was
-*code*-isolated (branch = main + 1 commit, no symbols from the open #1001312,
-type-check and 1479 tests green) but *feature*-dependent: the issue's acceptance
-criterion needs #1001312 to produce the `?plan=&bp=` URL, so on main alone the
-change is dormant and reachable only by typing the URL.
-
-**Why it matters:** "self-contained" reads as "ready and complete". It invited the
-wrong conclusion about whether the issue could be closed, and made my earlier
-"#7256 depends on #1001312" look like a contradiction when both statements were
-true about different things.
-
-**Future action:** when reporting that work is isolated/unblocked, always answer two
-questions separately and label them:
-1. **Code dependency** — does it compile, type-check and pass tests on the base
-   alone? Prove with symbol audit + green checks.
-2. **Feature dependency** — can a user actually reach the behaviour on the base
-   alone? Prove by tracing the entry point (who navigates/produces the input).
-State the merge-order consequence of each order when they differ.
-
-**Scope:** any stacked/parallel PR work, not just admin-web. Especially where one PR
-supplies a route or URL and another consumes it.
-
-**Evidence:** shop/world#1001494; on main nothing navigates to `/reopen` with
-`plan`/`bp` (only a test fixture matches), the plan link still targets the legacy
-full-page picker.
 
 ## Derive PR-body payload claims from test assertions, not from reading the code
 
@@ -903,35 +367,6 @@ two issues' acceptance criteria; reviewers then judge code against requirements
 that no longer exist.
 
 **Scope.** Any stacked PR set with a written contract.
-
-## "does not provide an export named" after switching branches = stale Vite dep cache (2026-08-17)
-
-**Symptom:** browser console on local `dev assets`:
-`Uncaught SyntaxError: The requested module '/vite/assets/build/cache/vite8/admin/deps/<pkg>.js?v=...' does not provide an export named 'X'`.
-
-**Cause:** switching a worktree between branches whose lockfiles pin different
-versions of a package. `dev up --bare` installs the new version but leaves the old
-one orphaned in `node_modules/.pnpm/`, and Vite's optimized-deps cache keeps
-pointing at the orphan. Seen with `@shopify/extensibility-host-shared` 0.9.0 (no
-`POS_EXTENSION_TARGETS`) vs 0.8.11 (has it).
-
-**Diagnose before deleting anything** — prove it is staleness, not a real conflict:
-1. `grep -c <SYMBOL> node_modules/<pkg>/build/esm/index.js` — installed copy has it?
-2. `grep -c <SYMBOL> build/cache/vite8/admin/deps/<pkg>.js` — cached prebundle lacks it?
-3. `build/cache/vite8/admin/deps/_metadata.json` — the entry's `src` names the wrong
-   version's `.pnpm` path. This is the smoking gun.
-4. `pnpm why <pkg>` — if it reports one version, the other is an orphan.
-
-**Fix:** `rm -rf build/cache/vite8`, then restart `dev assets`. The cache is ~186MB of
-regenerable build output; no source or config lives there. Leave the orphaned
-`.pnpm/` directory alone — unreferenced, and hand-deleting inside `.pnpm/` risks
-confusing pnpm's bookkeeping.
-
-**Note:** the `cross-zone-package-linking` skill matches this error string, but it
-only covers `LOCAL_PACKAGES`/`link:` for the polaris/sidekick/analytics groups. If the
-package is outside those groups and you are not source-linking, suspect the dep cache.
-
-**Scope:** any admin-web worktree reused across branches.
 
 ## Currency formatting: `form: 'explicit'` already handles symbol == currency code
 
@@ -973,57 +408,6 @@ Measured output at 39 units:
 
 **Scope:** any admin-web surface that styles the currency code differently from the
 amount. #lesson
-
-## A blocker must record *why*, or logistics harden into a dependency
-
-**Failure (2026-08-19 → 2026-08-20, #7343 s05).** I finished a small CHF/OMR
-currency fix in the root worktree. Mid-task David switched that worktree to
-another issue's branch (`reopen-honour-plan-period-7256`), so I moved my two
-untracked files out to `~/plans/.../patches/pending-currency-fix/` to keep his
-branch clean — correct in the moment. Then I wrote the story up as:
-
-```yaml
-blocked_by: 'deferred until #7256 lands (David, 2026-08-19)'
-```
-
-That sentence is false in the way that matters. Nothing in the currency fix
-needed anything from #7256; the files were parked because a *shared checkout
-moved*, which is a fact about my afternoon, not about the code. For a full day
-the plan, the epic file, and the daily context all reported a functional
-dependency, and the work sat finished-but-unshipped behind two unmerged PRs.
-The ordering was also backwards: #7256 was itself queued behind another open
-PR, so the branch I was "waiting for" was going to land *after* mine.
-
-**Why it survived a day.** A `blocked_by` line with a date and a name reads as
-though someone decided it. Nobody re-derives a blocker that looks adjudicated —
-I didn't, until asked "why does this depend on #7256?", and the answer took two
-minutes to find in my own log.
-
-**Future action.**
-
-1. Write blockers so they can be falsified: name the artifact and the mechanism
-   (`needs the X field added by #NNNN`), never just a date or a branch name. If
-   the sentence cannot say what breaks without the other change, it is not a
-   dependency — it is sequencing, and sequencing goes in a `notes:` field.
-2. Distinguish the three kinds explicitly, because only the first is a blocker:
-   **functional** (needs their code), **conflict adjacency** (same lines, so
-   whoever is second rebases — costs time, blocks nothing), and **logistics**
-   (worktree/branch/machine state — never a property of the work).
-3. When a shared worktree moves under an in-flight change, the recovery is a
-   *dedicated worktree for that change*, not a patch parked in `~/plans`.
-   Parking defers the work; branching preserves it. David is planning a
-   worktree-switch skill — it should make "give this change its own tree" the
-   default path, and never leave finished code outside a branch.
-4. Re-read every `blocked_by` at session start on that project and ask whether
-   the stated cause is still true. Blockers rot silently; nothing fails when
-   one is stale.
-
-**Related.** "Verify the branch after `gt checkout`" above — same root cause
-(the root worktree is shared state that moves between turns), different
-symptom. Keep the root worktree on `main`.
-
-**Scope.** Any planning artifact with a `blocked_by`/`depends_on` field, and any
-work parked because of checkout state rather than code.
 
 ## Thread only what the page cannot answer
 
@@ -1098,46 +482,176 @@ which AGENTS.md bans. The suggestion was unimplementable, not merely unidiomatic
 argument. A objective "the build rejects this" closes a thread that prose cannot,
 and it takes one command. #lesson
 
-## Re-assert the branch before every write, not once after checkout
+## Answer the question first; keep the findings, move them (2026-08-25)
 
-**Failure (2026-08-21, #7256 a11y).** I checked out
-`reopen-announce-selection-7256` in the root worktree and asserted the branch
-name — correctly, per the earlier `gt checkout` lesson. Some tool calls later
-the root worktree was on `6154-signup-shared-emitter` instead (David moved it
-while I was working). Every subsequent `git reset --hard` and
-`git commit --amend` therefore rewrote **his** branch, walking PR #1008555's
-tip off `d14d484c`.
+**Failure.** David asked one causal question — why Cancelled Plain shows a
+`Change plan credit` row but no credits note. The answer is three lines. I sent
+the answer plus a derived shop table, two classes of arithmetic ambiguity, a
+narrowed re-query, and a design implication. He had to ask the same question
+twice, the second time with "answer only what I asked for".
 
-**How it presented, and why I misdiagnosed it.** After the amend I compared the
-committed blobs against what I had built and found a file matching *none* of
-base, PR head, or my new version. I concluded "`git commit` rewrote the tree",
-went looking for a pre-commit hook, found only git-lfs, and burned about eight
-tool calls on a theory that could not be true. The "impossible fifth blob" was
-simply another branch's copy of the same path. **When git content matches no
-expected version, suspect the ref you are standing on before you suspect git.**
+**This was a repeat.** The preference was recorded in `memory/MEMORY.md` the day
+before — "answer the question asked", "paragraphs create friction and spawn
+tangents". It did not fire, so the principle was not enough.
 
-**Two things saved it.** The remote was never clobbered — the one bare
-`git push` that would have done it was rejected for an unrelated reason — and
-`git reflog show <branch>` still had `d14d484c`, so the restore was exact.
+**Root cause, and it is not verbosity.** While answering I keep finding adjacent
+things — a table that needs updating, an ambiguity, a design consequence — and
+attaching a real finding to a real answer feels like added value. It is not. It
+buries the answer, and it hands David a queue he did not ask for. Thoroughness
+in *investigation* is the job; thoroughness in *the reply* is friction. The same
+day I did it on "have you pushed the branch" (answer + three sub-findings) and
+on "give me a table" (table + a doc + six design questions).
+
+**Corrected by David, same day.** The findings themselves are wanted — they
+"cloud judgement when I need an answer to make a decision". The defect is
+*placement*, not existence. Do not suppress them and do not exile them to a
+file; separate them so the answer lands first and the extra is visibly optional.
 
 **Future action.**
 
-1. Assert the branch *immediately before* every mutating git command in a long
-   session — `reset`, `commit`, `amend`, `push` — not once after checkout. A
-   shared worktree is mutable state owned by someone else; its branch is only
-   true for the tool call that read it.
-2. **Never bare `git push`.** With `push.default=matching` it attempts every
-   branch whose name exists on the remote, including ones this session damaged.
-   Always `git push origin <branch>`, and pair force with
-   `--force-with-lease=<branch>:<sha>`.
-3. Verify a rewritten commit by **blob hash**, not by the tool's own output:
-   `git rev-parse HEAD:<path>` against the hash you intended. Message text and
-   "HEAD is now at …" say nothing about content.
-4. Before rewriting an existing PR branch, record the old SHA in the transcript
-   so the lease has a value and recovery is one command.
+1. **The only test of a reply is whether David understood the answer to his
+   question.** Everything else in the message is optional and must look
+   optional.
+2. **Answer first, complete, and alone.** A question shaped `why…`, `where…`,
+   `have you…`, `is it…`, `which…` gets its answer with nothing interleaved —
+   no caveats mid-answer, no adjacent findings, no implications.
+3. **Then a distinct section**, under its own heading, clearly skippable. Never
+   woven into the answer, never above it, never a wall of prose that has to be
+   read to reach a decision.
+4. **When corrected on this, acknowledge in one line.** A post-mortem about
+   being too long is the same mistake wearing a different hat.
 
-**Related.** "Verify the branch after `gt checkout`" above — same root cause,
-one step further on: checking once is not enough when the worktree is shared.
-The real fix is a dedicated worktree per change.
+**Uncertainty.** How much belongs in the optional section is still unsettled —
+the extras were called "fine", so the volume was not the problem. Erring toward
+including them, separated, is safer than dropping them.
 
-**Scope.** Any multi-step git work in a shared or root World worktree.
+**Scope.** All interaction with David, every project. Not a code-style lesson.
+
+## The comment bar: the code has to be unreadable without it (2026-08-25)
+
+**Failure.** #7343 shipped 61 added comment lines. David asked twice to cut
+them, raising the bar each time, and the final count was **11**. Both of my
+first two bars were too low. "Explains why, not what" let through essays. "Would
+someone undo this and reintroduce a bug?" still let through nine, because I can
+always imagine someone undoing something. The bar that worked: **the code cannot
+be read without it.** Not "the history is interesting", not "the reasoning was
+hard" — unreadable.
+
+**Why I over-comment.** I write comments while reasoning, so they are
+notes-to-self that survive into the diff. The reasoning belongs in the
+plan/report file. If a comment is the only record of an investigation, the
+investigation was not written down properly.
+
+**Tests that killed a comment.** Reusable:
+
+- **A shared variable is not a hazard.** I kept a comment warning that padding
+  and outdent must stay equal — they are the *same CSS variable*. The invariant
+  is structural; the comment described a bug the code had already made
+  impossible.
+- **A named test outranks a comment.** `it('collapses the breakdown again after
+  a plan-picker round trip')` documents the effect better than a comment above
+  it, and it fails when someone deletes the effect.
+- **Visible-on-load effects need no comment.** A chevron pointing the wrong way
+  is seen immediately, and a harness asserted it besides.
+- **A comment about an absence has no code to explain.** "No margin here
+  because…" is a changelog entry.
+
+**Tests that saved a comment.** Also reusable:
+
+- **A magic constant's derivation.** `calc(var(--p-space-500) + var(--p-space-100))`
+  is unrecoverable without "chevron icon + its gap".
+- **A rule that exists for one surface only.** `[mobile-bridge='true']` carrying
+  a margin the mobile breakpoint deletes cannot justify itself.
+- **A normative requirement.** "WCAG 2.5.3 Label in Name" looks like redundancy
+  and gets tidied away; the criterion number is the whole comment.
+- **An identity behind a boolean.** `[a, b].some(x => x > 0)` does not say why a
+  third term is excluded.
+- **A format quirk.** "CHF and OMR format their symbol as their code" explains
+  why a function exists at all.
+
+**Future action.**
+
+1. Write the reasoning in `~/plans/<project>/`, not in the source. Then ask what
+   the code still cannot say for itself.
+2. Before keeping a comment: is there a shared variable, a named test, or a
+   visible-on-load effect that already carries it? If yes, cut.
+3. **Do not gut someone else's comment.** Compress it and say so, so they can
+   veto. I cut another session's twelve-line block to two lines and flagged it
+   rather than deleting it.
+4. When editing multi-line comments programmatically, **match the whole block.**
+   I matched the tail of a three-line comment and left a dangling half-sentence
+   about foreign-currency balances; only a re-read caught it.
+
+**Scope.** All Shopify code. The convention is in `AGENTS.md` ("default to
+none"); this is how to apply it without three rounds of review.
+
+## Copy strings belong to their owners — confirm before implementing (2026-08-28, #7606)
+
+Merchant-facing copy went through two reversals on one draft PR: I proposed
+TRN's "No commitment, cancel anytime.", David asked for the shorter
+"Cancel anytime.", I implemented and verified it, then he wanted the full
+string back. Each cycle cost a full test + fastcheck + tree-wide oxfmt run.
+
+When a copy decision has named owners in the source thread (here Simone Arora
+and Patrick Smith on the TRN thread), ask whether the wording is settled
+before committing, rather than treating the most recent instruction as final.
+Implementing is the cheap part; the verify loop is not.
+
+## `subtitlePrimary` / `subtitleSecondary` in InactiveAccount are POSITIONAL keys
+
+In `CancelledReactivationCheckout/translations/en.json` these two keys mean
+"first line below the headline" and "second line" — their `_context` strings
+say so explicitly. Reordering the two subtitle lines is therefore a
+values-and-context edit in `en.json` with **no component change**, and the
+desktop left panel plus the mobile header both read the same two keys, so one
+edit covers both surfaces. Do not rename them to semantic keys as part of a
+copy change: that deletes keys in 35 generated locale files and drags in
+`translations:cleanup-deleted-translations` for no benefit.
+
+## Read the section's scene-style override before trusting dark-theme panel geometry
+
+`CANCELLED_REACTIVATION_SCENE_STYLE` sets `--signup-layout-panels-max-width:
+900px` and `--signup-left-panel-width: 47.7%`, so the left panel is ~422px with
+a 358px content box — which is exactly the `.LeftPanelContent` `max-width: 358px`.
+The base `[data-theme='dark']` values (818px wrapper, 45% panel) are wrong for
+this surface. Any mock or reasoning about line wrapping must start from the
+section's override, not the theme default.
+
+## A displayed total must reconcile against its itemized rows
+
+Source: two failures 48h apart on #7343, then a live repro on shop `fhgzzb-6t`
+(PR shop/world#1011806, commits `1932070ff` / `ac7c5aa1`), 2026-08-24 → 08-26.
+David caught both by pushing on the numbers.
+
+I replaced a value computed as a **residual** (`total − known_terms`) with a read of
+two **named** credit fields. A residual is correct by construction — it absorbs
+whatever moved the total, whatever the cause. A named-field read is only correct if
+those fields are the complete set of things that can move it. They were not: a $38
+paid-trial *discount* moved `renewalPrice` → `totalPrice` with all three known credit
+fields at zero, so the note vanished while the total still changed.
+
+- **Future action:** before swapping a residual for named component fields, verify
+  `sum(itemized rows) == total` across the real case matrix — discount-only,
+  credit-only, both, neither. Do not assume the fields you found are exhaustive.
+- **Why it recurs:** Core moves a billing total from more than one subsystem
+  (`Discounts::*`, `SubscriptionPromotions`, credits). Enumerating "the credit fields"
+  feels complete and is not.
+- **Scope:** billing/checkout/subscription cards that show a total beside itemized
+  rows. Not a general "always sum things" rule.
+- **Unknown:** whether this generalizes past Core billing quotes — no second feature
+  area has confirmed it yet.
+
+## Never infer a reviewer's identity from project context (2026-09-01)
+
+On PR #1015078 I read a review comment from GitHub handle `anicn` and called the
+author "Annie" in my summary, because an Annie had been active on the same project.
+`anicn` is **Niko Anic**. David corrected it.
+
+`gh api users/<login> --jq .name` is one call and settles it. A handle that looks
+like a name is a coincidence, not evidence. Getting this wrong is worse than a
+typo: replies are addressed to a person, and misnaming a reviewer in a drafted
+reply would have gone out under David's name.
+
+**Rule:** before attributing a comment, review, or commit to a human by name,
+resolve the handle. Never pattern-match a login against people already in the
+conversation.

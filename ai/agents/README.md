@@ -4,25 +4,42 @@ Demoted from `ai/AGENTS.md` on 2026-09-01 — reference material, read on demand
 The constitution keeps only the two imperatives; the table lives here.
 
 When a task calls for delegation — or a bigpowers skill references the "Agent
-tool" — use the `subagent` tool. Route by role:
+tool" — use the `subagent` tool. Five agents, one per phase of the cycle
+(retuned 2026-09-04, see `~/plans/pi-agent-orchestration/2026-09-04-subagent-roster-tuning.md`):
 
-- Ambiguous ask, scoping, planning from vague requirements → `shaper` (writes plan.md)
-- Codebase recon before planning or implementation → `scout` (writes context.md)
-- External facts, docs, or library research → `researcher`
-- Implementation of a scoped brief → `worker`; Figma design-to-code → `design-worker`
-- Review of diffs, plans, or proposals (request-review, audit-code) → `reviewer`; parallel reviewers for large diffs
-- Second opinion or drift check before a risky decision → `oracle` (forks context)
-- Generic isolated errand → `delegate`
+| phase | agent | context | model:effort | writes | use when |
+|---|---|---|---|---|---|
+| ask → plan | `planner` (alias shaper) | fresh | fable-5:high | plan / bigpowers specs only | the ask is vague; you want a scoped, decision-explicit plan before anyone codes |
+| know | `researcher` | fresh | sonnet-5:high | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
+| build | `worker` (alias design-worker) | fresh | sol:xhigh → opus-5 | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
+| check | `reviewer` | fresh | sonnet-5:high → opus-5 | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
+| judge | `oracle` | **fork** | openai-1m/sol:xhigh → openai-1m/terra | no | judge the trajectory with the whole transcript — see triggers |
 
-Defaults: dispatch `shaper` at the start of orchestrating ambiguous work;
-`scout` before non-trivial implementation in unfamiliar code; a fresh `reviewer`
-before declaring multi-file work done. bigpowers task_brief format (goal,
-in_scope, out_of_bounds, verify) remains the brief protocol.
+Disabled builtins (settings.json): `scout` (merged into researcher), `delegate`
+(inherited the parent's fable at 2–2.5× worker's price and got worker/reviewer jobs),
+`gpt-pro` (needs the surf-oracle bridge).
+
+Cadence: `worker → reviewer → worker → reviewer(scoped) …`, cap **3 fix rounds**, then
+`oracle` ("wrong plan, noisy reviewer, or worker not reading?"), then David. First review
+covers the whole change; re-review briefs name the prior findings and the verify commands
+so the reviewer confirms and re-runs rather than re-explores. One reviewer per round by
+default. Two in parallel — add `reviewer[model=openai/gpt-5.6-sol:high]` for recall — only
+on a risky final gate or when the change was authored by a Claude model (the parent's own
+edits): same-family review adds cost without gain, and Sol reviewing Sol is self-review.
+
+Oracle triggers, and only these: (1) before accepting a plan, (2) review-cycle cap hit,
+(3) before an irreversible action (force-push, closing/merging a PR, publishing),
+(4) before reversing a decision made earlier in the session. Never at sprint start (nothing
+to compare), never as the end gate (reviewer, fresh). Cost is O(parent transcript).
+
+Per-run overrides: `agent[model=provider/model:level]`, e.g.
+`researcher[model=anthropic/claude-opus-5:xhigh]` for deep external research.
 
 Dispatch briefs give each child an explicit absolute output path into the unit's
 `inbox/` (`~/plans/<project>/<unit>/inbox/`) — e.g.
-`/Users/david.yq.zhang/plans/improve-cancellation-reactivation/7529/inbox/scout-context.md`
-— never a relative path or one the child invents.
+`/Users/david.yq.zhang/plans/improve-cancellation-reactivation/7529/inbox/researcher-context.md`
+— never a relative path or one the child invents. bigpowers task_brief format (goal,
+in_scope, out_of_bounds, verify) remains the brief protocol.
 
 ## Config traps (full roster scan, 2026-09-01)
 
@@ -48,19 +65,22 @@ Dispatch briefs give each child an explicit absolute output path into the unit's
   so the child writes into whatever repo the parent is in — and it silently overrides the
   absolute path in the dispatch brief. `researcher` (`research.md`) and `shaper`
   (`plan.md`) both had this. Omit `output:`; let the brief carry an absolute path.
-- **`defaultContext: fork` forces `thinking: off` for an Anthropic child.** Forking
-  sanitizes the parent's signed thinking blocks and an Anthropic child cannot resume such
-  a transcript with thinking on. `oracle` is pinned `anthropic/claude-fable-5` with
-  `thinking: xhigh` and runs at **off** on its default path; the same launch with
-  `context: fresh` runs at `xhigh`. Unresolved trade-off — fork buys inherited state and
-  costs the reasoning that is oracle's whole purpose. Pass `context: "fresh"` and put the
-  state in the brief when the verdict needs depth.
-- **Relative `defaultReads` miss our layout.** `worker` and `design-worker` read
-  `context.md, plan.md` relative to cwd, but briefs put those in
-  `~/plans/<project>/<unit>/inbox/`. Harmless when absent, but they never fire. Left as-is.
-- Model pins are provider-qualified in both `~/.pi/agent/settings.json` and `setup.sh`,
-  and no agent sets `extensions:` (which would set `disableAmbientExtensions` and kill the
-  shopify-proxy provider in the child). Both verified clean.
+- **A fork forces `thinking: off` only for Anthropic children** (`fork-context.ts`
+  `forkedChildRequiresThinkingOff`): the parent's signed thinking blocks are sanitized out,
+  and an Anthropic child cannot resume such a transcript with thinking on. If the child's
+  primary model *or any fallback* is Anthropic (or unresolvable), thinking is off; a
+  non-Anthropic chain keeps its level. `oracle` is therefore pinned `openai-1m/gpt-5.6-sol`
+  with an `openai-1m/gpt-5.6-terra` fallback (1M window so any parent fits; >272k costs ~2×).
+  Verify on a run: the child's `thinking_level_change` entry in its `session.jsonl`.
+- **Frontmatter beats `agentOverrides`, field by field** (`agents.ts` `fill()` is gated by
+  `agentHasFrontmatterField`). Every active agent is a custom file whose frontmatter pins
+  `model`, `fallbackModels`, and `thinking`, so settings.json cannot change them — edit the
+  file. settings.json carries only `disabled` for builtins; `setup.sh` drops legacy pins
+  for roster agents so they do not linger and mislead a reader.
+- Every child gets ~43k tokens of project context (CLAUDE.md + Brain) cache-written on turn
+  one — $0.54 on Fable, ~$0.11 on Sonnet. It is the largest fixed cost of a short run.
+- Model pins are provider-qualified, and no agent sets `extensions:` (which would set
+  `disableAmbientExtensions` and kill the shopify-proxy provider in the child).
 
 ## Operational notes
 

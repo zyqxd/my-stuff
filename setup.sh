@@ -182,17 +182,18 @@ setup_agent_tooling() {
             pi install "$pkg" || echo "   ⚠️  Failed to install pi package $pkg"
         done
 
-        # Model pins for the pi-subagents roster (ai/agents/ carries the custom
-        # agents; frontmatter there beats these overrides). Deep-merged so other
-        # settings survive; re-runs converge to the same state.
+        # pi-subagents roster: every active agent is a custom file in ai/agents/
+        # whose frontmatter carries its model/thinking pin (provider-qualified —
+        # a bare id that exists under several providers only resolves in that
+        # provider's own session). settings.json only disables the builtins we
+        # replaced or never use. Legacy pins for roster agents are dropped so they
+        # do not linger (frontmatter beats them anyway); unrelated overrides and
+        # other settings survive; re-runs converge to the same state.
         local pi_settings="$HOME/.pi/agent/settings.json"
-        # Model ids stay provider-qualified: a bare id that exists under several
-        # providers only resolves when one of them is the session's own provider,
-        # so `gpt-5.6-sol` dies as `Unknown subagent model` in an anthropic session.
-        local subagent_pins='{"subagents":{"agentOverrides":{"scout":{"model":"anthropic/claude-sonnet-5"},"researcher":{"model":"anthropic/claude-opus-5"},"worker":{"model":"openai/gpt-5.6-sol","fallbackModels":["anthropic/claude-opus-5"]},"reviewer":{"model":"anthropic/claude-opus-5"},"oracle":{"model":"anthropic/claude-fable-5"},"gpt-pro":{"disabled":true}}}}'
+        local subagent_pins='{"subagents":{"agentOverrides":{"scout":{"disabled":true},"delegate":{"disabled":true},"gpt-pro":{"disabled":true}}}}'
         if command -v jq &> /dev/null; then
             if [ -f "$pi_settings" ]; then
-                jq -s '.[0] * .[1]' "$pi_settings" <(echo "$subagent_pins") > "${pi_settings}.tmp" \
+                jq -s '(.[0] | del(.subagents.agentOverrides[("planner","shaper","researcher","worker","reviewer","oracle","design-worker")])) * .[1]' "$pi_settings" <(echo "$subagent_pins") > "${pi_settings}.tmp" \
                     && mv "${pi_settings}.tmp" "$pi_settings"
             else
                 echo "$subagent_pins" | jq . > "$pi_settings"

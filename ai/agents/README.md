@@ -13,7 +13,7 @@ tool" — use the `subagent` tool. Five agents, one per phase of the cycle
 | know | `researcher` | fresh | sonnet-5:high | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
 | build | `worker` (alias design-worker) | fresh | sol:xhigh → opus-5 | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
 | check | `reviewer` | fresh | sonnet-5:high → opus-5 | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
-| judge | `oracle` | **fork** | openai/sol:xhigh → openai/terra | no | judge the trajectory with the whole transcript — see triggers |
+| judge | `oracle` | **fork** | gemini-3.1-pro:high → grok-4.3 | no | judge the trajectory with the whole transcript — see triggers |
 
 Disabled builtins (settings.json): `scout` (merged into researcher), `delegate`
 (inherited the parent's fable at 2–2.5× worker's price and got worker/reviewer jobs),
@@ -69,10 +69,13 @@ in_scope, out_of_bounds, verify) remains the brief protocol.
   `forkedChildRequiresThinkingOff`): the parent's signed thinking blocks are sanitized out,
   and an Anthropic child cannot resume such a transcript with thinking on. If the child's
   primary model *or any fallback* is Anthropic (or unresolvable), thinking is off; a
-  non-Anthropic chain keeps its level. `oracle` is therefore pinned `openai/gpt-5.6-sol`
-  with an `openai/gpt-5.6-terra` fallback. Sol's base card is 272k, so a fork of a parent
-  past ~250k fails — pass `context: "fresh"` with the state in the brief instead. Verify on a
-  run: the child's `thinking_level_change` entry in its `session.jsonl`.
+  non-Anthropic chain keeps its level. The transcript is oracle's whole value, and our parents
+  run 1M cards (Fable, Sol-1m), so oracle needs a 1M non-Anthropic model from a base
+  provider: `google/gemini-3.1-pro-preview:high` (1,048,576 ctx, $2/$12) with
+  `xai/grok-4.3:high` fallback (1M, $1.25/$2.50). Sol's base card is 272k and is not
+  eligible. Verified 2026-09-07 over a 336k parent: both forked, kept thinking (3,014 /
+  1,265 reasoning tokens), quoted the transcript correctly; $0.42 / $0.27 per consult.
+  Check a run's `thinking_level_change` entry in its `session.jsonl`.
 - **Pin agents to base providers only** (`anthropic/…`, `openai/…`). `openai-1m`,
   `anthropic-flex`, `openai-flex`, `fireworks` are registered by the toolchain's proxy
   extension and exist only in its current version; a pi process started before a toolchain

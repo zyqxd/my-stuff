@@ -13,7 +13,7 @@ tool" — use the `subagent` tool. Five agents, one per phase of the cycle
 | know | `researcher` | fresh | sonnet-5:high | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
 | build | `worker` (alias design-worker) | fresh | sol:xhigh → opus-5 | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
 | check | `reviewer` | fresh | sonnet-5:high → opus-5 | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
-| judge | `oracle` | **fork** | gemini-3.1-pro:high → grok-4.3 | no | judge the trajectory with the whole transcript — see triggers |
+| judge | `oracle` | **fork** | opus-5 (adaptive under fork) → gemini-3.1-pro | no | judge the trajectory with the whole transcript — see triggers |
 
 Disabled builtins (settings.json): `scout` (merged into researcher), `delegate`
 (inherited the parent's fable at 2–2.5× worker's price and got worker/reviewer jobs),
@@ -65,17 +65,20 @@ in_scope, out_of_bounds, verify) remains the brief protocol.
   so the child writes into whatever repo the parent is in — and it silently overrides the
   absolute path in the dispatch brief. `researcher` (`research.md`) and `shaper`
   (`plan.md`) both had this. Omit `output:`; let the brief carry an absolute path.
-- **A fork forces `thinking: off` only for Anthropic children** (`fork-context.ts`
-  `forkedChildRequiresThinkingOff`): the parent's signed thinking blocks are sanitized out,
-  and an Anthropic child cannot resume such a transcript with thinking on. If the child's
-  primary model *or any fallback* is Anthropic (or unresolvable), thinking is off; a
-  non-Anthropic chain keeps its level. The transcript is oracle's whole value, and our parents
-  run 1M cards (Fable, Sol-1m), so oracle needs a 1M non-Anthropic model from a base
-  provider: `google/gemini-3.1-pro-preview:high` (1,048,576 ctx, $2/$12) with
-  `xai/grok-4.3:high` fallback (1M, $1.25/$2.50). Sol's base card is 272k and is not
-  eligible. Verified 2026-09-07 over a 336k parent: both forked, kept thinking (3,014 /
-  1,265 reasoning tokens), quoted the transcript correctly; $0.42 / $0.27 per consult.
-  Check a run's `thinking_level_change` entry in its `session.jsonl`.
+- **A fork drops the explicit effort level for Anthropic children — it does not turn off
+  reasoning on Opus 5 / Fable 5.** pi-subagents strips the parent's signed thinking blocks and
+  launches an Anthropic child as `:off` (`fork-context.ts` `forkedChildRequiresThinkingOff`;
+  any Anthropic model in the primary+fallback chain triggers it). But pi only sends
+  `thinking: {type: "disabled"}` when the model's `thinkingLevelMap.off !== null`
+  (`anthropic-messages.js:808`); Opus 5 and Fable 5 have `off: null`, so no thinking
+  parameter is sent and the API default — adaptive thinking — applies. Sonnet 5 has no `off`
+  key, so it *is* disabled. Measured 2026-09-07: forked `anthropic/claude-opus-5:off` used
+  995 reasoning tokens over a 336k parent and out-audited a forked Gemini 3.1 Pro at `high`
+  (found the oracle xhigh→high drop and the `-preview` id fragility; Gemini said "no drift").
+  Oracle is therefore `anthropic/claude-opus-5` (1M card, ~$1.70 per 336k consult) with
+  `google/gemini-3.1-pro-preview` fallback (1M, $0.51). `xhigh` in its frontmatter applies
+  only to `context: "fresh"` runs; under fork it is the API default. Not Sol (272k card), not
+  Grok 4.3 (no long-context eval past 100k), not Sonnet (goes dark under fork).
 - **Pin agents to base providers only** (`anthropic/…`, `openai/…`). `openai-1m`,
   `anthropic-flex`, `openai-flex`, `fireworks` are registered by the toolchain's proxy
   extension and exist only in its current version; a pi process started before a toolchain

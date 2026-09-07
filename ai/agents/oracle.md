@@ -1,8 +1,8 @@
 ---
 name: oracle
 description: Transcript-aware second opinion — forks the parent session to judge the trajectory at phase gates, loop stalls, and irreversible actions
-model: openai-1m/gpt-5.6-sol
-fallbackModels: openai-1m/gpt-5.6-terra
+model: openai/gpt-5.6-sol
+fallbackModels: openai/gpt-5.6-terra
 thinking: xhigh
 tools: read, grep, find, ls, bash
 systemPromptMode: replace

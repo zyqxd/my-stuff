@@ -13,7 +13,7 @@ tool" — use the `subagent` tool. Five agents, one per phase of the cycle
 | know | `researcher` | fresh | sonnet-5:high | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
 | build | `worker` (alias design-worker) | fresh | sol:xhigh → opus-5 | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
 | check | `reviewer` | fresh | sonnet-5:high → opus-5 | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
-| judge | `oracle` | **fork** | openai-1m/sol:xhigh → openai-1m/terra | no | judge the trajectory with the whole transcript — see triggers |
+| judge | `oracle` | **fork** | openai/sol:xhigh → openai/terra | no | judge the trajectory with the whole transcript — see triggers |
 
 Disabled builtins (settings.json): `scout` (merged into researcher), `delegate`
 (inherited the parent's fable at 2–2.5× worker's price and got worker/reviewer jobs),
@@ -69,9 +69,21 @@ in_scope, out_of_bounds, verify) remains the brief protocol.
   `forkedChildRequiresThinkingOff`): the parent's signed thinking blocks are sanitized out,
   and an Anthropic child cannot resume such a transcript with thinking on. If the child's
   primary model *or any fallback* is Anthropic (or unresolvable), thinking is off; a
-  non-Anthropic chain keeps its level. `oracle` is therefore pinned `openai-1m/gpt-5.6-sol`
-  with an `openai-1m/gpt-5.6-terra` fallback (1M window so any parent fits; >272k costs ~2×).
-  Verify on a run: the child's `thinking_level_change` entry in its `session.jsonl`.
+  non-Anthropic chain keeps its level. `oracle` is therefore pinned `openai/gpt-5.6-sol`
+  with an `openai/gpt-5.6-terra` fallback. Sol's base card is 272k, so a fork of a parent
+  past ~250k fails — pass `context: "fresh"` with the state in the brief instead. Verify on a
+  run: the child's `thinking_level_change` entry in its `session.jsonl`.
+- **Pin agents to base providers only** (`anthropic/…`, `openai/…`). `openai-1m`,
+  `anthropic-flex`, `openai-flex`, `fireworks` are registered by the toolchain's proxy
+  extension and exist only in its current version; a pi process started before a toolchain
+  update, and every child it spawns, loads the older extension and reports `Model … not
+  found` (2026-09-06: oracle on `openai-1m/gpt-5.6-sol` failed every launch from sessions
+  started 3 days earlier).
+- **Personal proxy tokens expire after ~24h and children inherit the parent's env.** A
+  multi-day session can keep working while every child fails with `No API key found for
+  anthropic` or an OpenAI 401 on a `shopify-…` key. Restart pi, or enable
+  `ai-proxy-credential-manager` (`/pkg add ai-proxy-credential-manager`, ships in shop-pi-fy)
+  so long-running sessions refresh in-process.
 - **Frontmatter beats `agentOverrides`, field by field** (`agents.ts` `fill()` is gated by
   `agentHasFrontmatterField`). Every active agent is a custom file whose frontmatter pins
   `model`, `fallbackModels`, and `thinking`, so settings.json cannot change them — edit the

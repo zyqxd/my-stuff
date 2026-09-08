@@ -655,3 +655,68 @@ reply would have gone out under David's name.
 **Rule:** before attributing a comment, review, or commit to a human by name,
 resolve the handle. Never pattern-match a login against people already in the
 conversation.
+
+## Comments: default to none, and my "this one is important" instinct is wrong (2026-09-03)
+
+Source: PR shop/world#2037293, reviewer Neha Aggarwal — "We can remove this inline
+comment." — on a five-line CSS comment I wrote above a one-line fix. David: "Over and
+over again I see you add comments and claim they are important yet I constantly find
+them to not be."
+
+I added:
+
+```css
+/* Positioned so the screen-reader-only prices inside it resolve their
+   containing block here. `Collapsible` clips with `overflow: hidden` on an
+   unpositioned element, so absolute children that look past it for a
+   containing block escape the collapsed region and add scrollable overflow to
+   the two-panel wrapper — a scrollbar with nothing visible to scroll to. */
+.Breakdown {
+  position: relative;
+```
+
+Five lines of comment for one line of code. Everything in it was true, and none of it
+belonged there. The investigation was hard, so the explanation *felt* load-bearing —
+that feeling is the tell, not the justification. Effort spent finding a cause is not
+evidence that the cause must be narrated at the call site.
+
+- **Future action:** write the fix with no comment. Then, only if a reader would
+  actively *undo* the line without it, add one — one line, naming the constraint, not
+  the investigation. Never restate the mechanism I just learned.
+- **Where the explanation goes instead:** the commit message body and the PR
+  `## Context`. Both already carried this one in full, so the code comment was pure
+  duplication with a maintenance cost — it rots when the Collapsible changes and
+  nobody updates CSS prose.
+- **Reviewer signal:** when a human says "remove this comment", that is not one
+  comment's problem. Treat it as a standing correction to the default.
+- **Scope:** all code comments in admin-web (Shopify's house style is light). Not
+  commit messages, PR bodies, ADRs, or docs — expand there instead, freely.
+- **Prior art in this repo:** the section's remaining comments (e.g. `.TrialBadge`
+  "Sets its own colours…") are one or two lines naming a constraint. Match that
+  ceiling, and be suspicious any time I exceed it.
+
+### Recurrence (2026-09-02, #7697 PR #2036730)
+
+Shipped 15 comment lines; Aalia Mehdi flagged one on a test — *"I'm not sure how
+useful this comment is, the test case already says [it]"* — and David asked for
+all of them. Final count: 4, two of which were pre-existing lines I had only
+reworded. Both bars from 2026-08-25 were in memory and I still wrote the essays,
+because the reasoning was fresh and hard-won: a CSS cascade tie, an omitted
+boolean clause. **Difficulty of the reasoning is the strongest false signal that
+a comment is needed** — the harder it was, the more I want a monument to it.
+
+- **A comment above `it(...)` is always redundant.** The test name is the
+  comment, and it is executable. This is the second reviewer to say so.
+- **A comment restating the variable name is noise.** `planRowStatesDueToday`
+  did not need "the card must not state a price the merchant is not charged".
+- **Two comments for one fact is one too many.** The cascade constraint belongs
+  in the CSS, where someone would undo it — not in the CSS *and* the test.
+- **Surviving comments name an absence or a constraint in one line.** "No
+  subscription credit clause: it only renders once it has already reduced the
+  total" and "Not a .RowCadence modifier: two single-class colour rules tie" —
+  each is the deletion a reviewer would otherwise propose.
+
+**Procedure, not judgement:** before pushing, run
+`git diff origin/main -- <paths> | grep -E '^\+.*(//|/\*)'` and justify each
+line out loud against "the code cannot be read without it". Judgement in the
+moment has now failed three times; the grep is cheap.

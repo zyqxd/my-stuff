@@ -1,3 +1,11 @@
+# Durable facts and evidence
+
+Shared behavior: `ai/AGENTS.md`. Loading and memory ownership: `ai/README.md`.
+Routing, cadence, tools, and output persistence: `ai/agents/README.md` and its role files.
+Scoped engineering evidence: `ai/lessons/<scope>.md`. Historical entries below are evidence,
+not new authority; re-check runtime-sensitive claims at their source. Pi injects only a
+bounded snapshot, so read/search the relevant full entry before relying on it.
+
 <!-- 2026-08-16 20:45:35 [01a00d19] -->
 ## pi-memory + qmd setup (2026-08-16)
 
@@ -58,7 +66,7 @@
 David wants attribution-to-impact baked into his workflow. Enforce during work, unprompted:
 1. **Issue creation**: every issue must chain to a project — `#gsd:` label or board/epic link. Flag orphans (his diagnostics epic #7237–#7247 was orphaned).
 2. **PR authoring**: body must `Closes <issue>`; verify the issue has project linkage; include one "Impact" line (metric/decision this serves).
-3. **On merge**: add a scratchpad item "close the loop on PR #X — post first-readout comment (+~7d after deploy)" with the issue link.
+3. **On merge (placement corrected 2026-09-07)**: the original scratchpad reminder meant to prevent lost first readouts (~7d after deploy). Current unit tracking belongs to managed STATE (`ai/AGENTS.md` → Keep memory in its place); attribution evidence belongs in `~/plans/impact-ledger.md`.
 4. **Close-the-loop comment**: after deploy, draft a dated, quantified comment (BQ query + numbers) for David to post on the issue/project channel. Never post as him.
 5. **Ledger**: append landed impact one-liners to `~/plans/impact-ledger.md`; brain dailyContext Completed entries should carry "→ outcome" when known.
 6. **Experiment readouts**: remind him to get named as eng contributor on readout docs (e.g. e_improve_cancelled_reactivation).
@@ -162,74 +170,36 @@ sibling declarations of any shape you are narrowing before you narrow it.
      08-26 inform-don't-perform, 08-27 recurrence. Promoted to AGENTS.md §Communication. -->
 ## David — reply shape #preference #lesson
 
-The rule now lives in the constitution (`ai/AGENTS.md` → **Communication**). It was
-promoted on 2026-09-01 because it failed four times in four days while sitting in
-searched memory. This entry keeps the evidence and the sharp edges.
-
-**The single test of a reply: did David understand the answer to his question?**
-Everything else is optional and must *look* optional.
-
-- **Trigger.** A question shaped `why… / where… / have you… / is it… / which…` is a
-  single-fact question. Answer the fact. Stop.
-- **Answer first, complete, and alone** — nothing interleaved. No caveats mid-answer,
-  no adjacent findings, no implications woven in. Lead with the verdict, including
-  disagreement: a flat "no, because X" beats "right instinct, wrong lever" hedging.
-- **Then a distinct, clearly skippable section** under its own heading. Never above the
-  answer, never mixed into it. **The extras are wanted** — do not suppress them and do
-  not exile them to a report file. Volume was never the complaint; placement was.
-- **Every sentence hands over a fact.** Delete sentences whose job is effect: teasers,
-  suspense, throat-clearing ("It's worth noting"), restating what's coming, praising the
-  artifact's own virtues ("it caught a subtlety I'd have missed").
-- **Calibrated words.** A size or importance claim is a measurement or it is dropped.
-  Banned: goldmine, game-changer, crucially, "the real problem", "not just X", massive,
-  dramatically. The `X, not just Y` sentence frame is banned even without the phrase.
-- **Machine-like = template over thought:** bold-label bullet walls, three bullets that
-  could be one sentence, formulaic transitions. Prefer plain declarative sentences.
-- **When corrected, acknowledge in one line.** A post-mortem about being too long is the
-  same mistake wearing a hat.
-
-**Test before sending:** strike every clause that would still be true if the underlying
-fact were wrong. If a sentence survives only as commentary, delete it.
-
-**Root cause, and it is not verbosity.** Finding something adjacent while answering feels
-like value. Thoroughness in *investigation* is the job; thoroughness in *the reply* is
-friction.
-
-**Recurrences:** 08-25 one-question ask answered with a table + two ambiguity classes + a
-re-query plan + a design implication (he asked twice); same day on "have you pushed the
-branch" and "give me a table"; 08-26 clickbait framing; 08-27 self-praise on the #7239 plan
-handoff.
-
-Applied to context-switching STATE summaries ([[context-switching]]): 5 fixed slots, one
-line each, concrete identifiers only (PR#/SHA/path/count), `next` starts with a verb, facts
-not significance ("228/228" not "great shape"). Banned-word grep + line cap as deterministic
-lint. Test: resume in 30s from the head alone.
-
-Full lesson: `~/Workspace/my-stuff/ai/lessons/admin-web.md` → "Answer the question first; keep the findings, move them".
+Promoted to `ai/AGENTS.md` on 2026-09-01 after four failures in four days; duplicate
+policy removed 2026-09-07. Current wording lives in `ai/AGENTS.md` → Communicate plainly.
+On 08-25 a single question got a table, ambiguity classes, re-query plan and design
+implication (David asked twice); 08-26 added clickbait framing; 08-27 self-praise on
+#7239. The failure was placement and performance, not investigation depth or volume.
+The same-day "park findings in a report" proposal was retracted. Full evidence:
+`ai/lessons/admin-web.md` → "Answer the question first; keep the findings, move them".
+Historical STATE formatting notes are not the current schema; see the context-switching
+source and managed-state ownership in `ai/AGENTS.md`.
 
 <!-- 2026-08-25 16:29:19 [01a034b6] -->
 
 <!-- code-comment bar, 2026-08-25 -->
 ## Comment bar — the code has to be unreadable without it #preference
 
-#7343 shipped 61 added comment lines; David cut it to **11** over two rounds of raising the bar. "Explains why not what" and even "would someone undo this?" are both too lenient — I can always imagine someone undoing something.
-
-**Cut it if** a shared variable already enforces the invariant, a named `it(...)` already documents it, the effect is visible on page load, or it explains an *absence*.
-
-**Keep it for** a magic constant's derivation (`calc(20 + 4)` → "chevron icon + its gap"), a rule that exists for one surface only (`[mobile-bridge]`), a normative requirement (a WCAG criterion number), an identity behind a boolean, or a format quirk that explains why a function exists.
-
-Root cause: I write comments while reasoning, so notes-to-self survive into the diff. **The reasoning goes in `~/plans/<project>/`, not the source.**
-
-Also: never gut someone else's comment — compress and flag it. And match whole blocks when editing comments programmatically; matching a tail leaves dangling half-sentences.
-
-Full lesson: `~/Workspace/my-stuff/ai/lessons/admin-web.md` → "The comment bar".
+#7343 shipped 61 added comment lines; David cut it to **11** over two rounds.
+Notes-to-self written while reasoning survived into the diff. This 08-25 correction
+rejected even the imagined "would undo" test; later 09-03 wording differed.
+Duplicate policy removed 2026-09-07, not generalized: shared default in `ai/AGENTS.md`,
+full scoped history in `ai/lessons/admin-web.md` → "The comment bar".
 
 <!-- 2026-08-26 16:00:32 [01a03f28] -->
 <!-- 2026-08-27 16:33:19 [01a03f28] -->
 <!-- build-loop protocol, 2026-08-27 -->
 ## David — build-loop review protocol #preference
 
-For orchestrated builds ([[context-switching]] and future projects): **every task/story ends with a fresh reviewer subagent** auditing the commit against the story's acceptance + verify block (reviewer re-runs verify itself, never trusts the implementer's paste; verdict-first protocol, one fix round then fail-fast). **Every sprint/epic boundary ends with an oracle** (forked context) reviewing correctness of the whole increment against the ADRs/specs — not just per-story compliance. Set 2026-08-27 during context-switching phase-4 build.
+Historical 2026-08-27 context-switching phase-4 protocol used one fix round and an
+oracle at every sprint/epic boundary. Superseded by the approved 2026-09-07 routing:
+`ai/agents/README.md` owns review cadence and the four oracle triggers; reviewer still
+re-runs verification. Evidence: `~/plans/pi-agent-orchestration/2026-09-07-astra-routing-verification.md`.
 
 <!-- 2026-08-27 16:55:04 [01a044ee] -->
 <!-- 2026-08-27 17:18:38 [01a04505] -->
@@ -245,41 +215,33 @@ only if the session's own provider matches one of them, or exactly one candidate
 `Unknown subagent model '<id>' in the active Pi model registry`. Documented behaviour: `docs/models.md:142`.
 Bare `claude-*` pins worked only because the session provider is `anthropic`.
 
-**`fallbackModels` never rescues a bad primary.** `buildModelCandidates` (same file, ~:277-295) uses the
-*throwing* resolver for index 0 and the warn-and-skip resolver for fallbacks. A mispinned primary dies at
-candidate-construction time, before any provider call. `docs/agents.md:202` listing "unavailable model" as a
-fallback trigger means runtime failures only.
+2026-09-07 correction: the old claim that fallbacks never rescue an unavailable primary
+is obsolete; `ai/agents/tests/installed-runtime.test.mjs` exercises current candidate
+resolution. The former forked-worker `off` explanation was an inference, not a trace.
+Worker now uses fresh context, design-worker is an alias, and signed-fork behavior is
+verified separately. Current pins, fallback limits and package fix: `ai/agents/README.md`;
+provider evidence: `~/plans/pi-agent-orchestration/2026-09-07-astra-routing-verification.md`.
 
-**Rule: always write model pins as `provider/id`** — in `~/.pi/agent/settings.json`, in `ai/agents/*.md`
-frontmatter (`model` *and* `fallbackModels`), and in `my-stuff/setup.sh` (the `subagent_pins` JSON there
-re-seeds settings and had silently re-broken worker; fixed + commented).
+Reviewer gained `bash` on 2026-08-27 because `read, grep, find, ls` could not re-run
+verification. Six bash calls and zero mutations were observed; `completionGuard: false`
+and `acceptanceRole: read-only` classify completion, not a sandbox. Current verification
+and output boundaries: `ai/agents/reviewer.md` and `ai/AGENTS.md` (updated 2026-09-07).
 
-**`worker` runs with thinking `off` despite `thinking: high`** — it has `defaultContext: fork`, and forking an
-Anthropic parent's signed thinking blocks into an OpenAI model drops reasoning. `design-worker` (same model,
-fresh context) keeps `high`. Mechanism inferred, not traced.
-
-**reviewer now has `bash`** (`ai/agents/reviewer.md`): the build-loop protocol requires the reviewer to re-run
-verify itself, which was impossible with `read, grep, find, ls`. Added `bash` plus `completionGuard: false`
-(`docs/agents.md:287` — bash makes an agent mutation-capable and it would otherwise be judged an
-implementation agent) and `acceptanceRole: read-only` (`docs/tool-reference.md:290`). Prompt now says: re-run
-verify yourself, never accept a pasted result, bash is observation-only, name mutating commands for the
-supervisor. Verified: 6 bash calls, zero mutations, acceptance inferred `read-only/reviewer-style agent`.
-Tradeoff accepted — reviewer is read-only by instruction now, not structurally.
-
-**`design-worker` still cannot run**: it requests `get_design_context`/`get_screenshot`, but `tools` is a strict
-allowlist that does not load extension code. Needs `subagentOnlyExtensions` pointing at
-`~/.pi/agent/git/github.com/shopify-playground/pi-figma-mcp/index.ts`. Not yet fixed.
+2026-09-07 correction: the proposed Figma extension-path fix did not provide direct MCP
+tools to children. The parent supplies design context to worker; see `ai/agents/worker.md`
+and the MCP tool trap in `ai/agents/README.md`. The failed design-worker launches remain
+evidence for distinguishing tool declarations from loaded providers.
 
 
 <!-- 2026-08-27 20:40:32 [01a044ee] -->
 <!-- reviewer cannot persist artifacts, 2026-08-27 -->
 ## `reviewer` has bash but no write — orchestrator must persist review artifacts #lesson #pi
 
-Supersedes nothing about `bash`: reviewer gained `bash` + `acceptanceRole: read-only` + `completionGuard: false` on 2026-08-27 17:16. It still has **no `write`/`edit` tool**, and it treats read-only as winning over any instruction to save a file.
-
-Briefing a reviewer to "write findings to `<path>`" produces compliance-with-the-ban instead: it returns the artifact verbatim with a note like *"Review-only role: I could not write … no-edit wins over artifact-writing. The full review artifact is returned … for the runtime to persist."* Correct behaviour, but the file never appears.
-
-**Consequence for workflowScript:** `runs.run(...).output` is the only copy. `status.json` does not retain full child transcripts, so a review not captured from the return value is unrecoverable after the run. When review records must persist, write `.output` from the script or the parent — do not ask the child to.
+On 2026-08-27 a filename in the prose brief did not persist a review: the child correctly
+returned its artifact without writing. The claim that it was unrecoverable was too broad;
+transcripts can survive in output archives. Current explicit runtime-output wiring and
+parent verification are documented in `ai/agents/README.md`; read-only behavior is in
+`ai/AGENTS.md`. Correction recorded 2026-09-07; no write tool was added to reviewer.
 
 
 <!-- 2026-08-31 11:04:29 [01a0584f] -->
@@ -365,3 +327,53 @@ feature branch in this state — `devx ci run --pr <N> --no-local-checks` worked
 - **No `_PARTITIONTIME` column.** Filter on `DATE(event_timestamp)` or the query scans the whole table.
 - **`payload.countryCode` is a required schema field**, so "missing" means the empty string, not `NULL`.
   Absence checks must test `IS NULL OR = ''` — testing `IS NULL` alone silently returns zero rows.
+
+
+<!-- 2026-09-02 19:06:54 [01a063fd] -->
+## `position: absolute` escapes a collapsed `overflow: hidden` region (2026-09-02)
+
+#lesson An unwanted scrollbar with nothing visible to scroll to is usually **out-of-flow
+content extending scrollable overflow**, not a height/max-height problem.
+
+admin-web reopen checkout: `PlanRowPrice`'s `.VisuallyHidden` span (`position: absolute`,
+no insets) sat inside `.Breakdown` inside a collapsed `Collapsible`
+(`//areas/clients/admin-web/packages/quarantine/domains/monetization/merchant-checkout/components/Collapsible`
+— `grid-template-rows: 0fr` + `.inner { overflow: hidden }`, **unpositioned**). The span
+resolved its containing block out at `.LeftPanel` (`position: relative`), escaped the clip,
+and landed ~43px below the card, giving `.PanelsWrapper` (`overflow: auto`) 35px of
+scrollable overflow. Fix: `position: relative` on the element inside the clipped region
+(`.Breakdown`), so the containing-block chain passes through the clipper. PR #2037293.
+
+Diagnostic that found it (paste in DevTools; `getComputedStyle().insetBlockEnd` on a
+statically-placed absolute element reports its offset past the containing block):
+
+```js
+[...document.querySelectorAll('*')]
+  .filter(e => e.scrollHeight > e.clientHeight + 1 && getComputedStyle(e).overflowY !== 'visible')
+```
+then, inside the scroller, list descendants whose `getBoundingClientRect().bottom` passes
+its content-box bottom, with `position`/`transform`/`insetBlockEnd`.
+
+#lesson **Don't diagnose layout from a cropped screenshot.** I read the scrollbar's track
+as belonging to `.PanelsWrapper` capped by viewport height, built a Playwright harness that
+"confirmed" it, and committed a fix for a scenario that wasn't happening (`innerHeight: 828`
+left ~280px of slack). Get `clientHeight`/`scrollHeight` of the real candidates *first* —
+one console paste beat two rounds of pixel archaeology. A harness reproducing *my model*
+proves the model is self-consistent, not that it is the user's bug.
+
+#lesson Clipped-but-present descendants still return non-zero `getBoundingClientRect()`,
+so a "what pokes out the bottom" scan lists red herrings from inside `overflow: hidden`
+boxes. Cross-check against the scroller's own `scrollHeight` delta before believing one.
+
+
+<!-- 2026-09-03 09:27:17 [01a063fd] -->
+## Code comments: default to none (2026-09-03) #preference #lesson
+
+David, after reviewer Neha Aggarwal asked me to delete a 5-line CSS comment on a
+1-line fix (PR shop/world#2037293): "Over and over again I see you add comments and
+claim they are important yet I constantly find them to not be."
+
+Debugging effort had pulled investigation prose into a one-line fix. Duplicate policy
+removed 2026-09-07: shared comment default remains in `ai/AGENTS.md`; the latest
+admin-web-specific lesson and its "would actively undo" wording remain untouched in
+`ai/lessons/admin-web.md`, alongside the earlier correction.

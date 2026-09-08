@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import { homedir } from "node:os";
+import { visibleWidth } from "@earendil-works/pi-tui";
+import { SpendLedger } from "./accounting.ts";
 import {
-  bashPathCandidates,
   countPorcelain,
   displayPath,
   expandHome,
   findWorktreeRoot,
-  toolPathCandidates,
-  isIgnored,
   collectUsage,
   focusLabel,
   focusLabels,
@@ -23,56 +22,30 @@ const focusEntry = (data: unknown, timestamp: string) => ({
   data,
 });
 
+import { makeFixtures } from "./test-fixtures.ts";
+const fixture = makeFixtures();
 const home = homedir();
 let failures = 0;
+let checks = 0;
 function check(name: string, fn: () => void) {
+  checks++;
   try { fn(); console.log("ok   " + name); }
   catch (e) { failures++; console.log("FAIL " + name + "\n     " + (e as Error).message); }
 }
 
-check("bash: cd target wins over later paths", () => {
-  assert.deepEqual(
-    bashPathCandidates("cd ~/world/trees/i7343-payment-section/src && git status")[0],
-    "~/world/trees/i7343-payment-section/src",
-  );
-});
-check("bash: cd after &&", () => {
-  assert.equal(bashPathCandidates("set -e && cd /tmp/foo; ls")[0], "/tmp/foo");
-});
-check("bash: quoted cd path", () => {
-  assert.equal(bashPathCandidates(`cd "/tmp/a b" && ls`)[0], "/tmp/a b");
-});
-check("bash: git -C", () => {
-  assert.equal(bashPathCandidates("git -C ~/world/trees/root/src log -1")[0], "~/world/trees/root/src");
-});
-check("bash: bare absolute path arg", () => {
-  assert.deepEqual(bashPathCandidates("rg foo /Users/x/proj/src"), ["/Users/x/proj/src"]);
-});
-check("bash: no path", () => {
-  assert.deepEqual(bashPathCandidates("git status --porcelain"), []);
-});
-check("bash: flags are not paths", () => {
-  assert.deepEqual(bashPathCandidates("ls -la --color=auto"), []);
-});
-check("tool: read/write/edit path", () => {
-  assert.deepEqual(toolPathCandidates("read", { path: "/a/b.ts" }), ["/a/b.ts"]);
-  assert.deepEqual(toolPathCandidates("edit", { path: "rel/x.ts" }), ["rel/x.ts"]);
-  assert.deepEqual(toolPathCandidates("grep", { pattern: "x" }), []);
-});
-
 check("worktree root: linked worktree resolves to itself, not main clone", () => {
-  const wt = home + "/world/trees/i7343-payment-section/src";
+  const wt = fixture.linked;
   const root = findWorktreeRoot(wt + "/areas/clients/web/app/foo/bar.ts");
   assert.equal(root, wt, `got ${root}`);
 });
 check("worktree root: main repo", () => {
-  assert.equal(findWorktreeRoot(home + "/Workspace/my-stuff/ai/AGENTS.md"), home + "/Workspace/my-stuff");
+  assert.equal(findWorktreeRoot(fixture.main + "/README.md"), fixture.main);
 });
 check("worktree root: non-existent path walks up to existing ancestor", () => {
-  assert.equal(findWorktreeRoot(home + "/Workspace/my-stuff/does/not/exist.ts"), home + "/Workspace/my-stuff");
+  assert.equal(findWorktreeRoot(fixture.main + "/does/not/exist.ts"), fixture.main);
 });
 check("worktree root: outside any repo is null", () => {
-  assert.equal(findWorktreeRoot("/tmp"), null);
+  assert.equal(findWorktreeRoot(fixture.nonGit), null);
 });
 
 check("porcelain counts", () => {
@@ -91,33 +64,31 @@ check("displayPath shortens long paths to last two segments", () => {
     "…/src/areas/clients/web",
   );
 });
+check("linked breadcrumb retains root identity and cwd before ancestors", () => {
+  const root = home + "/world/trees/i7343-payment-section/src";
+  for (const width of [100, 80, 60, 40, 20]) {
+    const text = displayPath(root + "/areas/clients/admin-web", width, root);
+    assert.ok(visibleWidth(text) <= width, text);
+    assert.match(text, /\[i7343[^\]]*\].*admin-web/);
+    if (width >= 40) assert.match(text, /\[i7343-payment-section\/src\]/);
+  }
+  assert.equal(displayPath(root + "/areas/clients/admin-web", 46, root), "…/[i7343-payment-section/src]/…/admin-web");
+  assert.equal(displayPath(root, 100, root), "~/world/trees/[i7343-payment-section/src]");
+  assert.equal(displayPath("/topic/leaf", 100, "/topic"), "/[topic]/leaf");
+  assert.equal(displayPath(home + "/trees/topic/nested", 100, home + "/trees/topic"), "~/trees/[topic]/nested");
+});
+check("ordinary narrow path preserves leaf and respects Unicode cell widths", () => {
+  for (const width of [100, 80, 60, 40, 20]) {
+    const text = displayPath(home + "/very/long/path/祖先/admin-web", width);
+    assert.ok(visibleWidth(text) <= width, text);
+    assert.ok(text.endsWith("admin-web"), text);
+  }
+});
 check("expandHome", () => {
   assert.equal(expandHome("~/x"), home + "/x");
   assert.equal(expandHome("/x"), "/x");
 });
 
-check("ignores brain memory bank paths", () => {
-  assert.equal(isIgnored(home + "/.brain/memory-bank/personal/core/dailyContext.md"), true);
-});
-check("ignores ~/plans through its symlink into the bank", () => {
-  assert.equal(isIgnored(home + "/plans/improve-cancellation-reactivation/todo.md"), true);
-  assert.equal(isIgnored(home + "/plans"), true);
-});
-check("ignores all of my-stuff, including via symlinks into it", () => {
-  assert.equal(isIgnored(home + "/Workspace/my-stuff/ai/lessons/admin-web.md"), true);
-  assert.equal(isIgnored(home + "/Workspace/my-stuff/ai/memory/MEMORY.md"), true);
-  assert.equal(isIgnored(home + "/Workspace/my-stuff/preferences/git/config"), true);
-  assert.equal(isIgnored(home + "/Workspace/my-stuff"), true);
-  assert.equal(isIgnored(home + "/.pi/agent/memory/MEMORY.md"), true); // symlink into ai/memory
-});
-check("prefix match respects path boundaries", () => {
-  assert.equal(isIgnored(home + "/Workspace/my-stuff-scratch/x.md"), false);
-  assert.equal(isIgnored(home + "/Workspace/other/x.md"), false);
-  assert.equal(isIgnored(home + "/world/trees/i7343-payment-section/src/app.ts"), false);
-});
-check("ignores paths that do not exist yet under an ignored dir", () => {
-  assert.equal(isIgnored(home + "/plans/new-project/2026-08-21-report.md"), true);
-});
 check("formatTokens ramps", () => {
   assert.equal(formatTokens(999), "999");
   assert.equal(formatTokens(9400), "9.4k");
@@ -135,6 +106,24 @@ check("collectUsage sums assistant, toolResult and compaction entries", () => {
   assert.equal(total.output, 5);
   assert.equal(total.cost, 1);
   assert.equal(total.cacheHitRate?.toFixed(1), "90.0"); // 90 of (10+90+0) prompt tokens
+});
+check("native child rollups never enter main spend or counters, including repeated bg_wait projections", () => {
+  const child = { runId: "child", agent: "worker", index: 0, exitCode: 0, usage: { cost: 3 } };
+  const rollup = { input: 100, output: 200, cacheRead: 300, cacheWrite: 400, cost: { total: 3 } };
+  const entries = [
+    { type: "message", message: { role: "assistant", usage: { input: 10, output: 20, cacheRead: 30, cacheWrite: 40, cost: { total: 2 } } } },
+    { type: "message", message: { role: "toolResult", toolName: "subagent", usage: rollup, details: { mode: "single", runId: "child", results: [child] } } },
+    { type: "message", message: { role: "toolResult", toolName: "bg_wait", usage: rollup, details: { mode: "management", results: [], completions: [{ mode: "single", runId: "child", results: [child] }] } } },
+    { type: "message", message: { role: "toolResult", toolName: "web_search", usage: { input: 7, cost: { total: 0.5 } } } },
+  ];
+  const main = collectUsage(entries);
+  const ledger = new SpendLedger({ sessionFile: "/sessions/parent.jsonl", sessionId: "parent", cwd: "/project" });
+  ledger.ingest(entries);
+  assert.deepEqual([main.input, main.output, main.cacheRead, main.cacheWrite], [17, 20, 30, 40]);
+  assert.equal(main.cost, 2.5);
+  assert.equal(ledger.summary().cost, 3);
+  assert.equal(main.cost + ledger.summary().cost, 5.5);
+  assert.equal(ledger.summary().partial, false);
 });
 check("focusLabel joins a normalized issue with the purpose", () => {
   assert.equal(focusLabel({ path: "/w", issue: "7343", purpose: "reopen legal copy" }), "#7343 reopen legal copy");
@@ -189,4 +178,12 @@ check("padBetween right-aligns, and drops the right side when it cannot fit", ()
   assert.equal(padBetween("ab", "", 6), "ab");
 });
 
+(await import("./glance.test.ts")).glanceTests(check);
+await (await import("./accounting.test.ts")).accountingTests(async (name, fn) => {
+  checks++;
+  try { await fn(); console.log("ok   " + name); }
+  catch (e) { failures++; console.log("FAIL " + name + "\n     " + (e as Error).message); }
+});
+fixture.cleanup();
+console.log(`\n${checks - failures}/${checks} unit checks passed`);
 process.exit(failures ? 1 : 0);

@@ -1,380 +1,513 @@
-/**
- * Drives the real footer component against real git repos through a fake TUI.
- * Run: node --experimental-strip-types --import ./test-resolve.ts e2e.ts
- */
-
+import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
-import { homedir } from "node:os";
+import { mkdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import factory from "./index.ts";
+import { getThemeByName } from "@earendil-works/pi-coding-agent/theme";
+import { stripVTControlCharacters } from "node:util";
+import factory, { displayPath } from "./index.ts";
+import { SpendLedger } from "./accounting.ts";
+import { reconcileSession } from "./diagnostic.ts";
+import { makeFixtures } from "./test-fixtures.ts";
 
-const home = homedir();
-const WIDTH = 100;
-
-/** Worktrees come and go; pick real ones instead of pinning names that rot. */
-const trees = readdirSync(`${home}/world/trees`)
-	.map((name) => `${home}/world/trees/${name}/src`)
-	.filter((path) => existsSync(`${path}/.git`));
-const SESSION_TREE = trees.find((t) => t.endsWith("/root/src")) ?? trees[0];
-const TREE_A = trees.find((t) => t !== SESSION_TREE) ?? trees[0];
-const TREE_B = trees.find((t) => t !== SESSION_TREE && t !== TREE_A) ?? TREE_A;
-if (!SESSION_TREE || !TREE_A || TREE_A === TREE_B) throw new Error("need three distinct worktrees under ~/world/trees");
-const shortName = (path: string) => path.replace(`${home}/world/trees/`, "").replace("/src", "");
-console.log(`session tree: ${shortName(SESSION_TREE)} | A: ${shortName(TREE_A)} | B: ${shortName(TREE_B)}`);
-
+const fixture = makeFixtures();
 let failures = 0;
-const check = (name: string, cond: boolean, detail = "") => {
-	if (cond) console.log(`ok   ${name}`);
-	else {
-		failures++;
-		console.log(`FAIL ${name} ${detail}`);
-	}
-};
-
-const theme = { fg: (_c: string, t: string) => t, bold: (t: string) => t };
-const entries = [
-	{
-		type: "message",
-		message: {
-			role: "assistant",
-			usage: { input: 2, output: 210, cacheRead: 9400, cacheWrite: 68000, cost: { total: 0.435 } },
-		},
-	},
-	{
-		type: "message",
-		message: { role: "toolResult", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: { total: 0.001 } } },
-	},
+let checks = 0;
+const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text };
+const usage = [
+	{ type: "message", message: { role: "assistant", usage: { input: 2, output: 210, cacheRead: 9400, cacheWrite: 68000, cost: { total: 0.435 } } } },
+	{ type: "message", message: { role: "toolResult", usage: { cost: { total: 0.001 } } } },
 ];
+const record = (path: string | null, issue?: string, purpose?: string) => ({
+	type: "custom", customType: "worktree-focus", timestamp: "2026-08-22T01:00:00.000Z", data: { path, issue, purpose },
+});
 
-/**
- * One isolated extension instance with its own cwd, footer and fake TUI.
- * `seed` prepends session entries, standing in for a session being resumed.
- */
-function makeEnv(cwd: string, seed: any[] = []) {
+function check(name: string, fn: () => void) {
+	checks++;
+	try { fn(); console.log(`ok   ${name}`); }
+	catch (error) { failures++; console.log(`FAIL ${name}\n${(error as Error).message}`); }
+}
+
+function makeEnv(cwd: string, seed: any[] = [], renderTheme = theme) {
 	const handlers = new Map<string, Function[]>();
 	const commands = new Map<string, any>();
 	const tools = new Map<string, any>();
 	const notices: string[] = [];
-	// Live session log. pi derives the session name from the newest session_info
-	// entry, so appending one here is what really happens on setSessionName.
-	const log: any[] = [...seed, ...entries];
-	const sessionName = (): string | undefined => {
-		for (let i = log.length - 1; i >= 0; i--) {
-			if (log[i].type === "session_info") return log[i].name?.trim() || undefined;
-		}
-		return undefined;
-	};
-	let footer: any = null;
+	const log: any[] = [...seed, ...usage];
+	const calls: string[][] = [];
+	const pending = new Set<Promise<unknown>>();
+	let footer: any;
 	let renderRequests = 0;
-
-	const tui = {
-		requestRender: () => {
-			renderRequests++;
+	let branchChange = () => {};
+	let failGit: (args: string[]) => boolean = () => false;
+	let holdGit: (args: string[]) => boolean = () => false;
+	let releaseGit: (() => void) | undefined;
+	const events = new Map<string, Set<Function>>();
+	const sessionName = () => log.findLast((entry) => entry.type === "session_info")?.name;
+	const pi: any = {
+		on: (name: string, handler: Function) => handlers.set(name, [...(handlers.get(name) ?? []), handler]),
+		events: { on: (name: string, fn: Function) => { if (!events.has(name)) events.set(name, new Set()); events.get(name)!.add(fn); return () => events.get(name)!.delete(fn); } },
+		registerCommand: (name: string, options: any) => commands.set(name, options),
+		registerTool: (tool: any) => tools.set(tool.name, tool),
+		appendEntry: (customType: string, data: any) => log.push({ type: "custom", customType, timestamp: new Date().toISOString(), data }),
+		getSessionName: sessionName,
+		setSessionName: (name: string) => log.push({ type: "session_info", name }),
+		exec: (command: string, args: string[], options: any = {}) => {
+			calls.push(args);
+			const task = new Promise((res) => {
+				if (failGit(args)) return res({ stdout: "", stderr: "fatal: injected failure", code: 128, killed: false });
+				execFile(command, args, { encoding: "utf8", timeout: options.timeout, env: fixture.env }, (error: any, stdout, stderr) => {
+					const done = () => res({ stdout, stderr, code: error ? (error.code ?? 1) : 0, killed: false });
+					if (holdGit(args)) releaseGit = done; else done();
+				});
+			});
+			pending.add(task);
+			task.finally(() => pending.delete(task));
+			return task;
 		},
 	};
-	const footerData = {
-		getGitBranch: () => null,
-		getExtensionStatuses: () => new Map([["mcp", "MCP 0/1"]]),
-		getAvailableProviderCount: () => 1,
-		onBranchChange: (_cb: Function) => () => {},
-	};
-
-	const pi: any = {
-		on: (e: string, h: Function) => handlers.set(e, [...(handlers.get(e) ?? []), h]),
-		registerCommand: (name: string, opts: any) => commands.set(name, opts),
-		registerTool: (tool: any) => tools.set(tool.name, tool),
-		appendEntry: (customType: string, data: any) =>
-			log.push({ type: "custom", customType, timestamp: new Date().toISOString(), data }),
-		setSessionName: (name: string) => log.push({ type: "session_info", timestamp: new Date().toISOString(), name }),
-		getSessionName: sessionName,
-		exec: (cmd: string, args: string[], opts: any = {}) =>
-			new Promise((res) =>
-				execFile(cmd, args, { encoding: "utf8", timeout: opts.timeout }, (err: any, stdout, stderr) =>
-					res({ stdout, stderr, code: err ? (err.code ?? 1) : 0, killed: false }),
-				),
-			),
-	};
-
 	const ctx: any = {
-		hasUI: true,
-		mode: "tui",
-		cwd,
+		cwd, hasUI: true, mode: "tui",
 		model: { id: "claude-opus-5", provider: "anthropic", reasoning: true, contextWindow: 1_000_000 },
 		thinkingLevel: "high",
-		sessionManager: { getEntries: () => log, getSessionName: sessionName },
+		sessionManager: { getEntries: () => log, getSessionName: sessionName, getSessionFile: () => `${fixture.base}/parent.jsonl`, getSessionId: () => "parent" },
 		getContextUsage: () => ({ tokens: 80_000, contextWindow: 1_000_000, percent: 8.0 }),
 		ui: {
-			setFooter: (f: any) => {
-				footer = f ? f(tui, theme, footerData) : null;
+			setFooter: (build: any) => {
+				footer?.dispose();
+				footer = build({ requestRender: () => renderRequests++ }, renderTheme, {
+					getGitBranch: () => "wrong-provider-branch",
+					getExtensionStatuses: () => new Map([["mcp", "MCP 0/1"]]),
+					getAvailableProviderCount: () => 1,
+					onBranchChange: (callback: () => void) => { branchChange = callback; return () => { branchChange = () => {}; }; },
+				});
 			},
-			setStatus: () => {
-				throw new Error("setStatus should no longer be used");
-			},
-			notify: (m: string) => notices.push(m),
-			theme,
+			notify: (message: string) => notices.push(message), theme,
 		},
 	};
-
-	const fire = async (event: string, payload: any = {}) => {
-		for (const h of handlers.get(event) ?? []) await h(payload, ctx);
-	};
-	const lines = () => footer.render(WIDTH) as string[];
-	const settle = async (ms = 4000) => {
-		const deadline = Date.now() + ms;
-		let last = lines()[0];
-		let stableSince = Date.now();
-		while (Date.now() < deadline) {
-			await new Promise((r) => setTimeout(r, 100));
-			const now = lines()[0];
-			if (now !== last) {
-				last = now;
-				stableSince = Date.now();
-			} else if (Date.now() - stableSince > 700 && !now.trimEnd().endsWith("…")) break;
-		}
-		return lines();
-	};
-	const show = (label: string) => {
-		const [top, bottom] = lines();
-		console.log(`\n${label}`);
-		console.log(`  |${top}|`);
-		console.log(`  |${bottom}|`);
-	};
-
 	factory(pi);
-	const callTool = (name: string, params: any) => tools.get(name).execute("call-1", params, undefined, undefined, ctx);
 	return {
-		fire,
-		lines,
-		settle,
-		show,
-		commands,
-		tools,
-		callTool,
-		ctx,
-		notices,
-		log,
-		sessionName,
+		ctx, log, calls, notices, commands, tools, sessionName,
+		fire: async (event: string, payload: any = {}, eventContext = ctx) => { for (const handler of handlers.get(event) ?? []) await handler(payload, eventContext); },
+		callTool: (params: any) => tools.get("set_worktree").execute("call-1", params, undefined, undefined, ctx),
+		command: (args: string) => commands.get("worktree").handler(args, ctx),
+		render: (width = 100) => footer.render(width) as string[],
+		settle: async () => { await new Promise((res) => setTimeout(res, 650)); while (pending.size) await Promise.all([...pending]); },
+		branchChange: () => branchChange(),
+		failGit: (predicate: (args: string[]) => boolean) => { failGit = predicate; },
+		holdGit: (predicate: (args: string[]) => boolean) => { holdGit = predicate; },
+		waitForHeld: async () => { for (let i = 0; i < 200 && !releaseGit; i++) await new Promise(resolve => setTimeout(resolve, 10)); assert.ok(releaseGit, "git command held"); },
+		releaseGit: () => { holdGit = () => false; releaseGit?.(); releaseGit = undefined; },
+		emit: (name: string, event: any) => { for (const fn of events.get(name) ?? []) fn(event); },
+		listenerCount: () => [...events.values()].reduce((sum, listeners) => sum + listeners.size, 0),
 		renderCount: () => renderRequests,
-		render: (w: number) => footer.render(w) as string[],
 	};
 }
 
-// ---------------------------------------------------------------- main session
-const env = makeEnv(`${SESSION_TREE}/areas/clients/admin-web`);
-await env.fire("session_start", { reason: "startup" });
-await env.settle();
-env.show("1. session_start (cwd = a subdirectory of the session tree)");
-check("exactly two lines", env.lines().length === 2, `got ${env.lines().length}`);
-check(
-	"line 1 shows worktree root, not session cwd",
-	env.lines()[0].startsWith(`${SESSION_TREE.replace(home, "~")} `) && !env.lines()[0].includes("admin-web"),
-);
-check("line 1 right-aligns other extensions' statuses", env.lines()[0].trimEnd().endsWith("MCP 0/1"));
-check("both lines exactly terminal width", env.lines().every((l) => visibleWidth(l) === WIDTH), env.lines().map(visibleWidth).join(","));
-check(
-	"line 2 has usage left, model right",
-	/^↑2 ↓210 R9\.4k W68k CH12\.1% \$0\.436 8\.0%\/1\.0M/.test(env.lines()[1]) &&
-		env.lines()[1].trimEnd().endsWith("claude-opus-5 • high"),
-	JSON.stringify(env.lines()[1]),
-);
-
-await env.fire("tool_call", { toolName: "bash", input: { command: `cd ${TREE_A} && ls` } });
-await env.settle();
-env.show(`2. bash cd into the ${shortName(TREE_A)} tree`);
-check("follows tool call to other worktree", env.lines()[0].startsWith(`${TREE_A.replace(home, "~")} `), env.lines()[0]);
-
-const raw = execFileSync(
-	"git",
-	["-C", TREE_A, "status", "--porcelain=v1", "--untracked-files=normal"],
-	{ encoding: "utf8" },
-);
-let staged = 0;
-let unstaged = 0;
-let untracked = 0;
-for (const l of raw.split("\n")) {
-	if (!l) continue;
-	if (l.startsWith("??")) untracked++;
-	else {
-		if (l[0] !== " ") staged++;
-		if (l[1] !== " ") unstaged++;
-	}
-}
-const expected = [staged && `+${staged}`, unstaged && `~${unstaged}`, untracked && `?${untracked}`].filter(Boolean).join(" ") || "clean";
-check("dirty counts match raw git", env.lines()[0].includes(expected), `expected ${expected}`);
-
-await env.fire("tool_call", { toolName: "bash", input: { command: "ls /tmp" } });
-await env.settle(1200);
-check("non-repo tool call is sticky", env.lines()[0].includes(shortName(TREE_A)));
-
-// Notes side-quests must not repoint the footer.
-for (const [label, payload] of [
-	["edit a lesson", { toolName: "edit", input: { path: `${home}/Workspace/my-stuff/ai/lessons/admin-web.md` } }],
-	["edit a dotfile in my-stuff", { toolName: "edit", input: { path: `${home}/Workspace/my-stuff/preferences/git/config` } }],
-	["write a plan report", { toolName: "write", input: { path: `${home}/plans/some-project/2026-08-21-report.md` } }],
-	["bash into the brain bank", { toolName: "bash", input: { command: "cd ~/.brain/memory-bank/personal && git status" } }],
-	["edit dailyContext", { toolName: "edit", input: { path: `${home}/.brain/memory-bank/personal/core/dailyContext.md` } }],
-] as [string, any][]) {
-	await env.fire("tool_call", payload);
-	await env.settle(1200);
-	check(`ignored: ${label} keeps previous worktree`, env.lines()[0].includes(shortName(TREE_A)), env.lines()[0]);
+const envs: ReturnType<typeof makeEnv>[] = [];
+async function start(cwd: string, seed: any[] = []) {
+	const env = makeEnv(cwd, seed);
+	envs.push(env);
+	await env.fire("session_start", { reason: "startup" });
+	await env.settle();
+	return env;
 }
 
-await env.fire("tool_call", { toolName: "read", input: { path: `${TREE_B}/README.md` } });
-await env.settle();
-check("a real worktree still switches the footer", env.lines()[0].startsWith(`${TREE_B.replace(home, "~")} `), env.lines()[0]);
-
-await env.commands.get("worktree").handler(`${home}/Workspace/my-stuff`, env.ctx);
-await env.settle();
-env.show("3. /worktree ~/Workspace/my-stuff (pin beats the ignore list)");
-check("pin marker shown for an otherwise-ignored path", env.lines()[0].startsWith("📌 ~/Workspace/my-stuff master"));
-await env.fire("tool_call", { toolName: "read", input: { path: `${SESSION_TREE}/README.md` } });
-await env.settle(1200);
-check("pin overrides detection", env.lines()[0].startsWith("📌 ~/Workspace/my-stuff"));
-await env.commands.get("worktree").handler("auto", env.ctx);
-await env.settle();
-check("auto restores detection", env.lines()[0].startsWith(SESSION_TREE.replace(home, "~")));
-
-// Narrow terminals: right-hand segments are dropped, never wrapped.
-for (const w of [120, 80, 60, 40, 20]) {
-	const out = env.render(w);
-	check(`width ${w}: 2 lines, none over budget`, out.length === 2 && out.every((l) => visibleWidth(l) <= w), out.map(visibleWidth).join(","));
-}
-console.log(`\nwidth 40:\n  |${env.render(40).join("|\n  |")}|`);
-
-check("render requested on state changes", env.renderCount() > 0, `${env.renderCount()}`);
-await env.fire("session_shutdown", {});
-
-// ------------------------------------------- pi launched inside an ignored repo
-const inMyStuff = makeEnv(`${home}/Workspace/my-stuff`);
-await inMyStuff.fire("session_start", { reason: "startup" });
-await inMyStuff.settle();
-inMyStuff.show("4. session launched inside my-stuff (ignore list is detection-only)");
-check("session cwd is exempt from the ignore list", inMyStuff.lines()[0].startsWith("~/Workspace/my-stuff master"), inMyStuff.lines()[0]);
-await inMyStuff.fire("tool_call", { toolName: "edit", input: { path: `${home}/Workspace/my-stuff/ai/AGENTS.md` } });
-await inMyStuff.settle(1200);
-check("stays put while editing that repo", inMyStuff.lines()[0].startsWith("~/Workspace/my-stuff master"), inMyStuff.lines()[0]);
-await inMyStuff.fire("tool_call", { toolName: "read", input: { path: `${TREE_A}/package.json` } });
-await inMyStuff.settle();
-check("still follows a real worktree when one is touched", inMyStuff.lines()[0].startsWith(`${TREE_A.replace(home, "~")} `), inMyStuff.lines()[0]);
-await inMyStuff.fire("session_shutdown", {});
-
-// ------------------------------------------------- agent declares its worktree
-const agent = makeEnv(`${SESSION_TREE}/areas/clients/admin-web`);
-await agent.fire("session_start", { reason: "startup" });
-await agent.settle();
-check("set_worktree is registered for the LLM", agent.tools.has("set_worktree"));
-check(
-	"set_worktree carries prompt guidance",
-	(agent.tools.get("set_worktree").promptGuidelines ?? []).length > 0 &&
-		typeof agent.tools.get("set_worktree").promptSnippet === "string",
-);
-
-const declared = await agent.callTool("set_worktree", {
-	path: `${TREE_A}/areas/clients/admin-web`,
-	issue: "7343",
-	purpose: "reopen legal copy",
-});
-await agent.settle();
-agent.show("5. agent declared #7343 in the " + shortName(TREE_A) + " tree");
-check("declaring reports the worktree root, not the path given", declared.content[0].text.includes(TREE_A));
-check("footer follows the declaration", agent.lines()[0].startsWith(`📌 ${TREE_A.replace(home, "~")} `), agent.lines()[0]);
-check("footer shows issue and purpose", agent.lines()[0].includes("• #7343 reopen legal copy"), agent.lines()[0]);
-check("session is named for context switching", agent.sessionName() === "#7343 reopen legal copy", `${agent.sessionName()}`);
-
-// Requirement 3: research elsewhere must not move the target.
-for (const [label, payload] of [
-	["read another worktree", { toolName: "read", input: { path: `${TREE_B}/README.md` } }],
-	["bash cd into the session tree", { toolName: "bash", input: { command: `cd ${SESSION_TREE} && git log -1` } }],
-	["grep /tmp", { toolName: "bash", input: { command: "rg foo /tmp" } }],
-] as [string, any][]) {
-	await agent.fire("tool_call", payload);
-	await agent.settle(1200);
-	check(`declaration survives: ${label}`, agent.lines()[0].startsWith(`📌 ${TREE_A.replace(home, "~")} `), agent.lines()[0]);
-}
-
-// Requirement 4: moving to another worktree is the same call again.
-await agent.callTool("set_worktree", { path: TREE_B, issue: "#7256", purpose: "announce selection" });
-await agent.settle();
-agent.show("6. agent moved to #7256 in the " + shortName(TREE_B) + " tree");
-check("re-declaring moves the target", agent.lines()[0].startsWith(`📌 ${TREE_B.replace(home, "~")} `), agent.lines()[0]);
-check("issue prefix is normalized once", agent.lines()[0].includes("• #7256 announce selection"), agent.lines()[0]);
-
-let rejected = "";
 try {
-	await agent.callTool("set_worktree", { path: "/tmp", issue: "9999" });
-} catch (error) {
-	rejected = (error as Error).message;
+	const env = await start(`${fixture.main}/areas/clients/admin-web`);
+	check("session starts at actual nested cwd, not containing root", () => assert.ok(env.render()[0].startsWith(displayPath(env.ctx.cwd) + " git: trunk"), env.render()[0]));
+	check("usage/model line and extension status are preserved", () => {
+		assert.equal(env.render().length, 2);
+		assert.ok(env.render()[0].endsWith("MCP 0/1"));
+		assert.match(env.render()[1], /^Total \$0\.44 · main \$0\.44 · agents \$0\.00/);
+		assert.match(env.render()[1], /ctx 8\.0%\/1\.0M/);
+		assert.match(env.render()[1], /claude-opus-5 · high/);
+	});
+	assert.equal(readFileSync(`${fixture.linked}/README.md`, "utf8"), "fixture\n");
+	await env.fire("tool_call", { toolName: "read", input: { path: `${fixture.linked}/README.md` } });
+	await env.settle();
+	check("reading another repo preserves actual cwd and branch", () => assert.ok(env.render()[0].startsWith(displayPath(env.ctx.cwd) + " git: trunk"), env.render()[0]));
+	const shellCommand = `cd "${fixture.other}" && pwd`;
+	assert.equal(execFileSync("bash", ["-c", shellCommand], { cwd: env.ctx.cwd, encoding: "utf8" }).trim(), fixture.other);
+	await env.fire("tool_call", { toolName: "bash", input: { command: shellCommand } });
+	await env.settle();
+	check("one-call bash cd preserves actual cwd and branch", () => assert.ok(env.render()[0].startsWith(displayPath(env.ctx.cwd) + " git: trunk"), env.render()[0]));
+
+	const declared = await env.callTool({ path: `${fixture.linked}/areas/clients/admin-web`, issue: "7343", purpose: "reopen legal copy" });
+	await env.settle();
+	check("target records containing root and names the session", () => {
+		assert.equal(declared.details.path, fixture.linked);
+		assert.equal(env.sessionName(), "#7343 reopen legal copy");
+		assert.ok(env.tools.get("set_worktree").promptGuidelines.length);
+	});
+	check("declared target and task label never leak into location", () => {
+		assert.ok(env.render()[0].startsWith(displayPath(env.ctx.cwd) + " git: trunk"), env.render()[0]);
+		assert.doesNotMatch(env.render()[0], /📌|7343|reopen legal copy/);
+		assert.match(declared.content[0].text, /Target:/);
+		assert.match(declared.content[0].text, /cwd unchanged/);
+	});
+	await env.command("");
+	check("command distinguishes actual cwd and recorded target", () => {
+		assert.ok(env.notices.at(-1)?.includes(`Cwd: ${env.ctx.cwd}`), env.notices.at(-1));
+		assert.ok(env.notices.at(-1)?.includes(`Target: ${fixture.linked}`), env.notices.at(-1));
+	});
+	check("command reports actual checkout and branch separately from target", () => {
+		assert.ok(env.notices.at(-1)?.includes(`Checkout: ${fixture.main}`), env.notices.at(-1));
+		assert.ok(env.notices.at(-1)?.includes("git: trunk"), env.notices.at(-1));
+	});
+	await env.callTool({ path: fixture.other, issue: "#7256", purpose: "announce selection" });
+	check("re-declaring updates our session name", () => assert.equal(env.sessionName(), "#7256 announce selection"));
+	await assert.rejects(env.callTool({ path: fixture.nonGit }), /Not inside a git worktree/);
+	await env.command("auto");
+	check("auto persists a clear without following reads again", () => {
+		assert.equal(env.log.at(-1).data.path, null);
+		assert.match(env.notices.at(-1)!, /Target cleared; cwd unchanged/);
+		assert.ok(env.render()[0].startsWith(displayPath(env.ctx.cwd) + " git: trunk"), env.render()[0]);
+	});
+	await env.command(fixture.other);
+	check("manual target command does not move location", () => {
+		assert.equal(env.log.at(-1).data.path, fixture.other);
+		assert.ok(env.render()[0].startsWith(displayPath(env.ctx.cwd) + " git: trunk"), env.render()[0]);
+	});
+	check("descriptions no longer promise footer pinning or read detection", () => {
+		assert.doesNotMatch(env.tools.get("set_worktree").description, /Pins the footer|move to a different worktree/);
+		assert.doesNotMatch(env.commands.get("worktree").description, /Pin|detect from tool calls/);
+	});
+	for (const width of [100, 80, 60, 40, 20]) {
+		check(`width ${width}: two lines within budget`, () => assert.ok(env.render(width).length === 2 && env.render(width).every((line) => visibleWidth(line) <= width)));
+	}
+	check("state changes request render", () => assert.ok(env.renderCount() > 0));
+
+	const resumed = await start(fixture.main, [record(fixture.linked)]);
+	check("restoring a target never moves actual cwd", () => assert.ok(resumed.render()[0].startsWith(displayPath(fixture.main) + " git: trunk"), resumed.render()[0]));
+	await resumed.command("");
+	check("restored target remains discoverable", () => assert.ok(resumed.notices.at(-1)?.includes(`Target: ${fixture.linked}`)));
+	resumed.ctx.cwd = `${fixture.other}/areas/clients/admin-web`;
+	await resumed.fire("tool_call", { toolName: "read", input: { path: `${fixture.main}/README.md` } });
+	await resumed.settle();
+	check("actual live cwd change updates location and branch", () => assert.ok(resumed.render()[0].startsWith(displayPath(resumed.ctx.cwd) + " git: research"), resumed.render()[0]));
+	resumed.ctx.cwd = fixture.nonGit;
+	resumed.log.splice(0, resumed.log.length, ...usage);
+	await resumed.fire("session_start", { reason: "new" });
+	await resumed.settle();
+	await resumed.command("");
+	check("same-instance session switch clears stale target", () => assert.ok(resumed.notices.at(-1)?.includes("Target: none"), resumed.notices.at(-1)));
+	const linked = await start(`${fixture.linked}/areas/clients/admin-web`);
+	check("linked checkout embeds meaningful World src identity and matching branch", () => {
+		assert.match(linked.render()[0], /\[i7343-payment-section\/src\].*admin-web.*git: payment-section-7343/);
+		assert.doesNotMatch(linked.render()[0], /📌|wrong-provider-branch/);
+	});
+	check("main checkout has no worktree marker", () => assert.doesNotMatch(env.render()[0], /\[/));
+	for (const width of [100, 80, 60, 40, 20]) {
+		check(`linked width ${width}: cwd leaf and worktree identity survive without overflow`, () => {
+			const lines = linked.render(width);
+			assert.ok(lines.length === 2 && lines.every((line) => visibleWidth(line) <= width), lines.join("\n"));
+			assert.match(lines[0], /\[i7343[^\]]*\].*admin-web/);
+			if (width >= 80) assert.match(lines[0], /git: payment-section-7343/);
+		});
+		console.log(`linked width ${width}: |${stripVTControlCharacters(linked.render(width)[0])}|`);
+	}
+	check("render performs no git IO", () => {
+		const before = linked.calls.length;
+		for (let i = 0; i < 20; i++) linked.render(80);
+		assert.equal(linked.calls.length, before);
+	});
+	const submodule = `${fixture.main}/modules/library`;
+	fixture.git(fixture.main, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", fixture.other, "modules/library");
+	check("fixture submodule and linked roots both have gitfiles", () => {
+		assert.ok(statSync(`${submodule}/.git`).isFile());
+		assert.ok(statSync(`${fixture.linked}/.git`).isFile());
+	});
+	const sub = await start(submodule);
+	check("submodule gitfile is not marked as linked worktree", () => {
+		assert.match(sub.render()[0], /library git: research/);
+		assert.doesNotMatch(sub.render()[0], /\[/);
+	});
+	fixture.git(fixture.linked, "checkout", "--quiet", "--detach");
+	linked.branchChange();
+	await linked.settle();
+	check("branch change resolves detached SHA from that checkout", () => assert.ok(linked.render()[0].includes(`git: detached@${fixture.git(fixture.linked, "rev-parse", "--short", "HEAD").trim()}`), linked.render()[0]));
+	const plain = await start(fixture.nonGit);
+	check("nonGit is directory only, without bogus git or clean", () => {
+		assert.ok(plain.render()[0].startsWith(displayPath(fixture.nonGit)));
+		assert.doesNotMatch(plain.render()[0], /git:|no-git|clean|unknown/);
+	});
+	const outside = `${fixture.main}/outside`;
+	symlinkSync(fixture.nonGit, outside);
+	const linkedPlain = await start(outside);
+	check("a symlink inside Git pointing to nonGit stays directory only", () => {
+		assert.equal(linkedPlain.render()[0], plain.render()[0]);
+	});
+	await linkedPlain.command("");
+	check("nonGit symlink details do not borrow the lexical parent's checkout", () => {
+		assert.match(linkedPlain.notices.at(-1)!, /Checkout: none \(non-Git\)/);
+		assert.doesNotMatch(linkedPlain.notices.at(-1)!, /git: unknown/);
+	});
+	const broken = `${fixture.base}/broken`;
+	mkdirSync(broken);
+	writeFileSync(`${broken}/.git`, "gitdir: /missing/footer-git-dir\n");
+	const invalid = await start(broken);
+	check("broken git metadata reports unknown rather than nonGit or clean", () => {
+		assert.match(invalid.render()[0], /git: unknown/);
+		assert.doesNotMatch(invalid.render()[0], /clean/);
+	});
+	linked.failGit((args) => args.includes("status"));
+	linked.branchChange();
+	await linked.settle();
+	check("failed git status is not falsely clean", () => {
+		assert.match(linked.render()[0], /status\?/);
+		assert.doesNotMatch(linked.render()[0], /clean/);
+	});
+	linked.failGit((args) => args.includes("--git-common-dir"));
+	linked.branchChange();
+	await linked.settle();
+	check("missing common-dir metadata is unknown", () => {
+		assert.match(linked.render()[0], /git: unknown/);
+		assert.doesNotMatch(linked.render()[0], /clean/);
+	});
+	linked.failGit((args) => args.includes("symbolic-ref") || args.includes("--short"));
+	linked.branchChange();
+	await linked.settle();
+	check("missing branch metadata never claims clean", () => {
+		assert.match(linked.render()[0], /git: unknown/);
+		assert.doesNotMatch(linked.render()[0], /clean/);
+	});
+	linked.failGit((args) => args.includes("symbolic-ref"));
+	linked.branchChange();
+	await linked.settle();
+	check("symbolic-ref failure is unknown, not a fabricated detached HEAD", () => {
+		assert.match(linked.render()[0], /git: unknown/);
+		assert.doesNotMatch(linked.render()[0], /detached@|clean/);
+	});
+	linked.failGit(() => false);
+	fixture.git(fixture.linked, "checkout", "--quiet", "payment-section-7343");
+	writeFileSync(`${fixture.linked}/README.md`, "unstaged\n");
+	writeFileSync(`${fixture.linked}/added.txt`, "staged\n");
+	fixture.git(fixture.linked, "add", "added.txt");
+	writeFileSync(`${fixture.linked}/untracked.txt`, "untracked\n");
+	linked.branchChange();
+	await linked.settle();
+	check("dirty counts match real checkout status", () => assert.match(linked.render(140)[0], /git: payment-section-7343 · 1 staged · 1 unstaged · 1 untracked/));
+	check("narrow Git counts are omitted atomically, never claim clean or show cryptic symbols", () => {
+		for (const width of [100, 80, 60, 40, 20]) assert.doesNotMatch(linked.render(width)[0], /clean|\+1|~1|\?1|untrack…|stag…/);
+	});
+	await linked.callTool({ path: fixture.other, issue: "9999", purpose: "target only" });
+	await linked.fire("session_start", { reason: "reload" });
+	await linked.settle();
+	await linked.command("");
+	check("same-instance reload restores target without changing location", () => {
+		assert.match(linked.render()[0], /\[i7343-payment-section\/src\].*admin-web.*git: payment-section-7343/);
+		assert.doesNotMatch(linked.render()[0], /9999|target only|research/);
+		assert.ok(linked.notices.at(-1)?.includes(`Target: ${fixture.other}`));
+	});
+	const beforeAliases = linked.render()[0];
+	for (const alias of ["auto", "clear", "off"]) {
+		await linked.command(fixture.other);
+		await linked.command(alias);
+		await linked.fire("tool_call", { toolName: "read", input: { path: `${fixture.other}/README.md` } });
+		await linked.settle();
+		check(`${alias} clears only target and never enables read-following`, () => {
+			assert.equal(linked.log.at(-1).data.path, null);
+			assert.equal(linked.render()[0], beforeAliases);
+		});
+	}
+	await linked.command("ignored");
+	check("legacy ignored alias explains disabled detection", () => assert.match(linked.notices.at(-1)!, /File-read detection is disabled/));
+	const completion = linked.commands.get("worktree").getArgumentCompletions(`${fixture.base}/other`);
+	check("path completion preserves full executable path with spaces and Unicode", () => assert.equal(completion[0].value, fixture.other));
+	const longTarget = `${fixture.base}/${"long-directory-".repeat(5)}`;
+	mkdirSync(longTarget);
+	const longCompletion = linked.commands.get("worktree").getArgumentCompletions(`${fixture.base}/long-`);
+	check("long path completion is never an elided display label", () => assert.equal(longCompletion[0].value, longTarget));
+	const beforeRejected = linked.log.length;
+	await linked.command(`${fixture.base}/missing`);
+	await assert.rejects(linked.callTool({ path: `${fixture.base}/missing` }), /No such path/);
+	check("rejected commands do not change target records", () => assert.equal(linked.log.length, beforeRejected));
+	await linked.callTool({ path: "../../../README.md" });
+	check("relative tool target resolves from ctx cwd", () => assert.equal(linked.log.at(-1).data.path, fixture.linked));
+	const alias = `${fixture.base}/alias`;
+	symlinkSync(`${fixture.main}/areas/clients/admin-web`, alias);
+	const aliased = await start(alias);
+	check("physical cwd is resolved outside render", () => {
+		assert.match(aliased.render()[0], /admin-web git: trunk/);
+		assert.doesNotMatch(aliased.render()[0], /alias/);
+	});
+	const unicode = await start(fixture.other);
+	check("spaces and Unicode cwd remain intact", () => assert.match(unicode.render()[0], /other repo 日本 git: research/));
+	for (const width of [100, 80, 60, 40, 20]) {
+		check(`Unicode width ${width} is measured in terminal cells`, () => assert.ok(unicode.render(width).every((line) => visibleWidth(line) <= width)));
+	}
+	const named = await start(fixture.main, [{ type: "session_info", name: "my own title" }]);
+	const kept = await named.callTool({ path: fixture.linked, issue: "7343", purpose: "legal copy" });
+	check("user name remains owned by user", () => {
+		assert.equal(named.sessionName(), "my own title");
+		assert.match(kept.content[0].text, /set by the user/);
+	});
+	const reowned = await start(fixture.main, [record(fixture.linked, "7343", "legal copy"), { type: "session_info", name: "#7343 legal copy" }, record(fixture.other)]);
+	await reowned.callTool({ path: fixture.other, issue: "7256", purpose: "announce selection" });
+	check("our prior name is reclaimed after restart", () => assert.equal(reowned.sessionName(), "#7256 announce selection"));
+	reowned.log.splice(0, reowned.log.length, { type: "session_info", name: "#7256 announce selection" });
+	reowned.ctx.cwd = fixture.other;
+	await reowned.fire("session_start", { reason: "resume" });
+	await reowned.settle();
+	await reowned.callTool({ path: fixture.linked, issue: "123", purpose: "new target" });
+	check("same-instance session switch forgets previous name ownership", () => assert.equal(reowned.sessionName(), "#7256 announce selection"));
+	const racing = await start(fixture.other);
+	racing.holdGit(args => args.includes("symbolic-ref"));
+	racing.branchChange();
+	await racing.waitForHeld();
+	fixture.git(fixture.other, "checkout", "--quiet", "-b", "branch-after-refresh-start");
+	racing.branchChange();
+	racing.branchChange();
+	racing.releaseGit();
+	await racing.settle();
+	check("forced branch event during in-flight refresh is coalesced, never dropped", () => {
+		assert.match(racing.render()[0], /branch-after-refresh-start/);
+		assert.equal(racing.calls.filter(args => args.includes("symbolic-ref")).length, 3);
+	});
+	const beforeThrottle = racing.calls.length;
+	await racing.fire("tool_call", { toolName: "read" });
+	await racing.fire("tool_result", { toolName: "read" });
+	await racing.fire("turn_end");
+	await racing.settle();
+	check("read and turn events do not force duplicate refresh inside throttle", () => assert.equal(racing.calls.length, beforeThrottle));
+	const ansiTheme = getThemeByName("dark")!;
+	const styled = makeEnv(fixture.other, [], ansiTheme);
+	envs.push(styled);
+	await styled.fire("session_start");
+	await styled.settle();
+	for (const width of [100, 80, 60, 40, 20]) check(`ANSI theme width ${width}: total survives before cache counters`, () => {
+		const lines = styled.render(width);
+		assert.equal(lines.length, 2);
+		assert.ok(lines.every(line => visibleWidth(line) <= width));
+		assert.ok(lines[1].startsWith(ansiTheme.bold(ansiTheme.fg("text", "Total $0.44"))), lines[1]);
+		assert.doesNotMatch(stripVTControlCharacters(lines[1]), /R9\.4k|W68k/);
+	});
+	check("normal Git state is not warning or success colored", () => {
+		assert.ok(styled.render(160)[0].includes(ansiTheme.fg("muted", "clean")));
+	});
+	await styled.fire("tool_execution_start", { toolCallId: "live-call", toolName: "subagent", args: { agent: "worker" } });
+	check("unidentified live launch is partial before its first usage record", () => assert.match(stripVTControlCharacters(styled.render(20)[1]), /^Total \$0\.44 partial$/));
+	await styled.fire("tool_execution_update", { toolName: "subagent", partialResult: { details: { mode: "single", runId: "direct", results: [{ runId: "direct", agent: "worker", usage: { cost: 1 }, progress: { status: "running" } }] } } });
+	check("reported foreground live spending is visible without waiting for completion", () => assert.match(stripVTControlCharacters(styled.render(20)[1]), /^Total \$1\.44 partial$/));
+	const agentResult = { mode: "single", runId: "direct", results: [{ agent: "worker", runId: "direct", index: 0, exitCode: 0, usage: { cost: 3 }, sessionFile: "/children/direct.jsonl" }] };
+	styled.log.push({ type: "message", message: { role: "toolResult", toolName: "subagent", usage: { input: 100, output: 200, cacheRead: 300, cacheWrite: 400, cost: { total: 3 } }, details: agentResult } });
+	await styled.fire("tool_result", { toolCallId: "live-call", toolName: "subagent", details: agentResult }, { ...styled.ctx });
+	await styled.settle();
+	check("event-driven spending leads footer without contaminating parent context", () => {
+		const line = stripVTControlCharacters(styled.render(140)[1]);
+		assert.match(line, /^Total \$3\.44 · main \$0\.44 · agents \$3\.00/);
+		assert.match(line, /ctx 8\.0%\/1\.0M/);
+	});
+	const waitResult = { mode: "management", results: [], completions: [{ mode: "single", runId: "direct", results: agentResult.results }] };
+	styled.log.push({ type: "message", message: { role: "toolResult", toolName: "bg_wait", usage: { input: 100, output: 200, cacheRead: 300, cacheWrite: 400, cost: { total: 3 } }, details: waitResult } });
+	await styled.fire("tool_result", { toolName: "bg_wait", details: waitResult });
+	await styled.settle();
+	check("native wait rollup keeps combined cost and parent counters unchanged", () => {
+		const line = stripVTControlCharacters(styled.render(200)[1]);
+		assert.match(line, /^Total \$3\.44 · main \$0\.44 · agents \$3\.00/);
+		assert.match(line, /↑2 ↓210 R9\.4k W68k/);
+	});
+	const snapshotCount = () => styled.log.filter(entry => entry.customType === "worktree-spend-v1").length;
+	const beforePaints = snapshotCount();
+	for (let i = 0; i < 100; i++) styled.render();
+	await styled.fire("turn_end");
+	await styled.settle();
+	check("unchanged polls and paints never append accounting snapshots", () => assert.equal(snapshotCount(), beforePaints));
+	await styled.fire("session_start", { reason: "reload" });
+	await styled.settle();
+	check("reload restores spending without duplicate event listeners", () => {
+		assert.match(stripVTControlCharacters(styled.render()[1]), /^Total \$3\.44/);
+		assert.equal(styled.listenerCount(), 3);
+	});
+	const costSnapshots = snapshotCount();
+	const getsEntries = styled.ctx.sessionManager.getEntries;
+	styled.ctx.sessionManager.getEntries = () => { throw new Error("render must not walk session entries"); };
+	const summarize = SpendLedger.prototype.summary;
+	SpendLedger.prototype.summary = () => { throw new Error("render must not aggregate records"); };
+	check("render uses accounting snapshots without scanning session history or aggregating", () => assert.match(stripVTControlCharacters(styled.render()[1]), /^Total \$3\.44/));
+	SpendLedger.prototype.summary = summarize;
+	styled.ctx.sessionManager.getEntries = getsEntries;
+	assert.equal(snapshotCount(), costSnapshots);
+	await styled.fire("session_shutdown");
+	check("shutdown removes accounting event subscriptions", () => assert.equal(styled.listenerCount(), 0));
+	const afterStyledShutdown = styled.calls.length;
+	styled.branchChange();
+	await styled.settle();
+	check("shutdown removes forced Git refresh subscription", () => assert.equal(styled.calls.length, afterStyledShutdown));
+	const summarized = makeEnv(fixture.nonGit);
+	envs.push(summarized);
+	summarized.log.splice(0, summarized.log.length, { type: "message", message: { role: "assistant", usage: { cost: { total: 2 } } } });
+	await summarized.fire("session_start");
+	await summarized.settle();
+	const summaryGitCalls = summarized.calls.length;
+	summarized.log.push({ type: "compaction", usage: { cost: { total: 1 } } });
+	await summarized.fire("session_compact");
+	await summarized.settle();
+	check("manual compaction refreshes parent spend without a model turn or Git refresh", () => {
+		assert.match(summarized.render()[1], /^Total \$3\.00 · main \$3\.00/);
+		assert.equal(summarized.calls.length, summaryGitCalls);
+	});
+	summarized.log.push({ type: "branch_summary", usage: { cost: { total: 1 } } });
+	await summarized.fire("session_tree");
+	await summarized.settle();
+	check("manual tree summary refreshes parent spend without a model turn or Git refresh", () => {
+		assert.match(summarized.render()[1], /^Total \$4\.00 · main \$4\.00/);
+		assert.equal(summarized.calls.length, summaryGitCalls);
+	});
+	await summarized.fire("session_shutdown");
+	summarized.log.push({ type: "branch_summary", usage: { cost: { total: 10 } } });
+	await summarized.fire("session_tree");
+	await summarized.settle();
+	check("summary events after shutdown cannot mutate cached spending", () => assert.match(summarized.render()[1], /^Total \$4\.00/));
+	const switched = await start(fixture.other);
+	switched.holdGit(args => args.includes("--git-common-dir"));
+	switched.branchChange();
+	await switched.waitForHeld();
+	switched.branchChange();
+	switched.ctx.cwd = fixture.nonGit;
+	await switched.fire("session_start", { reason: "new" });
+	const beforeRelease = switched.calls.length;
+	switched.releaseGit();
+	await switched.settle();
+	check("session and cwd generation discard old forced refreshes in flight", () => {
+		assert.equal(switched.calls.length, beforeRelease);
+		assert.doesNotMatch(switched.render()[0], /git:|research|branch-after/);
+	});
+	const headless = makeEnv(fixture.main);
+	envs.push(headless);
+	headless.ctx.mode = "json";
+	await headless.fire("session_start");
+	await headless.fire("tool_call");
+	await headless.fire("turn_end");
+	await headless.settle();
+	check("headless children start no footer IO or cost listeners", () => {
+		assert.equal(headless.calls.length, 0);
+		assert.equal(headless.listenerCount(), 0);
+	});
+	const diagnosticFile = `${fixture.base}/diagnostic-parent.jsonl`;
+	writeFileSync(diagnosticFile, [
+		{ type: "session", id: "diagnostic-parent", cwd: fixture.main },
+		{ type: "message", message: { role: "assistant", usage: { cost: { total: 0.5 } } } },
+		{ type: "message", message: { role: "toolResult", toolName: "subagent", details: agentResult } },
+	].map(entry => JSON.stringify(entry)).join("\n"));
+	const diagnosticBefore = readFileSync(diagnosticFile, "utf8");
+	const diagnosed = await reconcileSession(diagnosticFile);
+	check("read-only diagnostic reconciles native parent and child records without modifying session", () => {
+		assert.equal(diagnosed.parent.cost, 0.5);
+		assert.equal(diagnosed.agents.cost, 3);
+		assert.equal(diagnosed.total, 3.5);
+		assert.equal(diagnosed.partial, false);
+		assert.equal(readFileSync(diagnosticFile, "utf8"), diagnosticBefore);
+	});
+	const callsBeforeShutdown = reowned.calls.length;
+	await reowned.fire("tool_result");
+	await reowned.fire("session_shutdown");
+	await reowned.settle();
+	check("shutdown cancels pending refresh", () => assert.equal(reowned.calls.length, callsBeforeShutdown));
+} finally {
+	for (const env of envs) await env.fire("session_shutdown");
+	for (const env of envs) await env.settle();
+	fixture.cleanup();
 }
-check("declaring a non-worktree fails loudly", rejected.includes("Not inside a git worktree"), rejected);
-check("a rejected declaration leaves the target alone", agent.lines()[0].startsWith(`📌 ${TREE_B.replace(home, "~")} `));
-
-await agent.commands.get("worktree").handler("", agent.ctx);
-check(
-	"/worktree reports the declaration",
-	agent.notices.at(-1)?.includes("(declared: #7256 announce selection)") === true,
-	`${agent.notices.at(-1)}`,
-);
-await agent.fire("session_shutdown", {});
-
-// ------------------------------------------- a declaration outlives the process
-const resumed = makeEnv(`${SESSION_TREE}/areas/clients/admin-web`, [
-	{ type: "custom", customType: "worktree-focus", timestamp: "2026-08-22T01:00:00.000Z", data: { path: TREE_A } },
-	{
-		type: "custom",
-		customType: "worktree-focus",
-		timestamp: "2026-08-22T02:00:00.000Z",
-		data: { path: TREE_B, issue: "7256", purpose: "announce selection" },
-	},
-]);
-await resumed.fire("session_start", { reason: "startup" });
-await resumed.settle();
-resumed.show("7. session resumed with a declaration already on record");
-check("newest declaration is restored, not the session cwd", resumed.lines()[0].startsWith(`📌 ${TREE_B.replace(home, "~")} `), resumed.lines()[0]);
-await resumed.fire("session_shutdown", {});
-
-const cleared = makeEnv(`${SESSION_TREE}/areas/clients/admin-web`, [
-	{ type: "custom", customType: "worktree-focus", timestamp: "2026-08-22T01:00:00.000Z", data: { path: TREE_A } },
-	{ type: "custom", customType: "worktree-focus", timestamp: "2026-08-22T02:00:00.000Z", data: { path: null } },
-]);
-await cleared.fire("session_start", { reason: "startup" });
-await cleared.settle();
-check("a cleared declaration stays cleared", cleared.lines()[0].startsWith(SESSION_TREE.replace(home, "~")), cleared.lines()[0]);
-await cleared.fire("session_shutdown", {});
-
-// --------------------------------------------------- the user owns /name
-const named = makeEnv(`${SESSION_TREE}/areas/clients/admin-web`, [
-	{ type: "session_info", timestamp: "2026-08-22T01:00:00.000Z", name: "my own title" },
-]);
-await named.fire("session_start", { reason: "startup" });
-await named.settle();
-const kept = await named.callTool("set_worktree", { path: TREE_A, issue: "7343", purpose: "reopen legal copy" });
-await named.settle();
-check("a user-set session name is never clobbered", named.sessionName() === "my own title", `${named.sessionName()}`);
-check("and the tool says so instead of retrying", kept.content[0].text.includes("set by the user"), kept.content[0].text);
-check("the worktree is still declared", named.lines()[0].startsWith(`📌 ${TREE_A.replace(home, "~")} `), named.lines()[0]);
-await named.fire("session_shutdown", {});
-
-// A name we wrote before a restart is still ours, even when the newest record is
-// a human pin that carries no name of its own.
-const reowned = makeEnv(`${SESSION_TREE}/areas/clients/admin-web`, [
-	{
-		type: "custom",
-		customType: "worktree-focus",
-		timestamp: "2026-08-22T01:00:00.000Z",
-		data: { path: TREE_A, issue: "7343", purpose: "reopen legal copy" },
-	},
-	{ type: "session_info", timestamp: "2026-08-22T01:00:01.000Z", name: "#7343 reopen legal copy" },
-	{ type: "custom", customType: "worktree-focus", timestamp: "2026-08-22T02:00:00.000Z", data: { path: TREE_B } },
-]);
-await reowned.fire("session_start", { reason: "startup" });
-await reowned.settle();
-const renamed = await reowned.callTool("set_worktree", { path: TREE_B, issue: "7256", purpose: "announce selection" });
-await reowned.settle();
-check("our own earlier name is reclaimed after a restart", reowned.sessionName() === "#7256 announce selection", `${reowned.sessionName()}`);
-check("and the tool reports the rename", renamed.content[0].text.includes("Session named: #7256"), renamed.content[0].text);
-await reowned.fire("session_shutdown", {});
-
-console.log(`\nnotices: ${JSON.stringify(env.notices)}`);
-
-process.exit(failures ? 1 : 0);
+console.log(`\n${checks - failures}/${checks} integration checks passed`);
+process.exitCode = failures ? 1 : 0;

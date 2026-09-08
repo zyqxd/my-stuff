@@ -1,27 +1,14 @@
 /**
- * Two-line footer keyed to the worktree the agent is actually touching.
+ * Two-line footer: actual Pi cwd and its checkout, then usage/model totals.
+ * Other extensions' statuses stay right-aligned on line 1.
  *
- *   ~/world/trees/i7343-payment-section/src  payment-section-7343  ~1 ?1   MCP 0/1
- *   ↑2 ↓210 R9.4k W68k CH12.2% $0.435 8.0%/1.0M              claude-opus-5 • high
- *
- * Replaces the built-in footer, whose first line is the *session* cwd and never
- * moves — bash tool calls run in a fresh process rooted at that cwd, so `cd`
- * does not stick. Line 1 tracks the last git root seen in a tool-call path
- * instead; line 2 mirrors the built-in usage line. Other extensions' statuses
- * are right-aligned on line 1 so they no longer need a row of their own.
- *
- * The agent declares its target with the set_worktree tool, which also names the
- * session `#<issue> <purpose>`; detection is only the fallback until it does.
- *
- * /worktree <path>   pin a worktree (overrides detection)
- * /worktree auto     go back to detection
- * /worktree          report current target
- * /worktree ignored  list the paths detection skips
+ * set_worktree and /worktree record a target; neither changes cwd.
+ * /worktree auto (also clear/off) clears that record.
  */
 
 import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type {
 	ExtensionAPI,
@@ -31,20 +18,8 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { type AutocompleteItem, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-
-/**
- * Paths that are notes about the work rather than the work. Editing a lesson or
- * a plan should not repoint the footer at the notes repo. Entries are compared
- * after resolving symlinks, so `~/plans` (-> ~/.brain/...) and
- * `~/.pi/agent/memory` (-> ai/memory) are covered by their targets.
- *
- * Detection only. Launching pi inside one of these still shows it, and an
- * explicit `/worktree <path>` pin always wins. Add a line to extend.
- */
-const IGNORED_PATHS = [
-	"~/.brain", // brain memory banks, and ~/plans which links into them
-	"~/Workspace/my-stuff", // agent config, lessons, memory - single-tree, never the subject of the work
-];
+import { SPEND_ENTRY, SpendLedger, savedSpend, type SpendSummary } from "./accounting.ts";
+import { spendingLine } from "./glance.ts";
 
 /** customType for the persisted focus, replayed on session_start. */
 const FOCUS_ENTRY = "worktree-focus";
@@ -66,7 +41,7 @@ type Usage = {
 /**
  * The worktree the session is *meant* to be working in, plus what for.
  * `issue`/`purpose` are set by the agent via set_worktree; a human `/worktree`
- * pin carries the path alone.
+ * target carries the path alone.
  */
 export type Focus = {
 	path: string;
@@ -75,12 +50,18 @@ export type Focus = {
 };
 
 type RepoState = {
+	cwd: string;
+	root: string | null;
+	linkedRoot: string | null;
+	kind: "git" | "non-git" | "unknown";
+	statusKnown: boolean;
 	branch: string | null;
 	staged: number;
 	unstaged: number;
 	untracked: number;
 	checkedAt: number;
 	refreshing: boolean;
+	pendingForce?: boolean;
 };
 
 export function expandHome(input: string): string {
@@ -90,20 +71,45 @@ export function expandHome(input: string): string {
 	return input;
 }
 
-export function displayPath(path: string): string {
+function homePath(path: string): string {
 	const home = homedir();
-	const shown = path === home ? "~" : path.startsWith(home + sep) ? `~${sep}${path.slice(home.length + 1)}` : path;
-	if (shown.length <= PATH_DISPLAY_BUDGET) return shown;
+	return path === home ? "~" : path.startsWith(home + sep) ? `~${sep}${path.slice(home.length + 1)}` : path;
+}
 
-	// Elide from the left: the trailing segments carry the worktree's identity.
+export function displayPath(path: string, width = PATH_DISPLAY_BUDGET, linkedRoot: string | null = null): string {
+	if (width <= 0) return "";
+	if (linkedRoot) {
+		const labelRoot = basename(linkedRoot) === "src" ? dirname(linkedRoot) : linkedRoot;
+		const label = relative(dirname(labelRoot), linkedRoot);
+		const prefix = homePath(dirname(labelRoot));
+		const suffix = relative(linkedRoot, path).split(sep).filter(Boolean);
+		const full = `${prefix.endsWith(sep) ? prefix : prefix + sep}[${label}]${suffix.length ? `/${suffix.join(sep)}` : ""}`;
+		if (visibleWidth(full) <= width) return full;
+
+		const tail = suffix.length ? `${suffix.length > 1 ? "/…" : ""}/${suffix.at(-1)}` : "";
+		const core = `[${label}]${tail}`;
+		if (visibleWidth(core) <= width) {
+			const budget = width - visibleWidth(core) - 1;
+			if (budget < 1) return core;
+			const ancestor = displayPath(dirname(labelRoot), budget);
+			return `${ancestor === prefix || ancestor.startsWith("…/") ? ancestor : "…"}/${core}`;
+		}
+		const labelBudget = Math.max(Math.min(6, width - 2), width - visibleWidth(tail) - 2);
+		const marker = `[${truncateToWidth(label, labelBudget, "…")}]`;
+		return truncateToWidth(marker + truncateToWidth(tail, Math.max(0, width - visibleWidth(marker)), "…"), width, "…");
+	}
+
+	const shown = homePath(path);
+	if (visibleWidth(shown) <= width) return shown;
 	const parts = shown.split(sep).filter(Boolean);
-	let kept = parts.slice(-2);
-	for (let i = parts.length - 3; i >= 0; i--) {
+	let kept = parts.slice(-1);
+	for (let i = parts.length - 2; i >= 0; i--) {
 		const candidate = [parts[i], ...kept];
-		if (`…${sep}${candidate.join(sep)}`.length > PATH_DISPLAY_BUDGET) break;
+		if (visibleWidth(`…/${candidate.join(sep)}`) > width) break;
 		kept = candidate;
 	}
-	return `…${sep}${kept.join(sep)}`;
+	const tail = kept.join(sep);
+	return visibleWidth(`…/${tail}`) <= width ? `…/${tail}` : truncateToWidth(tail, width, "…");
 }
 
 /** Session name for a focus: `#7343 reopen legal copy`. Null when there is nothing to say. */
@@ -157,11 +163,12 @@ export function formatTokens(count: number): string {
 	return `${Math.round(count / 1_000_000)}M`;
 }
 
-/** Session usage totals, matching what the built-in footer counts. */
+/** Parent usage excludes native child rollups, which belong to the spend ledger. */
 export function collectUsage(entries: readonly unknown[]): Usage {
 	const total: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, cacheHitRate: undefined };
 	for (const raw of entries) {
-		const entry = raw as { type?: string; message?: { role?: string; usage?: unknown }; usage?: unknown };
+		const entry = raw as { type?: string; message?: { role?: string; toolName?: string; usage?: unknown }; usage?: unknown };
+		if (entry.message?.role === "toolResult" && ["subagent", "bg_wait"].includes(entry.message.toolName ?? "")) continue;
 		let usage: AssistantMessage["usage"] | undefined;
 		if (entry.type === "message" && (entry.message?.role === "assistant" || entry.message?.role === "toolResult")) {
 			usage = entry.message.usage as AssistantMessage["usage"] | undefined;
@@ -206,26 +213,6 @@ function nearestExistingDir(path: string): string | null {
 	}
 }
 
-/** `path` with its existing portion resolved through symlinks. */
-function resolveLinks(path: string): string {
-	const existing = nearestExistingDir(path);
-	if (!existing) return path;
-	try {
-		return realpathSync(existing) + path.slice(existing.length);
-	} catch {
-		return path;
-	}
-}
-
-let ignoredPrefixes: string[] | null = null;
-
-/** True when `path` sits inside one of IGNORED_PATHS, symlinks resolved. */
-export function isIgnored(path: string): boolean {
-	ignoredPrefixes ??= IGNORED_PATHS.map((entry) => resolveLinks(expandHome(entry)));
-	const real = resolveLinks(path);
-	return ignoredPrefixes.some((prefix) => real === prefix || real.startsWith(prefix + sep));
-}
-
 /** Worktree root containing `path`. Works for linked worktrees, where .git is a file. */
 export function findWorktreeRoot(path: string): string | null {
 	let dir = nearestExistingDir(path);
@@ -236,38 +223,6 @@ export function findWorktreeRoot(path: string): string | null {
 		if (parent === dir) return null;
 		dir = parent;
 	}
-}
-
-function unquote(token: string): string {
-	if (token.length > 1 && (token.startsWith('"') || token.startsWith("'")) && token.endsWith(token[0])) {
-		return token.slice(1, -1);
-	}
-	return token;
-}
-
-/** Path-ish arguments in a bash command, most explicit first. */
-export function bashPathCandidates(command: string): string[] {
-	const candidates: string[] = [];
-	for (const match of command.matchAll(/(?:^|[;&|]\s*|\s&&\s*)cd\s+(?:-{1,2}\S+\s+)*("[^"]+"|'[^']+'|[^\s;&|)]+)/g)) {
-		candidates.push(unquote(match[1]));
-	}
-	for (const match of command.matchAll(/git\s+(?:--\S+\s+)*-C\s+("[^"]+"|'[^']+'|[^\s;&|)]+)/g)) {
-		candidates.push(unquote(match[1]));
-	}
-	for (const match of command.matchAll(/(?:^|[\s"'=(])((?:~|\/|\.\/)[^\s"';|&()]+)/g)) {
-		candidates.push(match[1]);
-	}
-	return candidates;
-}
-
-export function toolPathCandidates(toolName: string, input: unknown): string[] {
-	if (!input || typeof input !== "object") return [];
-	const record = input as Record<string, unknown>;
-	if (toolName === "bash") {
-		return typeof record.command === "string" ? bashPathCandidates(record.command) : [];
-	}
-	// read / write / edit / ls / grep / find all use `path`.
-	return typeof record.path === "string" ? [record.path] : [];
 }
 
 export function countPorcelain(porcelain: string): { staged: number; unstaged: number; untracked: number } {
@@ -288,15 +243,71 @@ export function countPorcelain(porcelain: string): { staged: number; unstaged: n
 
 export default function (pi: ExtensionAPI) {
 	let focus: Focus | null = null;
-	let detectedRoot: string | null = null;
-	let sessionRoot: string | null = null;
 	// The last name we set, so a human /name is never clobbered.
 	let nameWeSet: string | null = null;
 	const repos = new Map<string, RepoState>();
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let requestRender: () => void = () => {};
+	let disposeFooter: () => void = () => {};
+	let generation = 0;
+	let activeContext: ExtensionContext | undefined;
+	let spend: SpendLedger | undefined;
+	let parentUsage = collectUsage([]);
+	let agentUsage: SpendSummary = { cost: 0, partial: false, unresolved: 0, pending: 0 };
+	let spendTimer: ReturnType<typeof setTimeout> | undefined;
+	let spendBusy = false;
+	let spendAgain = false;
+	let lastSnapshot = "";
+	let eventDisposers: (() => void)[] = [];
+	const pendingCalls = new Set<string>();
 
-	const targetRoot = () => focus?.path ?? detectedRoot ?? sessionRoot;
+	function stopAccounting() {
+		spend?.stop();
+		spend = undefined;
+		if (spendTimer) clearTimeout(spendTimer);
+		spendTimer = undefined;
+		for (const dispose of eventDisposers) dispose();
+		eventDisposers = [];
+		spendBusy = false;
+		spendAgain = false;
+		pendingCalls.clear();
+	}
+
+	async function updateAccounting(ctx: ExtensionContext) {
+		const ledger = spend;
+		if (!ledger || !activeContext || ledger.owner.sessionFile !== (ctx.sessionManager.getSessionFile() ?? undefined) || ledger.owner.sessionId !== ctx.sessionManager.getSessionId()) return;
+		if (spendTimer) clearTimeout(spendTimer);
+		spendTimer = undefined;
+		if (spendBusy) { spendAgain = true; return; }
+		spendBusy = true;
+		try {
+			const entries = ctx.sessionManager.getEntries();
+			parentUsage = collectUsage(entries);
+			ledger.ingest(entries);
+			agentUsage = ledger.summary();
+			await ledger.refresh();
+			if (spend !== ledger) return;
+			agentUsage = ledger.summary();
+			const snapshot = ledger.snapshot();
+			const serialized = JSON.stringify(snapshot);
+			if (serialized !== lastSnapshot && (snapshot.records.length || snapshot.groups.length)) {
+				pi.appendEntry(SPEND_ENTRY, snapshot);
+			}
+			lastSnapshot = serialized;
+			requestRender();
+		} catch (error) {
+			if (spend === ledger) console.error("worktree-status: spending refresh failed", error);
+		} finally {
+			if (spend === ledger) {
+				spendBusy = false;
+				if (spendAgain) { spendAgain = false; void updateAccounting(ctx); }
+				else if (ledger.active) {
+					spendTimer = setTimeout(() => { spendTimer = undefined; void updateAccounting(ctx); }, 2000);
+					spendTimer.unref?.();
+				}
+			}
+		}
+	}
 
 	/**
 	 * Name the session after the focus. Returns null when the name is left alone
@@ -312,72 +323,48 @@ export default function (pi: ExtensionAPI) {
 		return label;
 	}
 
-	/** Raw stdout - porcelain status is column-sensitive, so callers trim only when safe. */
-	async function git(root: string, args: string[]): Promise<string | null> {
-		const result = await pi.exec("git", ["--no-optional-locks", "-C", root, ...args], {
-			timeout: GIT_TIMEOUT_MS,
-		});
-		return result.code === 0 ? result.stdout : null;
+	async function git(cwd: string, args: string[]) {
+		return pi.exec("git", ["--no-optional-locks", "-C", cwd, ...args], { timeout: GIT_TIMEOUT_MS });
 	}
 
-	/** Line 1 left: worktree, branch, dirty counts. */
-	function worktreeSegment(theme: Theme, sessionName: string | undefined): string {
-		const root = targetRoot();
-		if (!root) return theme.fg("dim", "no worktree");
-
-		const state = repos.get(root);
-		const parts = [theme.fg("dim", `${focus ? "📌 " : ""}${displayPath(root)}`)];
-		if (!state) {
-			parts.push(theme.fg("dim", "…"));
-		} else {
-			parts.push(theme.fg("accent", state.branch ?? "no-git"));
+	/** Line 1 left: cwd breadcrumb, branch, dirty counts. */
+	function worktreeSegment(theme: Theme, ctx: ExtensionContext, width: number): string {
+		const state = repos.get(ctx.cwd);
+		const parts = [theme.fg("text", displayPath(state?.cwd ?? ctx.cwd, Math.min(PATH_DISPLAY_BUDGET, width), state?.linkedRoot))];
+		const append = (text: string) => {
+			if (visibleWidth([...parts, text].join(" ")) > width) return false;
+			parts.push(text);
+			return true;
+		};
+		if (state?.kind === "git") {
+			append(theme.fg(state.branch === null ? "warning" : "accent", `git: ${state.branch ?? "unknown"}`));
 			const dirty: string[] = [];
-			if (state.staged) dirty.push(`+${state.staged}`);
-			if (state.unstaged) dirty.push(`~${state.unstaged}`);
-			if (state.untracked) dirty.push(`?${state.untracked}`);
+			if (state.staged) dirty.push(`${state.staged} staged`);
+			if (state.unstaged) dirty.push(`${state.unstaged} unstaged`);
+			if (state.untracked) dirty.push(`${state.untracked} untracked`);
 			if (state.branch !== null) {
-				parts.push(dirty.length ? theme.fg("warning", dirty.join(" ")) : theme.fg("success", "clean"));
+				const shown = append(!state.statusKnown ? theme.fg("warning", "status?")
+					: dirty.length ? theme.fg("dim", "· ") + theme.fg("muted", dirty.join(" · ")) : theme.fg("muted", "clean"));
+				if (!shown && state.statusKnown && dirty.length) append(theme.fg("muted", "dirty"));
 			}
-			if (state.refreshing) parts.push(theme.fg("dim", "…"));
+		} else if (state?.kind === "unknown" && !state.refreshing) {
+			append(theme.fg("warning", "git: unknown"));
 		}
-		if (sessionName) parts.push(theme.fg("dim", `• ${sessionName}`));
+		if (!state || state.refreshing) append(theme.fg("dim", "…"));
 		return parts.join(" ");
 	}
 
-	/** Line 2 left: token, cache, cost and context totals. */
-	function usageSegment(theme: Theme, ctx: ExtensionContext): string {
-		const usage = collectUsage(ctx.sessionManager.getEntries());
-		const parts: string[] = [];
-		if (usage.input) parts.push(`↑${formatTokens(usage.input)}`);
-		if (usage.output) parts.push(`↓${formatTokens(usage.output)}`);
-		if (usage.cacheRead) parts.push(`R${formatTokens(usage.cacheRead)}`);
-		if (usage.cacheWrite) parts.push(`W${formatTokens(usage.cacheWrite)}`);
-		if ((usage.cacheRead || usage.cacheWrite) && usage.cacheHitRate !== undefined) {
-			parts.push(`CH${usage.cacheHitRate.toFixed(1)}%`);
-		}
-		if (usage.cost) parts.push(`$${usage.cost.toFixed(3)}`);
-
+	function usageSegment(theme: Theme, ctx: ExtensionContext, width: number, providerCount: number): string {
 		const context = ctx.getContextUsage();
-		const window = context?.contextWindow ?? ctx.model?.contextWindow ?? 0;
-		const percent = context?.percent ?? null;
-		const contextText = `${percent === null ? "?" : `${percent.toFixed(1)}%`}/${formatTokens(window)}`;
-		const left = theme.fg("dim", parts.join(" "));
-		const colored =
-			percent !== null && percent > 90
-				? theme.fg("error", contextText)
-				: percent !== null && percent > 70
-					? theme.fg("warning", contextText)
-					: theme.fg("dim", contextText);
-		return parts.length ? `${left} ${colored}` : colored;
-	}
-
-	/** Line 2 right: provider, model, thinking level. */
-	function modelSegment(theme: Theme, ctx: ExtensionContext, providerCount: number): string {
 		const model = ctx.model;
-		if (!model) return theme.fg("dim", "no-model");
-		const thinking = model.reasoning ? ` • ${ctx.thinkingLevel ?? "off"}` : "";
-		const provider = providerCount > 1 ? `(${model.provider}) ` : "";
-		return theme.fg("dim", `${provider}${model.id}${thinking}`);
+		return spendingLine(theme, {
+			parent: parentUsage,
+			agents: { ...agentUsage, partial: !!pendingCalls.size || agentUsage.partial },
+			percent: context?.percent ?? null,
+			window: context?.contextWindow ?? model?.contextWindow ?? 0,
+			model: model ? `${providerCount > 1 ? `(${model.provider}) ` : ""}${model.id}${model.reasoning ? ` · ${ctx.thinkingLevel ?? "off"}` : ""}` : "no-model",
+			tokens: formatTokens,
+		}, width);
 	}
 
 	/** Line 1 right: statuses published by other extensions (setStatus). */
@@ -389,12 +376,19 @@ export default function (pi: ExtensionAPI) {
 			.join("  ");
 	}
 
-	async function refresh(ctx: ExtensionContext, root: string, force = false): Promise<void> {
+	async function refresh(ctx: ExtensionContext, force = false): Promise<void> {
+		const root = ctx.cwd;
+		const currentGeneration = generation;
 		const existing = repos.get(root);
-		if (existing?.refreshing) return;
+		if (existing?.refreshing) { existing.pendingForce ||= force; return; }
 		if (!force && existing && Date.now() - existing.checkedAt < MIN_REFRESH_INTERVAL_MS) return;
 
-		const state: RepoState = existing ?? {
+		const state: RepoState = {
+			cwd: root,
+			root: null,
+			linkedRoot: null,
+			kind: "unknown",
+			statusKnown: false,
 			branch: null,
 			staged: 0,
 			unstaged: 0,
@@ -407,25 +401,43 @@ export default function (pi: ExtensionAPI) {
 		requestRender();
 
 		try {
-			const named = (await git(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]))?.trim();
-			const sha = named ? undefined : (await git(root, ["rev-parse", "--short", "HEAD"]))?.trim();
-			const branch = named || (sha ? `detached@${sha}` : null);
-			state.branch = branch;
+			state.cwd = realpathSync(root);
+			const metadata = await git(root, ["rev-parse", "--path-format=absolute", "--show-toplevel", "--absolute-git-dir", "--git-common-dir"]);
+			if (currentGeneration !== generation || ctx.cwd !== root) return;
+			if (metadata.code !== 0) {
+				if (/not a git repository/i.test(metadata.stderr) && !findWorktreeRoot(state.cwd)) state.kind = "non-git";
+				return;
+			}
+			const [checkout, gitDir, commonDir] = metadata.stdout.trimEnd().split("\n");
+			if (!checkout || !gitDir || !commonDir) return;
+			state.root = realpathSync(checkout);
+			state.linkedRoot = realpathSync(gitDir) !== realpathSync(commonDir) ? state.root : null;
+			state.kind = "git";
+			const named = await git(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+			if (currentGeneration !== generation || ctx.cwd !== root) return;
+			if (named.code === 0) state.branch = named.stdout.trim() || null;
+			else if (named.code === 1) {
+				const sha = await git(root, ["rev-parse", "--short", "HEAD"]);
+				if (currentGeneration !== generation || ctx.cwd !== root) return;
+				if (sha.code === 0 && sha.stdout.trim()) state.branch = `detached@${sha.stdout.trim()}`;
+			}
 
-			const counts =
-				branch === null
-					? { staged: 0, unstaged: 0, untracked: 0 }
-					: countPorcelain((await git(root, ["status", "--porcelain=v1", "--untracked-files=normal"])) ?? "");
-			state.staged = counts.staged;
-			state.unstaged = counts.unstaged;
-			state.untracked = counts.untracked;
+			const porcelain = await git(root, ["status", "--porcelain=v1", "--untracked-files=normal"]);
+			if (porcelain.code === 0) {
+				Object.assign(state, countPorcelain(porcelain.stdout));
+				state.statusKnown = true;
+			}
 		} catch {
+			state.kind = "unknown";
 			state.branch = null;
+			state.statusKnown = false;
 		} finally {
 			state.checkedAt = Date.now();
 			state.refreshing = false;
-			repos.set(root, state);
-			requestRender();
+			if (repos.get(root) === state && currentGeneration === generation && ctx.cwd === root) {
+				requestRender();
+				if (state.pendingForce) { state.pendingForce = false; void refresh(ctx, true); }
+			}
 		}
 	}
 
@@ -436,29 +448,25 @@ export default function (pi: ExtensionAPI) {
 			// A branch change under us (rebase, checkout in another terminal) also
 			// invalidates the dirty counts.
 			const unsubscribe = footerData.onBranchChange(() => {
-				const root = targetRoot();
-				if (root) void refresh(ctx, root, true);
+				void refresh(ctx, true);
 				tui.requestRender();
 			});
 
+			disposeFooter = unsubscribe;
 			return {
 				dispose: unsubscribe,
 				invalidate() {},
 				render(width: number): string[] {
 					try {
 						const top = padBetween(
-							worktreeSegment(theme, ctx.sessionManager.getSessionName()),
+							worktreeSegment(theme, ctx, width),
 							theme.fg("dim", otherStatuses(footerData.getExtensionStatuses())),
 							width,
 						);
-						const bottom = padBetween(
-							usageSegment(theme, ctx),
-							modelSegment(theme, ctx, footerData.getAvailableProviderCount()),
-							width,
-						);
+						const bottom = usageSegment(theme, ctx, width, footerData.getAvailableProviderCount());
 						return [top, bottom];
 					} catch (error) {
-						return [theme.fg("error", `worktree-status: ${(error as Error).message}`)];
+						return [truncateToWidth(theme.fg("error", `worktree-status: ${(error as Error).message}`), width, "…"), ""];
 					}
 				},
 			};
@@ -466,58 +474,92 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	function scheduleRefresh(ctx: ExtensionContext, force = false): void {
-		const root = targetRoot();
-		if (!root) return;
 		if (debounceTimer) clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
 			debounceTimer = null;
-			void refresh(ctx, root, force);
+			void refresh(ctx, force);
 		}, REFRESH_DEBOUNCE_MS);
 		debounceTimer.unref?.();
 	}
 
 	pi.on("session_start", async (_event, ctx) => {
-		sessionRoot = findWorktreeRoot(ctx.cwd) ?? ctx.cwd;
-		detectedRoot = null;
+		generation++;
+		activeContext = undefined;
+		disposeFooter();
+		stopAccounting();
+		if (debounceTimer) clearTimeout(debounceTimer);
+		debounceTimer = null;
+		repos.clear();
 		// A declared focus outlives /reload and /resume; re-declaring it on every
 		// restart is not the agent's job.
 		const entries = ctx.sessionManager.getEntries();
 		const restored = lastFocus(entries);
-		if (restored && existsSync(restored.path)) focus = restored;
+		focus = restored && existsSync(restored.path) ? restored : null;
 		// Any name this session could have written is ours to update later; anything
 		// else is a /name the user typed, and stays.
 		const current = pi.getSessionName();
-		if (current && focusLabels(entries).has(current)) nameWeSet = current;
+		nameWeSet = current && focusLabels(entries).has(current) ? current : null;
+		if (ctx.mode !== "tui") return;
+		activeContext = ctx;
+		const owner = { sessionFile: ctx.sessionManager.getSessionFile() ?? undefined, sessionId: ctx.sessionManager.getSessionId(), cwd: ctx.cwd };
+		const restoredSpend = savedSpend(entries, owner);
+		spend = new SpendLedger(owner, restoredSpend);
+		parentUsage = collectUsage(entries);
+		spend.ingest(entries);
+		agentUsage = spend.summary();
+		lastSnapshot = restoredSpend ? JSON.stringify(spend.snapshot()) : "";
+		for (const event of ["subagent:async-started", "subagent:async-complete", "subagent:foreground-complete"]) {
+			eventDisposers.push(pi.events.on(event, (payload) => {
+				spend?.observeEvent(payload);
+				void updateAccounting(ctx);
+			}));
+		}
 		installFooter(ctx);
-		const root = targetRoot();
-		if (root) void refresh(ctx, root, true);
+		void refresh(ctx, true);
+		void updateAccounting(ctx);
 	});
 
-	pi.on("tool_call", async (event, ctx) => {
-		// Sticky by design: a tool call outside any repo (/tmp, scratch dirs) leaves
-		// the last known worktree on screen rather than blanking the line.
-		for (const candidate of toolPathCandidates(event.toolName, event.input)) {
-			const absolute = isAbsolute(candidate) || candidate.startsWith("~")
-				? expandHome(candidate)
-				: resolve(ctx.cwd, candidate);
-			if (isIgnored(absolute)) continue;
-			const root = findWorktreeRoot(absolute);
-			if (!root) continue;
-			if (root !== detectedRoot) {
-				detectedRoot = root;
-				if (!focus) {
-					requestRender();
-					void refresh(ctx, root, true);
-				}
-			}
-			break;
+	pi.on("tool_call", async (_event, ctx) => { if (activeContext) void refresh(ctx); });
+
+	pi.on("tool_execution_start", async (event) => {
+		if (activeContext && event.toolName === "subagent" && (!event.args?.action || ["run", "resume"].includes(event.args.action))) {
+			pendingCalls.add(event.toolCallId);
+			requestRender();
 		}
 	});
+	pi.on("tool_execution_update", async (event, ctx) => {
+		if (!activeContext || event.toolName !== "subagent") return;
+		spend?.observe(event.partialResult?.details);
+		if (spend) agentUsage = spend.summary();
+		requestRender();
+		if (!spendTimer) {
+			spendTimer = setTimeout(() => { spendTimer = undefined; void updateAccounting(ctx); }, 2000);
+			spendTimer.unref?.();
+		}
+	});
+	pi.on("tool_result", async (event, ctx) => {
+		if (!activeContext) return;
+		pendingCalls.delete(event.toolCallId);
+		if (event.toolName === "subagent" || event.toolName === "bg_wait") spend?.observe(event.details);
+		scheduleRefresh(ctx);
+		void updateAccounting(ctx);
+	});
+	pi.on("turn_end", async (_event, ctx) => {
+		if (!activeContext) return;
+		scheduleRefresh(ctx);
+		void updateAccounting(ctx);
+	});
 
-	pi.on("tool_result", async (_event, ctx) => scheduleRefresh(ctx));
-	pi.on("turn_end", async (_event, ctx) => scheduleRefresh(ctx, true));
+	for (const event of ["session_compact", "session_tree"] as const) {
+		pi.on(event, async (_event, ctx) => { if (activeContext) await updateAccounting(ctx); });
+	}
 
 	pi.on("session_shutdown", async () => {
+		generation++;
+		activeContext = undefined;
+		stopAccounting();
+		disposeFooter();
+		requestRender = () => {};
 		if (debounceTimer) clearTimeout(debounceTimer);
 		debounceTimer = null;
 	});
@@ -526,10 +568,10 @@ export default function (pi: ExtensionAPI) {
 		name: "set_worktree",
 		label: "Set Worktree",
 		description:
-			"Declare the git worktree this session is working in, and what it is working on. " +
-			"Pins the footer to that worktree and names the session '#<issue> <purpose>', so the " +
-			"target survives reading and editing files elsewhere. The worktree must already exist - " +
-			"create it with `git worktree add` first. Call it again to move to a different worktree.",
+			"Record a target git worktree and what the session is working on. " +
+			"Names the session '#<issue> <purpose>' unless the user owns its name. " +
+			"Does not change Pi's cwd or the footer location. The target must already exist; " +
+			"call again to update the recorded target.",
 		promptSnippet: "Declare the target git worktree, issue, and purpose for this session",
 		promptGuidelines: [
 			"Call set_worktree once feature or bug work has a worktree, before editing code in it, so the session records which issue it belongs to.",
@@ -547,7 +589,7 @@ export default function (pi: ExtensionAPI) {
 			),
 		}),
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			const path = resolve(expandHome(params.path.trim()));
+			const path = resolve(ctx.cwd, expandHome(params.path.trim()));
 			if (!existsSync(path)) throw new Error(`No such path: ${path}. Create the worktree first.`);
 			const root = findWorktreeRoot(path);
 			if (!root) throw new Error(`Not inside a git worktree: ${path}. Run \`git worktree add\` first.`);
@@ -557,10 +599,9 @@ export default function (pi: ExtensionAPI) {
 			pi.appendEntry(FOCUS_ENTRY, next);
 			const named = nameSession(next);
 			requestRender();
-			void refresh(ctx, root, true);
 
 			const label = focusLabel(next);
-			const lines = [`Worktree: ${root}`];
+			const lines = [`Target: ${root} (cwd unchanged: ${ctx.cwd})`];
 			if (named) lines.push(`Session named: ${named}`);
 			else if (label) lines.push(`Session name left as "${pi.getSessionName()}" (set by the user).`);
 			return { content: [{ type: "text", text: lines.join("\n") }], details: next };
@@ -568,14 +609,14 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("worktree", {
-		description: "Pin the worktree shown in the footer (or 'auto' to detect from tool calls)",
+		description: "Record a target worktree, report cwd and target, or clear the target with 'auto'",
 		getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
 			const items: AutocompleteItem[] = [];
 			if ("auto".startsWith(prefix)) {
-				items.push({ value: "auto", label: "auto", description: "Detect from tool calls" });
+				items.push({ value: "auto", label: "auto", description: "Clear recorded target; cwd unchanged" });
 			}
 			if ("ignored".startsWith(prefix)) {
-				items.push({ value: "ignored", label: "ignored", description: "List skipped paths" });
+				items.push({ value: "ignored", label: "ignored", description: "Explain legacy read-detection behavior" });
 			}
 			const expanded = expandHome(prefix);
 			const base = prefix.endsWith(sep) ? expanded : dirname(expanded);
@@ -586,7 +627,7 @@ export default function (pi: ExtensionAPI) {
 					if (entry.name.startsWith(".") && !leaf.startsWith(".")) continue;
 					const full = join(base, entry.name);
 					items.push({
-						value: displayPath(full).startsWith("…") ? full : displayPath(full),
+						value: homePath(full),
 						label: entry.name,
 						description: existsSync(join(full, ".git")) ? "worktree" : undefined,
 					});
@@ -599,36 +640,34 @@ export default function (pi: ExtensionAPI) {
 		handler: async (args, ctx) => {
 			const arg = args.trim();
 			if (!arg) {
-				const root = targetRoot();
-				const source = focus ? "declared" : detectedRoot ? "detected" : "session cwd";
+				await refresh(ctx, true);
+				const state = repos.get(ctx.cwd);
 				const label = focus ? focusLabel(focus) : null;
-				const detail = `${source}${label ? `: ${label}` : ""}`;
-				ctx.ui.notify(root ? `${root} (${detail})` : "No worktree", "info");
+				const checkout = state?.kind === "non-git" ? "none (non-Git)" : state?.root ?? "unknown";
+				const branch = state?.kind === "non-git" ? "" : `\ngit: ${state?.branch ?? "unknown"}`;
+				ctx.ui.notify(`Cwd: ${ctx.cwd}\nCheckout: ${checkout}${branch}\nTarget: ${focus?.path ?? "none"}${label ? ` (${label})` : ""}`, "info");
 				return;
 			}
 			if (arg === "ignored") {
-				ctx.ui.notify(`Detection skips: ${IGNORED_PATHS.join(", ")}`, "info");
+				ctx.ui.notify("File-read detection is disabled. The footer always shows Pi's cwd.", "info");
 				return;
 			}
 			if (arg === "auto" || arg === "clear" || arg === "off") {
 				focus = null;
 				pi.appendEntry(FOCUS_ENTRY, { path: null });
-				ctx.ui.notify("Worktree: auto-detect", "info");
+				ctx.ui.notify("Target cleared; cwd unchanged.", "info");
 				requestRender();
-				const root = targetRoot();
-				if (root) void refresh(ctx, root, true);
 				return;
 			}
-			const path = resolve(expandHome(arg));
+			const path = resolve(ctx.cwd, expandHome(arg));
 			if (!existsSync(path)) {
 				ctx.ui.notify(`Not found: ${path}`, "error");
 				return;
 			}
 			focus = { path: findWorktreeRoot(path) ?? path };
 			pi.appendEntry(FOCUS_ENTRY, focus);
-			ctx.ui.notify(`Worktree pinned: ${focus.path}`, "info");
+			ctx.ui.notify(`Target: ${focus.path} (cwd unchanged: ${ctx.cwd})`, "info");
 			requestRender();
-			void refresh(ctx, focus.path, true);
 		},
 	});
 }

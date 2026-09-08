@@ -1,0 +1,10 @@
+--- a/src/shared/fork-context.ts
++++ b/src/shared/fork-context.ts
+@@ -111,6 +111,7 @@
+ 	if (!model) return true;
+ 	const info = findModelInfo(model, availableModels, preferredProvider);
+ 	if (!info) return true;
++	if (info.thinkingLevelMap?.off === null) return false;
+ 	return info.provider.toLowerCase() === "anthropic"
+ 		|| info.api?.toLowerCase() === "anthropic-messages";
+ }

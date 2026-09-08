@@ -2,11 +2,12 @@
 name: planner
 description: Scoping and planning agent for ambiguous work — turns a vague ask into a scoped, decision-explicit plan before implementation; drives the bigpowers planning spine when the repo has a specs/ cockpit
 aliases: shaper, scoper
-model: anthropic/claude-fable-5
+model: anthropic/claude-fable-5-1
 fallbackModels: openai/gpt-5.6-sol
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: true
+inheritGlobalContext: true
 inheritSkills: false
 skills: scope-work, slice-tasks, plan-work, elaborate-spec, plan-tests, assess-impact
 tools: read, grep, find, ls, bash, write, contact_supervisor

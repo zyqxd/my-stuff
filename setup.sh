@@ -29,41 +29,15 @@ confirm() {
     esac
 }
 
-link_agent_skills() {
-    local target_dir="$1"
-    local skill_dir
-    local target_path
-
-    mkdir -p "$target_dir"
-    for skill_dir in "$REPO_DIR"/ai/skills/*; do
-        [ -f "$skill_dir/SKILL.md" ] || continue
-        target_path="$target_dir/$(basename "$skill_dir")"
-        if [ -e "$target_path" ] && [ ! -L "$target_path" ]; then
-            echo "❌ Error: Cannot link $skill_dir over existing directory $target_path" >&2
-            return 1
-        fi
-        ln -sfn "$skill_dir" "$target_path"
-    done
+check_agent_directories() {
+    if [ "${CLAUDE_CONFIG_DIR+x}${CODEX_HOME+x}${PI_CODING_AGENT_DIR+x}${PI_MEMORY_DIR+x}" != "" ]; then
+        echo "❌ setup.sh package/settings steps require default client directories. Use node ai/install-agent-links.mjs for overridden link destinations." >&2
+        return 1
+    fi
 }
 
-# pi auto-discovers ~/.pi/agent/extensions/*.ts and */index.ts. Link each entry
-# individually rather than the whole directory, so pi packages and Nix-managed
-# extensions can keep living alongside ours.
-link_agent_extensions() {
-    local target_dir="$1"
-    local extension
-    local target_path
-
-    mkdir -p "$target_dir"
-    for extension in "$REPO_DIR"/ai/extensions/*; do
-        [ -f "$extension/index.ts" ] || [ -f "$extension" ] || continue
-        target_path="$target_dir/$(basename "$extension")"
-        if [ -e "$target_path" ] && [ ! -L "$target_path" ]; then
-            echo "❌ Error: Cannot link $extension over existing path $target_path" >&2
-            return 1
-        fi
-        ln -sfn "$extension" "$target_path"
-    done
+setup_agent_links() {
+    node "$REPO_DIR/ai/install-agent-links.mjs" --apply
 }
 
 # qmd powers pi-memory's memory_search (keyword, semantic, and deep modes all
@@ -172,7 +146,6 @@ setup_agent_tooling() {
         for pkg in \
             npm:bigpowers \
             npm:pi-memory \
-            npm:pi-subagents \
             npm:@sentiolabs/pi-frontend-design \
             git:github.com/Shopify/pi-tool-gateway-extension \
             https://github.com/shopify-playground/pi-minerva-auth \
@@ -181,13 +154,14 @@ setup_agent_tooling() {
             https://github.com/shopify-playground/shop-pi-fy; do
             pi install "$pkg" || echo "   ⚠️  Failed to install pi package $pkg"
         done
+        node "$REPO_DIR/ai/install-subagents.mjs"
 
         # pi-subagents roster: every active agent is a custom file in ai/agents/
         # whose frontmatter carries its model/thinking pin (provider-qualified —
         # a bare id that exists under several providers only resolves in that
         # provider's own session). settings.json only disables the builtins we
         # replaced or never use. Legacy pins for roster agents are dropped so they
-        # do not linger (frontmatter beats them anyway); unrelated overrides and
+        # do not override the frontmatter pins; unrelated overrides and
         # other settings survive; re-runs converge to the same state.
         local pi_settings="$HOME/.pi/agent/settings.json"
         local subagent_pins='{"subagents":{"agentOverrides":{"scout":{"disabled":true},"delegate":{"disabled":true},"gpt-pro":{"disabled":true}}}}'
@@ -268,7 +242,10 @@ if [ "${1}" = "export" ]; then
     exit 0
 fi
 
+check_agent_directories
+
 if [ "${1}" = "agents" ]; then
+    setup_agent_links
     setup_agent_tooling
     exit 0
 fi
@@ -290,6 +267,7 @@ echo ""
 echo "📦 Installing packages from Brewfile..."
 echo "   This may take a few minutes..."
 brew bundle --file=./Brewfile
+setup_agent_links
 
 # Install Claude Code (optional, via Homebrew cask)
 echo ""
@@ -371,10 +349,6 @@ fi
 
 # Claude Code setup
 echo "🤖 Setting up Claude Code preferences..."
-mkdir -p "$HOME/.claude"
-ln -sf "$REPO_DIR/ai/AGENTS.md" "$HOME/.claude/CLAUDE.md"
-ln -sf "$REPO_DIR/ai/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
-link_agent_skills "$HOME/.claude/skills"
 
 # Ensure settings.json has the statusline command configured
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
@@ -385,25 +359,6 @@ if [ -f "$CLAUDE_SETTINGS" ]; then
         && mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
 else
     echo "$STATUSLINE_JSON" | jq . > "$CLAUDE_SETTINGS"
-fi
-
-# pi agent setup
-# pi loads global context from ~/.pi/agent/CLAUDE.md (or AGENTS.md) at startup.
-# Symlink the same shared rules used by Claude Code so both agents stay in sync
-# from a single source of truth (ai/AGENTS.md).
-echo "🥧 Setting up pi agent preferences..."
-mkdir -p "$HOME/.pi/agent"
-ln -sf "$REPO_DIR/ai/AGENTS.md" "$HOME/.pi/agent/CLAUDE.md"
-link_agent_skills "$HOME/.pi/agent/skills"
-link_agent_extensions "$HOME/.pi/agent/extensions"
-
-# Subagent definitions (pi-subagents discovers ~/.pi/agent/agents/**/*.md).
-# Whole-dir symlink so agents written there by tooling (e.g. `subagent eject`)
-# land in the repo and stay versioned.
-if [ -e "$HOME/.pi/agent/agents" ] && [ ! -L "$HOME/.pi/agent/agents" ]; then
-    echo "❌ Error: ~/.pi/agent/agents exists and is not a symlink — move its contents into ai/agents/ first" >&2
-else
-    ln -sfn "$REPO_DIR/ai/agents" "$HOME/.pi/agent/agents"
 fi
 
 # Agent tooling (pi, brain, pi packages) — also runnable alone: ./setup.sh agents

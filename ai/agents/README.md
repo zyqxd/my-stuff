@@ -1,19 +1,27 @@
 # Subagent routing (pi-subagents)
 
 Demoted from `ai/AGENTS.md` on 2026-09-01 — reference material, read on demand.
-The constitution keeps only the two imperatives; the table lives here.
+The shared contract owns behavioral boundaries; the table lives here.
 
 When a task calls for delegation — or a bigpowers skill references the "Agent
 tool" — use the `subagent` tool. Five agents, one per phase of the cycle
-(retuned 2026-09-04, see `~/plans/pi-agent-orchestration/2026-09-04-subagent-roster-tuning.md`):
+(routing approved 2026-09-07; live evidence in
+`~/plans/pi-agent-orchestration/2026-09-07-astra-routing-verification.md`):
 
 | phase | agent | context | model:effort | writes | use when |
 |---|---|---|---|---|---|
-| ask → plan | `planner` (alias shaper) | fresh | fable-5:high | plan / bigpowers specs only | the ask is vague; you want a scoped, decision-explicit plan before anyone codes |
-| know | `researcher` | fresh | sonnet-5:high | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
-| build | `worker` (alias design-worker) | fresh | sol:xhigh → opus-5 | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
-| check | `reviewer` | fresh | sonnet-5:high → opus-5 | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
-| judge | `oracle` | **fork** | opus-5 (adaptive under fork) → gemini-3.1-pro | no | judge the trajectory with the whole transcript — see triggers |
+| ask → plan | `planner` (alias shaper) | fresh | fable-5-1:high → sol | plan / bigpowers specs only | the ask is vague; you want a scoped, decision-explicit plan before anyone codes |
+| know | `researcher` | fresh | sonnet-5:high → opus-5 | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
+| build | `worker` (alias design-worker) | fresh | gpt-6-astra:high → sol | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
+| check | `reviewer` | fresh | gpt-6-astra:high → opus-5 | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
+| judge | `oracle` | **fork** | fable-5-1:high → gemini-3.1-pro-preview | no | judge the trajectory with the whole transcript — see triggers |
+
+All five default to **high**; fallback models inherit that effort unless a suffix says
+otherwise. `sol` means `openai/gpt-5.6-sol`; exact provider-qualified pins live in the
+sibling agent files. These defaults target routine use without manual tuning, not a
+measured 95% success rate. Sol is worker's availability fallback, not its normal model.
+The pinned local pi-subagents package fixes the signed-Claude-fork effort downgrade;
+reload older parent sessions before relying on it. See Package pin below.
 
 Disabled builtins (settings.json): `scout` (merged into researcher), `delegate`
 (inherited the parent's fable at 2–2.5× worker's price and got worker/reviewer jobs),
@@ -23,26 +31,59 @@ Cadence: `worker → reviewer → worker → reviewer(scoped) …`, cap **3 fix 
 `oracle` ("wrong plan, noisy reviewer, or worker not reading?"), then David. First review
 covers the whole change; re-review briefs name the prior findings and the verify commands
 so the reviewer confirms and re-runs rather than re-explores. One reviewer per round by
-default. Two in parallel — add `reviewer[model=openai/gpt-5.6-sol:high]` for recall — only
-on a risky final gate or when the change was authored by a Claude model (the parent's own
-edits): same-family review adds cost without gain, and Sol reviewing Sol is self-review.
+default. On a risky final gate, a second reviewer can use
+`reviewer[model=anthropic/claude-fable-5-1:high]` for a cross-provider check. Fresh-context
+Astra is the normal reviewer, including for Astra-authored code; a second model is not
+required on every change.
 
 Oracle triggers, and only these: (1) before accepting a plan, (2) review-cycle cap hit,
 (3) before an irreversible action (force-push, closing/merging a PR, publishing),
 (4) before reversing a decision made earlier in the session. Never at sprint start (nothing
 to compare), never as the end gate (reviewer, fresh). Cost is O(parent transcript).
 
-Per-run overrides: `agent[model=provider/model:level]`, e.g.
-`researcher[model=anthropic/claude-opus-5:xhigh]` for deep external research.
+Per-run overrides: `agent[model=provider/model:level]`, or a tool-call `model` field with
+the same qualified string. A suffix such as `:medium` overrides the agent's high effort;
+a model-only override retains high. Do not use the top-level `thinking` tool parameter
+for dispatch; it is a watchdog-management setting.
 
-Dispatch briefs give each child an explicit absolute output path into the unit's
-`inbox/` (`~/plans/<project>/<unit>/inbox/`) — e.g.
-`/Users/david.yq.zhang/plans/improve-cancellation-reactivation/7529/inbox/researcher-context.md`
-— never a relative path or one the child invents. bigpowers task_brief format (goal,
-in_scope, out_of_bounds, verify) remains the brief protocol.
+## Conditional Astra 1M routing
+
+Use `openai/gpt-6-astra:high` by default: its registered context window is **272000**
+tokens. The orchestrator—not David—selects `openai-1m/gpt-6-astra:high` only when the
+required instructions, evidence, output reserve, and expected tool results cannot fit
+that window, and narrowing the brief would lose necessary evidence. It is the same
+model with a **1000000**-token window, not a quality escalation. Do not globally expand
+Astra through `models.json`.
+
+Check the current model registry before the exceptional launch. The 1M provider comes
+from the Shopify proxy extension; a stale process may not have it. If unavailable,
+reload/restart and re-check rather than silently sending oversized work to standard
+Astra. The stock harness does not promote overflow to 1M automatically. Worker still
+has a 272K Sol fallback: it cannot rescue work that genuinely needs more context.
+Inspect the actual fallback result and re-route such work; do not shrink away evidence.
+
+Fable planner/oracle and Sonnet have 1M cards. Fable avoids Astra's price increase above
+272K for the routinely large oracle transcript. For exact current prices use the model
+registry, not the abbreviated table above.
+
+Dispatch briefs name an absolute output path into the unit's `inbox/` and set the
+runtime's explicit `output` to that same path, distinct per child. A prose filename
+alone is not persistence. Read-only reviewer/oracle return their artifact; the runtime
+or parent saves it, and the parent verifies the file exists. Children never use bash
+to work around no-write instructions. bigpowers task_brief (goal, in_scope,
+out_of_bounds, verify) remains the brief protocol.
+
+## Shared contract delivery
+
+All five roles inherit the shared contract and add role-specific duties. Keep both
+context-inheritance flags enabled. See `ai/README.md` → **What loads** for native
+loading and verification; the contract separates parent duties from all-agent rules.
 
 ## Config traps (full roster scan, 2026-09-01)
 
+- Stock `parallel-research` and `gather-context-and-clarify` prompts still name the
+  disabled `scout`. Inspect such prompts before use and route fact-finding to researcher;
+  this setup does not rewrite third-party prompts or adopt unversioned local skills.
 - **A declared tool name does not load the code that registers it.** `tools:` is a strict
   allowlist. An *unknown* name fails the launch loudly ("requested unavailable child
   tools"); a *known builtin* name whose provider is missing is dropped **silently** and the
@@ -58,27 +99,22 @@ in_scope, out_of_bounds, verify) remains the brief protocol.
   result in the brief.
 - **`bash` makes an agent mutation-capable**, so a read-only advisor needs
   `completionGuard: false` (and `acceptanceRole: read-only`) or it is judged an
-  implementation agent. `reviewer` and `researcher` had it; `oracle` did not.
+  implementation agent. These flags classify completion; they do **not** enforce a
+  read-only sandbox. A medium-effort oracle probe used bash to write its report despite
+  a no-shell instruction. The existing tool boundaries were not changed by this retune.
 - **Never use `~` in `subagentOnlyExtensions`.** `pi-args.ts` forwards the value to `-e`
   with no tilde expansion. Absolute paths only.
 - **Never give an agent a relative `output:` in frontmatter.** It resolves against the cwd,
   so the child writes into whatever repo the parent is in — and it silently overrides the
   absolute path in the dispatch brief. `researcher` (`research.md`) and `shaper`
   (`plan.md`) both had this. Omit `output:`; let the brief carry an absolute path.
-- **A fork drops the explicit effort level for Anthropic children — it does not turn off
-  reasoning on Opus 5 / Fable 5.** pi-subagents strips the parent's signed thinking blocks and
-  launches an Anthropic child as `:off` (`fork-context.ts` `forkedChildRequiresThinkingOff`;
-  any Anthropic model in the primary+fallback chain triggers it). But pi only sends
-  `thinking: {type: "disabled"}` when the model's `thinkingLevelMap.off !== null`
-  (`anthropic-messages.js:808`); Opus 5 and Fable 5 have `off: null`, so no thinking
-  parameter is sent and the API default — adaptive thinking — applies. Sonnet 5 has no `off`
-  key, so it *is* disabled. Measured 2026-09-07: forked `anthropic/claude-opus-5:off` used
-  995 reasoning tokens over a 336k parent and out-audited a forked Gemini 3.1 Pro at `high`
-  (found the oracle xhigh→high drop and the `-preview` id fragility; Gemini said "no drift").
-  Oracle is therefore `anthropic/claude-opus-5` (1M card, ~$1.70 per 336k consult) with
-  `google/gemini-3.1-pro-preview` fallback (1M, $0.51). `xhigh` in its frontmatter applies
-  only to `context: "fresh"` runs; under fork it is the API default. Not Sol (272k card), not
-  Grok 4.3 (no long-context eval past 100k), not Sonnet (goes dark under fork).
+- **Stock 0.64.0 can silently reduce signed-fork effort.** Removing signed Claude
+  thinking can force `:off`; Pi 0.84.3 clamps Fable's unsupported off to minimal and
+  sends adaptive **low**, not the API default. The installed local patch skips that
+  override when `thinkingLevelMap.off === null`, while still stripping signatures.
+  Full dispatch from a fresh Pi process verified high and an explicit medium override
+  with HTTP 200. Off-capable Anthropic models and unknown models remain conservative;
+  an off-capable Anthropic fallback can still force off for the entire candidate chain.
 - **Pin agents to base providers only** (`anthropic/…`, `openai/…`). `openai-1m`,
   `anthropic-flex`, `openai-flex`, `fireworks` are registered by the toolchain's proxy
   extension and exist only in its current version; a pi process started before a toolchain
@@ -90,24 +126,69 @@ in_scope, out_of_bounds, verify) remains the brief protocol.
   anthropic` or an OpenAI 401 on a `shopify-…` key. Restart pi, or enable
   `ai-proxy-credential-manager` (`/pkg add ai-proxy-credential-manager`, ships in shop-pi-fy)
   so long-running sessions refresh in-process.
-- **Frontmatter beats `agentOverrides`, field by field** (`agents.ts` `fill()` is gated by
-  `agentHasFrontmatterField`). Every active agent is a custom file whose frontmatter pins
-  `model`, `fallbackModels`, and `thinking`, so settings.json cannot change them — edit the
-  file. settings.json carries only `disabled` for builtins; `setup.sh` drops legacy pins
-  for roster agents so they do not linger and mislead a reader.
-- Every child gets ~43k tokens of project context (CLAUDE.md + Brain) cache-written on turn
-  one — $0.54 on Fable, ~$0.11 on Sonnet. It is the largest fixed cost of a short run.
+- **Settings overrides beat custom frontmatter in 0.64.0.** Per-run model overrides
+  win, then project/user role overrides (including provider-scoped overrides), then
+  frontmatter, then defaults/parent inheritance. Keep this roster's normal pins in
+  the agent files; `setup.sh` removes legacy role overrides so they cannot mask them.
+  A global `defaultSubagentContext` can also replace agent context preferences. Use
+  explicit `context: "fork"` when the oracle must have a persisted parent; implicit
+  fork otherwise falls back to fresh when no parent file/leaf exists.
+- Context overhead varies with the role and installed skills/extensions. September 7
+  fresh-role first requests used roughly 20K–35K input/cache tokens before tool results;
+  the earlier ~43K estimate is not a fixed launch cost.
 - Model pins are provider-qualified, and no agent sets `extensions:` (which would set
   `disableAmbientExtensions` and kill the shopify-proxy provider in the child).
+
+## Verification
+
+Run `node --test ai/agents/tests/routing.test.mjs` for the portable roster checks. From
+inside Pi, `node --test ai/agents/tests/*.test.mjs` also checks the installed runtime,
+settings precedence, suffixes, context preferences, model cards, and fallback rules.
+The routing baseline passed 16 checks against the configured patched package, including
+signature removal and effort preservation. The same signed-fork assertion fails against
+stock 0.64.0. Contract inheritance now has its own portable assertion; `ai/tests/` adds
+actual installed loader and resolved child-prompt rewrite checks, separate from behavior
+evals. See `ai/README.md` for commands and explicit skip conditions.
+
+Live request evidence distinguishes configured values from provider payloads and
+responses. Availability fallback covers eligible model/startup failures, not weak
+answers, context overflow, tool-task failures, or failures after tool execution.
+
+## Package pin
+
+`~/.pi/agent/settings.json` selects
+`local-packages/pi-subagents-0.64.0-fork-effort`, relative to `~/.pi/agent/`.
+This is an independent package copy with its four pinned runtime dependencies; npm's
+managed copy is not edited or required after installation. Automatic package updates
+will not advance this local copy.
+
+`node ai/install-subagents.mjs` installs it; `setup.sh` calls the same installer.
+The installer checks the exact stock and patched source hashes, preserves an existing
+copy, and refuses unexpected source changes. The one-line patch is versioned at
+`ai/patches/pi-subagents-0.64.0-fork-effort.patch`. Reload running Pi sessions after
+changing package sources; a fresh process uses the selected package immediately.
+
+To roll back to the exact stock release (which restores the effort defect):
+
+```sh
+pi remove "$HOME/.pi/agent/local-packages/pi-subagents-0.64.0-fork-effort"
+pi install npm:pi-subagents@0.64.0
+```
+
+Then reload. To return to upstream updates permanently, also remove the local installer
+call from `setup.sh` and restore its npm entry after an upstream release passes the
+signed-fork regression. Do not merely update npm while the local source remains selected.
 
 ## Operational notes
 
 - `runs.all` children of the same agent type collide on that agent's default
   output path and all fail instantly. Pass an explicit distinct `output` per
   item. (2026-08-28, and again during the 2026-09-01 memory refinement.)
-- A reviewer's output lives only in its session transcript, not `status.json`:
-  `output-archives/<runId>.json` → `session.jsonl` → longest assistant text block.
-- An async workflow with a failed child cannot be stopped — `interrupt` is
-  unsupported and `stop` refuses. Wait on a new run id.
+- `status.json` does not hold the full review. If explicit output persistence failed,
+  recovery may be available via `output-archives/<runId>.json` → `session.jsonl` →
+  assistant text. Verify the actual artifact instead of relying on the prose path.
+- After upgrading packages, reload the parent before launching children. A parent
+  holding a removed package version can launch stale absolute extension paths;
+  `doctor` success does not prove child startup. Verify a real request.
 
 Agent definitions themselves are the sibling `*.md` files in this directory.

@@ -24,3 +24,6 @@ Thumbs.db
 ai/memory/daily/
 ai/memory/recovery/
 ai/memory/SCRATCHPAD.md
+
+# Skill tool dependencies (bootstrapped on demand)
+ai/skills/*/tools/node_modules/

@@ -28,7 +28,7 @@
   },
   "python.defaultInterpreterPath": "/opt/homebrew/bin/python3",
   "markdown-preview-enhanced.liveUpdate": false,
-  "workbench.colorTheme": "Material Theme Palenight High Contrast",
+  "workbench.colorTheme": "Material Theme High Contrast",
   "security.workspace.trust.untrustedFiles": "open",
   "git.openRepositoryInParentFolders": "always"
 }

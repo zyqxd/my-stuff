@@ -179,11 +179,13 @@ check("padBetween right-aligns, and drops the right side when it cannot fit", ()
 });
 
 (await import("./glance.test.ts")).glanceTests(check);
-await (await import("./accounting.test.ts")).accountingTests(async (name, fn) => {
+const asyncCheck = async (name: string, fn: () => void | Promise<void>) => {
   checks++;
   try { await fn(); console.log("ok   " + name); }
   catch (e) { failures++; console.log("FAIL " + name + "\n     " + (e as Error).message); }
-});
+};
+await (await import("./accounting.test.ts")).accountingTests(asyncCheck);
+await (await import("./pricing.test.ts")).pricingTests(asyncCheck);
 fixture.cleanup();
 console.log(`\n${checks - failures}/${checks} unit checks passed`);
 process.exit(failures ? 1 : 0);

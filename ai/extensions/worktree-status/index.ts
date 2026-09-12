@@ -20,6 +20,7 @@ import { type AutocompleteItem, truncateToWidth, visibleWidth } from "@earendil-
 import { Type } from "typebox";
 import { SPEND_ENTRY, SpendLedger, savedSpend, type SpendSummary } from "./accounting.ts";
 import { spendingLine } from "./glance.ts";
+import { contractMultiplier } from "./pricing.ts";
 
 /** customType for the persisted focus, replayed on session_start. */
 const FOCUS_ENTRY = "worktree-focus";
@@ -163,11 +164,15 @@ export function formatTokens(count: number): string {
 	return `${Math.round(count / 1_000_000)}M`;
 }
 
-/** Parent usage excludes native child rollups, which belong to the spend ledger. */
+/**
+ * Parent usage excludes native child rollups, which belong to the spend ledger.
+ * Cost is converted from Pi's list-priced cards to the contract rates the AI
+ * Proxy records, so the footer reconciles with proxy reporting.
+ */
 export function collectUsage(entries: readonly unknown[]): Usage {
 	const total: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, cacheHitRate: undefined };
 	for (const raw of entries) {
-		const entry = raw as { type?: string; message?: { role?: string; toolName?: string; usage?: unknown }; usage?: unknown };
+		const entry = raw as { type?: string; message?: { role?: string; toolName?: string; model?: string; usage?: unknown }; model?: string; usage?: unknown };
 		if (entry.message?.role === "toolResult" && ["subagent", "bg_wait"].includes(entry.message.toolName ?? "")) continue;
 		let usage: AssistantMessage["usage"] | undefined;
 		if (entry.type === "message" && (entry.message?.role === "assistant" || entry.message?.role === "toolResult")) {
@@ -180,7 +185,7 @@ export function collectUsage(entries: readonly unknown[]): Usage {
 		total.output += usage.output ?? 0;
 		total.cacheRead += usage.cacheRead ?? 0;
 		total.cacheWrite += usage.cacheWrite ?? 0;
-		total.cost += usage.cost?.total ?? 0;
+		total.cost += (usage.cost?.total ?? 0) * contractMultiplier(entry.message?.model ?? entry.model);
 		if (entry.message?.role === "assistant") {
 			const prompt = (usage.input ?? 0) + (usage.cacheRead ?? 0) + (usage.cacheWrite ?? 0);
 			total.cacheHitRate = prompt > 0 ? ((usage.cacheRead ?? 0) / prompt) * 100 : undefined;

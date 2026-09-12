@@ -53,3 +53,31 @@ silently stays open and the work looks unfinished on the board.
   the issue's state from the host and close it. Do not treat the merged body as proof.
 - Applies to every shop/world → shop/issues-monetization pair, which is the normal
   shape of this team's work.
+
+## Transcribing David's review comments (2026-09-10)
+
+- **Correction:** After I cleaned up wording and typos while mapping #7649 comments
+  to Shopify/monetization#6819, David said, "Make sure to only use my wording."
+- **Scope:** Transcription of existing authored comments, not all drafting. Preserve
+  source wording and typos; mapping to review locations does not authorize rewriting.
+- **This task:** David also asked to exclude questions answered by #7819. Check its
+  linked canonical document (#6820); distinguish answered portions from unresolved
+  details rather than treating a related mention as a complete answer.
+- **Rationale:** Transcription must not introduce the assistant's voice or repeat
+  resolved questions. Keep exclusion explanations separate from the comment text.
+
+## A compare-and-swap check must fail the whole mutation command
+
+Source: 2026-09-11. While adding restart evidence to
+shop/issues-monetization#7847, the pre-edit body comparison detected that David had
+checked two more boxes concurrently. The Python assertion failed, but the surrounding
+newline-separated shell continued because it lacked `set -e`; `gh issue edit` then
+replaced those two checkmarks. I immediately diffed the captured concurrent body,
+restored both checkmarks, and verified the merged body at 24 completed checks.
+
+- Start any verify-then-remote-mutate shell with `set -euo pipefail`, or put the
+  comparison and mutation in separate tool calls.
+- A printed/failed CAS assertion is not protection unless its nonzero status prevents
+  the write. On mismatch, stop and merge from the captured live body.
+- Keep before, concurrent, and after bodies until restoration is verified. Report any
+  temporary overwrite rather than hiding it.

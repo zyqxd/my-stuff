@@ -15,7 +15,8 @@ WHITE="\[\e[0;37m\]"
 source ~/.git-prompt.sh
 
 # Prompt configuration
-export PS1="$RED[\j] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
+PS1="$RED[\j] $GREEN\u@ \w $MAGENTA\$(__git_ps1)\n$WHITE\$ "
+export -n PS1
 
 # General aliases
 alias gti=git

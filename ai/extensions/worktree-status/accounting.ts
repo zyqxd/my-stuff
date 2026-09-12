@@ -2,6 +2,7 @@ import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { contractMultiplier, rollupMultiplier } from "./pricing.ts";
 
 export const SPEND_ENTRY = "worktree-spend-v1";
 const MAX_RECORDS = 2000;
@@ -21,7 +22,7 @@ export type SpendOwner = { sessionFile?: string; sessionId?: string; cwd: string
 type RunCost = {
  key: string; runId?: string; index: number; agent?: string; sessionFile?: string; workflowKey?: string;
  cost?: number; terminal: boolean; source: string; metadataPath?: string; asyncDir?: string; sessionId?: string;
- covers: string[]; issue?: string;
+ covers: string[]; issue?: string; model?: string;
 };
 type RunGroup = { runId: string; mode: string; asyncDir?: string; cwd?: string; members: string[]; terminal: boolean; discovered: boolean; issue?: string; aggregate?: { cost: number; members: string[] } };
 export type SpendSnapshot = { version: 1; owner: SpendOwner; records: RunCost[]; groups: RunGroup[]; limited: boolean };
@@ -70,7 +71,7 @@ export class SpendLedger {
    if (!text(record.key) || !Array.isArray(record.covers)) continue;
    this.records.set(record.key, { key: record.key, runId: id(record.runId), index: Number.isInteger(record.index) ? record.index : 0,
     agent: text(record.agent), sessionFile: text(record.sessionFile), workflowKey: text(record.workflowKey), cost: money(record.cost), terminal: record.terminal === true,
-    source: text(record.source) ?? "snapshot", metadataPath: text(record.metadataPath), asyncDir: text(record.asyncDir), sessionId: text(record.sessionId), covers: this.items(record.covers).filter(text), issue: text(record.issue) });
+    source: text(record.source) ?? "snapshot", metadataPath: text(record.metadataPath), asyncDir: text(record.asyncDir), sessionId: text(record.sessionId), covers: this.items(record.covers).filter(text), issue: text(record.issue), model: text(record.model) });
   }
   for (const raw of this.items(snapshot.groups)) {
    const group = object(raw);
@@ -168,6 +169,7 @@ export class SpendLedger {
     const evidence = [canonical, alias].filter(record => record.cost !== undefined).sort((a, b) => b.cost! - a.cost! || Number(b.terminal && !b.issue) - Number(a.terminal && !a.issue))[0];
     previous = { ...alias, ...canonical, cost: evidence?.cost, terminal: canonical.terminal || alias.terminal,
      sessionFile: canonical.sessionFile ?? alias.sessionFile, workflowKey: canonical.workflowKey ?? alias.workflowKey,
+     model: canonical.model ?? alias.model,
      metadataPath: evidence?.metadataPath ?? canonical.metadataPath ?? alias.metadataPath,
      source: evidence?.source ?? canonical.source, covers: [...new Set([...canonical.covers, ...alias.covers])],
      issue: evidence ? evidence.terminal ? evidence.issue : canonical.terminal || alias.terminal ? "final usage unavailable" : evidence.issue : canonical.issue ?? alias.issue };
@@ -185,7 +187,9 @@ export class SpendLedger {
   const isTerminal = this.isTerminal(result);
   const cost = usageCost(result);
   const metadataPath = text(object(result.artifactPaths).metadataPath);
+  const attempts = list(result.modelAttempts).map(attempt => text(object(attempt).model)).filter(Boolean);
   const next: RunCost = { key, runId: runId ?? previous?.runId, index, agent: text(result.agent) ?? previous?.agent,
+   model: text(result.model) ?? attempts.at(-1) ?? previous?.model,
    sessionFile: sessionFile ?? previous?.sessionFile, workflowKey: text(result.workflowKey) ?? previous?.workflowKey, cost: previous?.cost, terminal: previous?.terminal || isTerminal,
    source: previous?.source ?? "record", metadataPath: metadataPath ?? previous?.metadataPath, covers: previous?.covers ?? [], issue: previous?.issue };
   if (isTerminal && previous && !previous.terminal && previous.cost !== undefined && cost === undefined) next.issue = "final usage unavailable";
@@ -236,6 +240,16 @@ export class SpendLedger {
   const key = this.addResult({ ...child, workflowKey, sessionFile: child.sessionFile ?? alias?.sessionFile, index: child.index ?? index, state: child.state ?? child.status });
   if (key && group && !group.members.includes(key)) group.members.push(key);
   return key;
+ }
+ /**
+  * Records keep the list-priced dollars Pi recorded, so a snapshot written by an
+  * older build still reads correctly; the contract conversion happens here, at
+  * the point the total is reported. Rollups that name no model borrow the factor
+  * of the members they cover.
+  */
+ private factor(record: RunCost): number {
+  if (record.model) return contractMultiplier(record.model);
+  return rollupMultiplier(record.covers.map(key => this.records.get(key)).filter(Boolean) as RunCost[]);
  }
  private inclusive(group: RunGroup): boolean {
   if (!group.terminal || !group.aggregate || group.issue === "ownership mismatch") return false;
@@ -328,6 +342,7 @@ export class SpendLedger {
     const cost = usageCost(metadata);
     if (cost === undefined) continue;
     record.cost = Math.max(record.cost ?? 0, cost);
+    record.model = text(metadata.model) ?? list(metadata.modelAttempts).map(attempt => text(object(attempt).model)).filter(Boolean).at(-1) ?? record.model;
     record.terminal ||= typeof metadata.exitCode === "number";
     record.source = "metadata";
     record.metadataPath = path;
@@ -355,7 +370,9 @@ export class SpendLedger {
    terminalByIdentity.set(identity, (terminalByIdentity.get(identity) ?? false) || record.terminal);
   }
   const pending = [...terminalByIdentity.values()].filter(done => !done).length + groups.filter(group => !group.terminal && !group.members.some(key => !this.records.get(key)?.terminal)).length;
-  return { cost: records.reduce((total, record) => total + (record.cost ?? 0), 0) + inclusive.reduce((total, group) => total + group.aggregate!.cost, 0), partial: !!(unresolved || pending), unresolved, pending };
+  const groupCost = (group: RunGroup) => group.aggregate!.cost
+   * rollupMultiplier(group.aggregate!.members.map(key => this.records.get(key)).filter(Boolean) as RunCost[]);
+  return { cost: records.reduce((total, record) => total + (record.cost ?? 0) * this.factor(record), 0) + inclusive.reduce((total, group) => total + groupCost(group), 0), partial: !!(unresolved || pending), unresolved, pending };
  }
  snapshot(): SpendSnapshot {
   return structuredClone({ version: 1, owner: this.owner, records: [...this.records.values()], groups: [...this.groups.values()], limited: this.limited });

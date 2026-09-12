@@ -85,3 +85,16 @@ directives I must go find, not just ones already in a body or the request.
   David corrected it as a core tenet of PR descriptions.
 - Uncertainty: whether umbrella/partially-satisfied issues should get `Closes`
   or a plain reference — ask when the PR only advances part of an issue.
+
+## A linked subsystem issue does not narrow a project-wide design request
+
+Source: LLC / ZenBusiness design-spec request, 2026-09-07. David corrected the
+pipeline-only draft: "This should be a project-wide engineering design."
+
+I treated data-exchange issue #7649 as the deliverable boundary, although David
+asked for the project's design and supplied both a PRD and an existing tech spec.
+That omitted the journey, claim path, ownership, measurement, and rollout design.
+Use linked issues as inputs unless the user explicitly scopes the deliverable to
+them. When both readings remain plausible, apply plan-work's interpretation gate
+before delegating drafting. This correction concerns document scope; it does not
+approve unresolved architecture, product, or legal decisions.

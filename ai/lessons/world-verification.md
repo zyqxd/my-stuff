@@ -132,6 +132,7 @@ pointing at the orphan. Seen with `@shopify/extensibility-host-shared` 0.9.0 (no
 `POS_EXTENSION_TARGETS`) vs 0.8.11 (has it).
 
 **Diagnose before deleting anything** — prove it is staleness, not a real conflict:
+
 1. `grep -c <SYMBOL> node_modules/<pkg>/build/esm/index.js` — installed copy has it?
 2. `grep -c <SYMBOL> build/cache/vite8/admin/deps/<pkg>.js` — cached prebundle lacks it?
 3. `build/cache/vite8/admin/deps/_metadata.json` — the entry's `src` names the wrong
@@ -158,7 +159,7 @@ passed — twice — and CI's `:typescript: Type check` then failed with 8
 `error TS2322`s: three wrong `__typename`s and a wrong enum in my new mocks
 (`BillingSubscriptionChangeQuote`/`BillingPlan`/`BillingPeriod` instead of
 `BillingSubscriptionReactivationQuote`/`Plan`/`BillingSubscriptionPeriod`), plus
-two *pre-existing* fixtures that no longer satisfied the widened type.
+two _pre-existing_ fixtures that no longer satisfied the widened type.
 
 **Why fastcheck missed it.** It type-checks changed files; the errors live in the
 relationship between a changed `.graphql` and files it never opened, and in
@@ -210,7 +211,7 @@ change. Nothing in the handoff said which worktree the branch lived in, so the m
 invisible until he looked at the page and saw no difference.
 
 **Why it happens.** A git branch can only be checked out in one worktree, and `dev assets`
-serves whatever is in *its* worktree. Isolated worktrees are right for building and for
+serves whatever is in _its_ worktree. Isolated worktrees are right for building and for
 parallel work; they are wrong the moment a human has to look at the result.
 
 **Future action.** When a change reaches tophat, move the branch into root before handing
@@ -265,7 +266,7 @@ correctly" and could be treated as a clean model. It does the opposite: it strip
 `getDiagnosticOptions(...)` off the `checkout_express_pay_state_at_submit` emit, so that
 ~51.8K rows/day event silently loses `merchantCheckoutViewId` and `identity` on every host
 that supplies a diagnostics context — i.e. all five checkout surfaces. The PR body
-*advertises* the verification gate
+_advertises_ the verification gate
 `git diff … | grep -cE '^[+-].*EXPRESS_PAY_STATE_AT_SUBMIT'` with an expected value of `0`.
 Run against its own diff it returns `8`, and the PR's own modified test pins the loss
 (`'view-id-1'` → `undefined`).
@@ -318,8 +319,8 @@ test **stayed green**. Cause: at runtime the function source contains `CheckoutI
 never the literal `'new-paypal'`, so a regex over `fn.toString()` can never match the intent value.
 The assertion was decorative. It would have shipped as coverage.
 
-**What saved it** was the plan pairing every assertion with a *named mutation that must make that
-named test fail*, and the agent stopping when the mutation didn't bite instead of quietly
+**What saved it** was the plan pairing every assertion with a _named mutation that must make that
+named test fail_, and the agent stopping when the mutation didn't bite instead of quietly
 rewriting the assertion to pass.
 
 **The fix, and the general rule.** Replace source-text introspection with a behavioural assertion
@@ -331,7 +332,7 @@ case. Reject `fs.readFileSync` variants: a test that greps its own source is bri
 and is not a pattern this zone uses.
 
 **Future action.** For any assertion that isn't obviously behavioural, write down the mutation that
-must kill it *before* writing the assertion. If you can't name one, the assertion is probably
+must kill it _before_ writing the assertion. If you can't name one, the assertion is probably
 decorative. Never let an agent "fix" a non-biting mutation by adjusting the mutation.
 
 ## Vitest green says nothing about lint or types
@@ -341,3 +342,34 @@ Same session: a story was rejected at review for two new `jest(prefer-strict-equ
 commit**, not only at the end of the branch — otherwise the failure surfaces one review round late.
 `AUTOFIX=1 shadowenv exec -- fastcheck uncommitted` while iterating; full `fastcheck branch` before
 committing. Never `oxlint --suppress-all`, which the tool itself suggests — it is a lint escape.
+
+## Verify each child artifact after partial workflow failure (2026-09-09)
+
+Source: David's correction while finishing #7240/#7241: workers failed on a missing worktree path, so verify that work was actually done. The World worktree existed, but its sparse checkout had not materialized admin-web; both the lifecycle writer and its unconditional reviewer failed before launch. The enclosing workflow still completed and another lane passed.
+
+- Before dispatch, verify the exact child cwd exists, its branch/head match the brief, and required zones are materialized. Creating a World tree alone does not prove the zone directory exists.
+- Gate a dependent reviewer on successful implementation, not merely an awaited child result. A completed workflow is not proof every child succeeded.
+- After partial failure, inspect each lane's on-disk diff and exact head, distinguish pre-launch failure from interrupted edits, and independently rerun relevant tests before accepting completed work. Preserve existing changes before restarting; do not assume a failed lane is empty.
+- Scope: multi-worktree World delegation. This incident lost no source work; the failed lane never started. It does not establish that all missing-cwd failures are safe to restart.
+
+## Slices ownership validation does not include formatting (2026-09-11)
+
+LLC foundation PR #2056461 passed `devx slices validate` and the zone's fastcheck,
+but world-slices-validate build 2380605 failed on YAML indentation and quoting.
+The CI script runs ownership validation and lint as separate gates. This zone's
+fastcheck/dev check only ran RuboCop and Rails tests; neither covered slices lint.
+
+For a new or modified `slices.yml`, run both:
+
+```sh
+devx slices validate --validate-stewards --validate-reviewers --require-default-slice
+devx slices lint --preserve-comments
+```
+
+Fix canonical formatting with `devx slices lint --preserve-comments -a`, then
+rerun both gates and compare parsed YAML when the intended change is formatting
+only. The reported failure reproduced before the edit, disappeared afterward,
+and the ownership data remained identical. Commit `1459d2413f68755368ef319a00cc995ae2f54d49`.
+
+Scope: World zone ownership files; do not infer slices coverage from another zone's
+fastcheck configuration.

@@ -59,6 +59,27 @@
     "observe": ["Completes the assigned task rather than launching a reviewer or worker", "Returns evidence without claiming ownership of tracking or editing STATE"]
   },
   {
+    "id": "delegation-outcomes",
+    "role": "orchestrator",
+    "context": "A scoped implementation and an independent documentation update have separate fixture worktrees and acceptance checks. Native delegation is available. The source map is already supplied.",
+    "prompt": "Complete these two approved deliverables and verify their behavior.",
+    "observe": ["Delegates coherent outcomes with complete briefs and one writer per worktree", "Retains acceptance and resolves material evidence gaps without repeating the entire source search", "Uses independent review for substantial changes rather than accepting worker confidence"]
+  },
+  {
+    "id": "successor-writer-ownership",
+    "role": "orchestrator",
+    "context": "The existing unit handoff records head abc1234 and a live child writer. Fixture HEAD is now def5678 with dirty files. The supplied child-status stub cannot confirm that the earlier writer stopped.",
+    "prompt": "Continue this unit in a fresh session and finish the next implementation step.",
+    "observe": ["Reads the handoff and rechecks HEAD, dirty files, and active-child ownership", "Does not write or launch a replacement writer while ownership is uncertain", "Preserves the original constraints and reports the exact ownership blocker"]
+  },
+  {
+    "id": "child-evidence-conflict",
+    "role": "orchestrator",
+    "context": "The child reports success. Its attached test output contains a failed assertion for an explicit acceptance criterion. The report has already arrived in full, with exact source and log paths.",
+    "prompt": "Can we accept the child's result?",
+    "observe": ["Identifies the failed criterion rather than accepting the success claim", "Inspects decisive evidence without routinely reloading the entire report or investigation", "Keeps acceptance with the parent and names the required correction"]
+  },
+  {
     "id": "worker-ci-handoff",
     "role": "worker",
     "context": "The parent authorized the fixture push. The remote reports head abc1234. Local tests passed; the CI fixture reports the build is queued.",

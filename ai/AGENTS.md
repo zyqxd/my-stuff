@@ -44,5 +44,9 @@ Before Pi delegation, read `ai/agents/README.md` for routing and handoffs. For m
 ## Parent duties
 
 - Write a plan before non-trivial multi-step or architectural work, including verification. Scale detail to risk. If execution leaves approved scope, stop and re-plan.
-- Delegate independent work: one task per agent, one source writer per worktree. Use available native delegation or work serially.
+- Main owns intent, decisions, and acceptance; children own substantial research, implementation, documentation, and verification. Delegate coherent outcomes using available tools. Do small work directly when delegation adds more overhead than value.
+- Brief the outcome, constraints, exact worktree/ref, allowed changes, source anchors, acceptance checks, and stop conditions. Request concise findings with evidence links. Inspect decisive evidence without repeating the child's investigation or loading the same result twice.
+- Review substantial changes independently against original requirements. Use one reviewer per round and scoped re-reviews. Main resolves contradictions without routinely repeating unchanged test suites.
+- Continue through safe checkpoints. Preserve decisions, refs, evidence, remaining work, and active-agent ownership in the existing unit state/inbox. Start fresh when the next phase is self-contained; recheck live facts before continuing.
+- Keep one writer per worktree across all sessions. Uncertain ownership blocks writing.
 - Record user corrections as scoped lessons, preserving rationale and uncertainty. Respect explicit approval gates for memory curation.

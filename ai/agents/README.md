@@ -46,6 +46,28 @@ the same qualified string. A suffix such as `:medium` overrides the agent's high
 a model-only override retains high. Do not use the top-level `thinking` tool parameter
 for dispatch; it is a watchdog-management setting.
 
+## Delegation trial (approved 2026-09-12)
+
+Trial the shared contract's five parent rules before changing model capabilities.
+Main, worker, and reviewer remain Astra high; researcher remains Sonnet high;
+planner/oracle remain Fable high. All fallbacks, tools, contexts, and gates stay unchanged.
+Pi's global startup default is standard Astra below; existing sessions and project
+settings can retain a different route.
+
+At a self-contained phase boundary, use the existing managed STATE/log/inbox handoff.
+Preserve the goal, decisions, refs, evidence, remaining work, and active-child ownership.
+A successor checks HEAD, dirty files, and live writers before acting. `/resume` and
+`/fork` retain history; they are not fresh-context handoffs. Use `ai/README.md` when
+the managed updater is unavailable.
+
+Evaluate total unique main-plus-child cost, including retries, review, and repairs,
+against accepted scope, defects, missed constraints, and rework. Do not treat reduced
+main-context size or child count as success alone. No model downgrade or automatic
+session migration is part of this trial.
+
+Installation evidence and guarded rollback:
+`~/plans/pi-agent-orchestration/cost-optimizations/inbox/2026-09-12-trial-installation.md`.
+
 ## Conditional Astra 1M routing
 
 Use `openai/gpt-6-astra:high` by default: its registered context window is **272000**

@@ -60,16 +60,9 @@ bounded snapshot, so read/search the relevant full entry before relying on it.
 <!-- pi package removal -->
 - **`pi remove` can fail to match relative path packages** in `~/.pi/agent/settings.json` (e.g. `../../Workspace/pi-figma-mcp` → "No matching package found", even with the exact string). Fix: edit the `packages` array in `~/.pi/agent/settings.json` directly, then verify with `pi list`. Deleting the target directory alone does NOT remove the entry, and the stale entry still causes duplicate tool/flag registration errors (`Tool "mcp" conflicts with ...`). #lesson #bug
 
-<!-- 2026-08-20 15:27:34 [01a0205e] -->
-## Impact attribution habits (2026-08-20) #preference [[impact-attribution]]
+## Impact tracking retired (2026-09-16) #decision [[impact-attribution]]
 
-David wants attribution-to-impact baked into his workflow. Enforce during work, unprompted:
-1. **Issue creation**: every issue must chain to a project — `#gsd:` label or board/epic link. Flag orphans (his diagnostics epic #7237–#7247 was orphaned).
-2. **PR authoring**: body must `Closes <issue>`; verify the issue has project linkage; include one "Impact" line (metric/decision this serves).
-3. **On merge (placement corrected 2026-09-07)**: the original scratchpad reminder meant to prevent lost first readouts (~7d after deploy). Current unit tracking belongs to managed STATE (`ai/AGENTS.md` → Keep memory in its place); attribution evidence belongs in `~/plans/impact-ledger.md`.
-4. **Close-the-loop comment**: after deploy, draft a dated, quantified comment (BQ query + numbers) for David to post on the issue/project channel. Never post as him.
-5. **Ledger**: append landed impact one-liners to `~/plans/impact-ledger.md`; brain dailyContext Completed entries should carry "→ outcome" when known.
-6. **Experiment readouts**: remind him to get named as eng contributor on readout docs (e.g. e_improve_cancelled_reactivation).
+David explicitly retired automatic impact attribution, ledger updates, post-deploy readout reminders, and contributor-credit prompts. Historical entries are not active tasks; ordinary project links and requested measurement work remain valid.
 
 <!-- 2026-08-20 15:29:04 [01a0209c] -->
 

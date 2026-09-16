@@ -145,7 +145,6 @@ setup_agent_tooling() {
         local pkg
         for pkg in \
             npm:bigpowers \
-            npm:pi-memory \
             npm:@sentiolabs/pi-frontend-design \
             git:github.com/Shopify/pi-tool-gateway-extension \
             https://github.com/shopify-playground/pi-minerva-auth \
@@ -155,6 +154,10 @@ setup_agent_tooling() {
             pi install "$pkg" || echo "   ⚠️  Failed to install pi package $pkg"
         done
         node "$REPO_DIR/ai/install-subagents.mjs"
+        if [ ! -d "$HOME/.pi/agent/npm/node_modules/pi-memory" ] && [ ! -d "$HOME/.pi/agent/local-packages/pi-memory-0.4.2-retrieval-only" ]; then
+            pi install npm:pi-memory@0.4.2
+        fi
+        node "$REPO_DIR/ai/install-memory-integrations.mjs" --apply --only pi-memory
 
         # pi-subagents roster: every active agent is a custom file in ai/agents/
         # whose frontmatter carries its model/thinking pin (provider-qualified —
@@ -188,7 +191,9 @@ setup_agent_tooling() {
         if ! brain memory-bank list --tracked 2>/dev/null | grep -q 'grow-merchant-gmv'; then
             brain memory-bank track grow-merchant-gmv || echo "   ⚠️  Failed to track grow-merchant-gmv bank"
         fi
-        brain pi install || echo "   ⚠️  brain pi install failed"
+        if command -v pi &> /dev/null; then
+            node "$REPO_DIR/ai/install-memory-integrations.mjs" --apply --only brain
+        fi
 
         # ~/plans lives in the personal bank; keep the compatibility symlink.
         local plans_dir="$HOME/.brain/memory-bank/personal/plans"

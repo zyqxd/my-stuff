@@ -78,27 +78,47 @@ changes. Plain references are for targeted reading, not cross-client `@imports`.
 |---|---|
 | `lessons/<scope>.md` | Scoped engineering lessons; `archive/` retains retired history |
 | `memory/MEMORY.md` | Durable facts; full entries need targeted retrieval |
-| `memory/daily/`, `memory/SCRATCHPAD.md` | Unversioned exhaust, not unit state |
-| `memory/drain-state.json` | Brain drain watermark |
+| `memory/daily/`, `memory/SCRATCHPAD.md` | Historical exhaust and explicit writes, not unit state |
+| `memory/recovery/` | Recovery records for explicit forget/restore operations; never pruned by installation |
+| `memory/drain-state.json` | Existing curation watermark; retained |
+| `brain/CLAUDE.md` | Authored personal Brain rules; guarded regular-file copy in the personal bank |
+| `install-memory-integrations.mjs`, `patches/` | Reproducible Pi memory/Brain package pins |
 | `agents/` | Pi roles, routing, and runtime tests |
 | `tests/`, `evals/` | Delivery checks and behavioral scenarios |
-| `~/plans/` | Reports and unit evidence in the Brain personal bank |
+| `~/plans/` | Managed unit state and optional reports/handoff evidence in the Brain personal bank |
 
-Pi-memory injects bounded snapshots, not complete entries. Use its search/read tools
-or plain file tools to retrieve the relevant evidence. Claude's native auto memory and
-Codex's optional memories are separate recall stores, not the canonical files above.
-This setup neither migrates nor disables them.
+The pinned pi-memory is retrieval-only in every Pi session: no ambient snapshots,
+startup indexing/embedding, exit recaps, or precompaction diary copies. Explicit
+read/search/write, scratchpad, forget/restore and status tools retain upstream behavior,
+including qmd setup/indexing after explicit use. Store content and recovery records stay
+under `ai/memory/` through the existing link; nothing is pruned or migrated.
+
+Brain supplies bank/rules paths, identity fields when present, and prompt-triggered
+knowledge. Read applicable bank rules before work that depends on them; retrieved rules
+cannot expand the approved task. DailyContext updates require David's explicit diary
+request; project docs require a documentation request. A status check, project creation,
+context switch or session ending is not a diary request. activeProjects stays frozen.
+Managed unit STATE remains the current-state owner; the impact ledger stays retired.
+
+Claude's native auto memory and Codex's optional memories are separate recall stores,
+not the canonical files above. This setup neither migrates nor disables them.
 
 ### Unit handoffs and reports
 
 A unit capsule is `~/plans/<project>/<unit>/`: managed STATE head, log tail, and `inbox/`.
+The separate context-switching extension (`~/Workspace/context-switching`) owns head
+rewrites. Its four-line STATE is an orientation summary, not a complete handoff; Pi
+session history and subagent runtime records retain execution detail.
 Read its head at session start for orientation, then recheck live facts before acting.
-When the managed updater is unavailable, save evidence in the existing unit's `inbox/`
-and disclose that STATE was not refreshed. Ask if the destination is unknown.
+When the managed updater is unavailable, disclose that STATE was not refreshed. Do not
+hand-edit it or create a report just to compensate for stale state.
 
-Reports are self-contained analysis extracts, not competing status snapshots. Use the
-real system date and `~/plans/README.md` → **Report naming** for filenames. Its legacy
-todo-retrieval advice does not govern current state.
+Plans and results stay in chat by default; temporary runtime artifacts are fine. Save a
+durable report only when requested, required by an applicable workflow, or needed for a
+genuine handoff. Use the existing unit's `inbox/` for such extracts, not competing status
+snapshots. If a durable destination is needed but unknown, ask. Use the real system date
+and `~/plans/README.md` → **Report naming** for filenames. Its legacy todo-retrieval
+advice does not govern current state.
 
 ### Lessons and curation
 
@@ -107,6 +127,95 @@ scope, evidence, and uncertainty. Ask for missing boundaries rather than inventi
 Keep behavior in the contract, scoped guidance in lessons, and retrievable facts in memory.
 When promoting a rule, retain provenance rather than another copy of its instructions.
 A correction does not authorize unrelated memory cleanup.
+
+## Pi memory/Brain package pins
+
+Installation is explicit and must run from the approved canonical checkout, not a feature
+worktree. Requires Node, `patch`, stock pi-memory **0.4.2** and the reviewed Brain Pi
+**2.1.0** toolchain tree. No installer calls a model, Brain lifecycle command, or network.
+If stock pi-memory is missing on first setup, install `npm:pi-memory@0.4.2` with Pi first;
+`setup.sh` does this and selects the pins instead of re-registering stock Brain/memory.
+
+```sh
+node ai/install-memory-integrations.mjs                 # doctor; no writes
+node ai/install-memory-integrations.mjs --prepare-only  # independent local copies; no settings change
+node ai/install-memory-integrations.mjs --apply         # select verified copies
+# Add --only pi-memory or --only brain for a single package.
+```
+
+`PI_CODING_AGENT_DIR` can select a different absolute agent directory; Brain's source
+still comes from the activated user toolchain. The installer verifies entire package
+content trees (excluding node_modules), copies resolved sources to independent staging,
+applies versioned patches, and verifies the results. Both packages use only Pi-provided
+runtime imports; no npm peer copies are carried into the pins. Existing targets are
+never overwritten. Settings retain unrelated packages, provider/subagent configuration,
+and package resource filters. Failures exit 1; success exits 0. Keep other settings
+writers stopped during application; the pre-write comparison is not a filesystem lock.
+
+Selected sources, relative to Pi's agent directory:
+- `local-packages/pi-memory-0.4.2-retrieval-only`
+- `local-packages/brain-pi-2.1.0-targeted-context`
+
+Each copy records its resolved origin and content hashes in `.integration-origin.json`.
+Brain's origin records the Nix store path. Doctor fails on toolchain-origin or content
+drift, local modifications, and duplicate original/pinned registrations (including direct
+extension entries). Do not run `brain pi install` while pinned: it adds the stock path
+back and may double-load Brain. After an upgrade, review the source changes and update
+patches/hashes/tests before replacing a pin. Pi package updates do not advance these copies.
+Doctor checks the selected agent settings, not every project's settings; check project
+package/extension entries too before deployment.
+
+Pi no longer runs `brain session start/end`: it does not automatically archive diaries,
+sync banks, rebuild the trigger cache, or submit changes. Manual Brain commands retain
+their existing behavior and permission requirements; CLI `auto_submit` is unchanged.
+After knowledge changes, explicitly run `brain knowledge build-cache` when appropriate.
+Missing/malformed caches retain the last good in-process snapshot and report a warning;
+a fresh process with no cache needs an explicit rebuild for targeted knowledge.
+
+### Personal rules adoption
+
+`ai/brain/CLAUDE.md` owns authored personal rules. Brain deliberately rejects symlinked
+rules, so adoption is a guarded regular-file copy, separate from package installation:
+
+```sh
+node ai/install-brain-rules.mjs          # compare reviewed preimage; no writes
+node ai/install-brain-rules.mjs --apply  # only after personal-bank installation approval
+```
+
+The script requires the reviewed preimage SHA-256 (or already-matching managed content),
+keeps `CLAUDE.md.before-my-stuff`, and refuses changed bank content or backup collisions.
+Future rule edits require reviewing the installed preimage and updating that hash, not
+blindly overwriting bank edits. No team-bank content is adopted. To undo adoption, first
+verify the installed file still matches `ai/brain/CLAUDE.md`, then restore the preserved
+regular-file backup after approval; keep the backup for recovery.
+
+### Verification before accepting installation
+
+Reload parents after package changes. Check a real researcher `session.jsonl`: only the
+compact new Brain envelope, no new memory snapshot/recap; global/project contract, skills,
+triggered knowledge, brief and evidence must survive. Verify a fork retains parent history
+and provider/model/effort. Old persisted Brain/memory context remains in resumed/forked
+history deliberately; these pins never rewrite prior messages. Isolated hook tests below
+are not a substitute for this approval-gated live child check.
+
+### Rollback, per package
+
+After approval, use Pi's native package selection (preserve any resource filters):
+
+```sh
+pi remove "$HOME/.pi/agent/local-packages/pi-memory-0.4.2-retrieval-only"
+pi install npm:pi-memory@0.4.2
+
+pi remove "$HOME/.pi/agent/local-packages/brain-pi-2.1.0-targeted-context"
+brain pi install
+```
+
+Reload afterward. Memory rollback restores automatic context/diary behavior; Brain
+rollback selects the **current toolchain release**, restoring its lifecycle subprocesses
+and broad startup block. Neither rollback removes memory/recovery/history or the local
+pin copies. Rolling back a package does not roll back personal rules. To stay on upstream,
+remove the corresponding pin calls from `setup.sh` only after reviewing upstream behavior;
+otherwise setup reselects the pin. The separate pi-subagents fix is unaffected.
 
 ## Verification
 
@@ -121,6 +230,12 @@ Tests use disposable fixtures. `PI_PACKAGE_DIR` enables actual Pi loading, role 
 prompt construction, and child rewriting, including a false-inheritance control. Codex's
 offline test checks linked content and override replacement. Unavailable runtimes produce
 explicit skips. Existing routing tests require the configured Pi/subagent installation.
+Memory integration tests load the actual patched hooks through Pi, exercise all five
+resolved role prompts and native fork history, and keep model/CLI test doubles offline.
+They need the reviewed stock sources (`MEMORY_PACKAGE_DIR` / `BRAIN_PI_PACKAGE_DIR`
+can override installed locations). Personal-rules adoption tests need the reviewed
+preimage from the live file, its backup, or `BRAIN_PERSONAL_RULES_PREIMAGE`; unavailable
+inputs skip explicitly. These are delivery tests, not live provider/agent-accuracy proof.
 
 Native diagnostics:
 
@@ -132,7 +247,7 @@ claude -p /context --tools '' --strict-mcp-config --mcp-config '{"mcpServers":{}
 
 Inspect the contract content in Codex's input and its path in Claude's Memory Files.
 These diagnostics require no model turns in the verified versions. Stop if another
-version requests authentication. Save evidence in the unit inbox.
+version requests authentication.
 
 Loading tests prove delivery, not instruction-following. Use `evals/` when a behavioral
 change needs evaluation, not as mandatory ceremony for every wording edit. Prompt rules

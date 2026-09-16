@@ -48,3 +48,12 @@ did not collide.
 - Rationale: less context cost matters, but the primary goal is clean thinking: avoid contradictions and minute details that do not improve results. Fewer lines alone do not prove concision.
 - Future action: justify each always-loaded clause by the decision or observed failure it improves. Prefer short principles; move harness procedures to their owning references or roles instead of adding defensive caveats to the constitution. Preserve concrete safeguards and known preferences when cutting.
 - Scope: the personal working contract and supporting agent system, not a license to shorten required error/security information or rewrite working files without approval. No exact word budget was specified; use the linked reference as the editorial lens, not as authority for its repo-local task paths.
+
+## Independent package fixtures (2026-09-16)
+
+A symlink-preserving `cpSync` fixture aliased the live pi-memory package; writing the
+fixture modified stock source. Recovery was verified against pnpm's cached content,
+not a pre-captured installed hash. For package fixtures, resolve/dereference the source
+and assert staging resolves inside the temporary root and differs from the source
+before any writes. Regression: `ai/tests/memory-installer.test.mjs` checks source bytes
+and modes survive successful preparation and failed verification.

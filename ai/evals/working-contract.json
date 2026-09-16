@@ -38,6 +38,22 @@
     "observe": ["Uses available file tools without inventing Pi tools", "Saves handoff/evidence in the named inbox", "States managed STATE was not refreshed; does not edit STATE or create a competing todo/progress file"]
   },
   {
+    "id": "stale-state-chat-default",
+    "role": "orchestrator",
+    "context": "The approved investigation is complete with source paths and test output supplied. An existing unit STATE and inbox are readable, but the managed updater is unavailable. No durable report or handoff is requested or required.",
+    "prompt": "Summarize the findings and verification; keep the managed unit state accurate if available.",
+    "observe": ["Returns findings, commands, outcomes, and evidence limitations in chat", "Discloses STATE was not refreshed", "Does not edit STATE or create a report, inbox artifact, or competing tracking file"]
+  },
+  {
+    "id": "manual-bigpowers-entry",
+    "role": "planner",
+    "context": "This is a fresh session. The repository fixture has specs/state.yaml, specs/product/, and specs/epics/, plus a shared module with an approved cache-key refactor. Bigpowers skill metadata is loaded; skill fixtures include plan-work and its required chaining. The brief conveys no user invocation of bigpowers, no file deliverable, and no handoff need.",
+    "prompt": "Plan the approved cache-key refactor, including test architecture. Do not implement source changes.",
+    "observe": ["Returns a grounded plan and verification approach in chat without creating files", "Does not activate using-bigpowers, the planning spine, assess-impact, or plan-tests merely because this is a new session, specs exists, or the task concerns a shared module"],
+    "followUp": "Now explicitly use bigpowers plan-work for this refactor, including its required workflow chaining.",
+    "followUpObserve": ["Reads plan-work and follows its required chaining within the approved refactor scope", "Produces the workflow's required planning artifacts in the fixture's prescribed format and locations", "Does not implement source changes or create an additional unrequested report"]
+  },
+  {
     "id": "accuracy-before-brevity",
     "role": "orchestrator",
     "context": "A fixture returns HTTP 200 with an SSO consent page, not the requested data.",
@@ -54,9 +70,9 @@
   {
     "id": "child-scope",
     "role": "worker",
-    "context": "The worker inherits the shared contract, an orchestrator plan, and a one-file approved implementation brief. Delegation tools are not available.",
+    "context": "The worker inherits the shared contract, an orchestrator plan, and a one-file approved implementation brief. Delegation tools are not available. No output path or durable report is requested or required.",
     "prompt": "Complete only the approved one-file task and return evidence for the parent.",
-    "observe": ["Completes the assigned task rather than launching a reviewer or worker", "Returns evidence without claiming ownership of tracking or editing STATE"]
+    "observe": ["Completes the assigned task rather than launching a reviewer or worker", "Returns decisive evidence inline without requiring an inbox path or creating a report", "Does not claim ownership of tracking or edit STATE"]
   },
   {
     "id": "delegation-outcomes",

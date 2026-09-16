@@ -3,14 +3,14 @@
 Demoted from `ai/AGENTS.md` on 2026-09-01 — reference material, read on demand.
 The shared contract owns behavioral boundaries; the table lives here.
 
-When a task calls for delegation — or a bigpowers skill references the "Agent
-tool" — use the `subagent` tool. Five agents, one per phase of the cycle
-(routing approved 2026-09-07; live evidence in
+When a task calls for delegation — or an explicitly invoked bigpowers workflow
+references the "Agent tool" — use the `subagent` tool. Five agents, one per phase of
+the cycle (routing approved 2026-09-07; live evidence in
 `~/plans/pi-agent-orchestration/2026-09-07-astra-routing-verification.md`):
 
 | phase | agent | context | model:effort | writes | use when |
 |---|---|---|---|---|---|
-| ask → plan | `planner` (alias shaper) | fresh | fable-5-1:high → sol | plan / bigpowers specs only | the ask is vague; you want a scoped, decision-explicit plan before anyone codes |
+| ask → plan | `planner` (alias shaper) | fresh | fable-5-1:high → sol | plans; bigpowers specs only when invoked | the ask is vague; you want a scoped, decision-explicit plan before anyone codes |
 | know | `researcher` | fresh | sonnet-5:high → opus-5 | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
 | build | `worker` (alias design-worker) | fresh | gpt-6-astra:high → sol | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
 | check | `reviewer` | fresh | gpt-6-astra:high → opus-5 | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
@@ -54,8 +54,9 @@ planner/oracle remain Fable high. All fallbacks, tools, contexts, and gates stay
 Pi's global startup default is standard Astra below; existing sessions and project
 settings can retain a different route.
 
-At a self-contained phase boundary, use the existing managed STATE/log/inbox handoff.
-Preserve the goal, decisions, refs, evidence, remaining work, and active-child ownership.
+At a self-contained phase boundary, use the existing managed STATE for continuity;
+add a handoff artifact only when needed. Preserve the goal, decisions, refs, evidence,
+remaining work, and active-child ownership for the successor.
 A successor checks HEAD, dirty files, and live writers before acting. `/resume` and
 `/fork` retain history; they are not fresh-context handoffs. Use `ai/README.md` when
 the managed updater is unavailable.
@@ -88,12 +89,15 @@ Fable planner/oracle and Sonnet have 1M cards. Fable avoids Astra's price increa
 272K for the routinely large oracle transcript. For exact current prices use the model
 registry, not the abbreviated table above.
 
-Dispatch briefs name an absolute output path into the unit's `inbox/` and set the
-runtime's explicit `output` to that same path, distinct per child. A prose filename
-alone is not persistence. Read-only reviewer/oracle return their artifact; the runtime
-or parent saves it, and the parent verifies the file exists. Children never use bash
-to work around no-write instructions. bigpowers task_brief (goal, in_scope,
-out_of_bounds, verify) remains the brief protocol.
+Return concise findings and decisive evidence in chat by default; no per-child inbox
+file is required. If the runtime needs output artifacts, use temporary paths outside
+source checkouts. For a requested, required, or genuinely needed durable handoff, name
+an absolute unit `inbox/` path in the brief and set the runtime's explicit `output` to
+match, distinct per child. A prose filename alone is not persistence. Read-only roles
+return their artifact; when persistence is needed, the runtime or parent saves it and
+the parent verifies the file exists. Children never use bash to work around no-write instructions.
+When bigpowers is explicitly invoked, its task_brief (goal, in_scope, out_of_bounds,
+verify) remains the brief protocol.
 
 ## Shared contract delivery
 
@@ -129,7 +133,8 @@ loading and verification; the contract separates parent duties from all-agent ru
 - **Never give an agent a relative `output:` in frontmatter.** It resolves against the cwd,
   so the child writes into whatever repo the parent is in — and it silently overrides the
   absolute path in the dispatch brief. `researcher` (`research.md`) and `shaper`
-  (`plan.md`) both had this. Omit `output:`; let the brief carry an absolute path.
+  (`plan.md`) both had this. Omit frontmatter `output:`; when an output path is needed,
+  use an absolute runtime path that matches the brief.
 - **Stock 0.64.0 can silently reduce signed-fork effort.** Removing signed Claude
   thinking can force `:off`; Pi 0.84.3 clamps Fable's unsupported off to minimal and
   sends adaptive **low**, not the API default. The installed local patch skips that
@@ -203,9 +208,10 @@ signed-fork regression. Do not merely update npm while the local source remains 
 
 ## Operational notes
 
-- `runs.all` children of the same agent type collide on that agent's default
-  output path and all fail instantly. Pass an explicit distinct `output` per
-  item. (2026-08-28, and again during the 2026-09-01 memory refinement.)
+- `runs.all` children of the same agent type collided on that agent's default output
+  path and all failed instantly (2026-08-28, and again during the 2026-09-01 memory
+  refinement). Where the runtime needs explicit outputs to avoid this, use distinct
+  temporary paths unless durable retention is needed.
 - `status.json` does not hold the full review. If explicit output persistence failed,
   recovery may be available via `output-archives/<runId>.json` → `session.jsonl` →
   assistant text. Verify the actual artifact instead of relying on the prose path.

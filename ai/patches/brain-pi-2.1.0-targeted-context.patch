@@ -1,0 +1,422 @@
+--- a/extensions/brain/index.ts
++++ b/extensions/brain/index.ts
+@@ -1,25 +1 @@
+-/**
+- * Brain extension for Pi.
+- *
+- * Loads memory bank context at session start and runs brain session
+- * lifecycle hooks (sync/archive on start, submit-check on shutdown).
+- * Bank reads/writes go through the standard read/edit/write/bash tools
+- * combined with the `brain` CLI; no bank-specific tools are registered
+- * here (see investigation.md, 2026-04-30 audit).
+- *
+- * Static context (per-bank rules files, the personal bank's
+- * `core/{activeProjects,dailyContext}.md`, and the `brain --help`
+- * reference) is injected *once per session* as a `display: false` custom
+- * message so it persists in conversation history. Triggered knowledge
+- * files stay per-turn and are added to the system prompt because they
+- * depend on the user's current prompt text. The static block is
+- * re-armed on `session_compact` (history may have been summarised
+- * away). See the `staticContextPending` guard below.
+- *
+- * Bank discovery shells out to the agent-agnostic `brain` CLI rather
+- * than reading config directly. The CLI is on PATH via the activated
+- * tec profile (`dev tools install brain` exposes `bin/brain`). The
+- * extension also overrides the built-in `bash` tool with a spawn hook
+- * that prepends the toolchain bin dir to PATH, so the agent can run
+- * `brain ...` directly (pi's bash tool spawns with a sanitized env).
+- */
++/** Brain discovery and prompt-triggered knowledge; bank mutations require explicit commands. */
+@@ -259,36 +234,0 @@
+-  // Cache `brain --help` once at extension load. Small (~3.5KB) and is the
+-  // canonical CLI reference, so injecting it beats forcing the agent to
+-  // grep skills or guess command shapes.
+-  const cliHelp = brainCli(["--help"], 5000);
+-
+-  // ── Session start ───────────────────────────────────────────────
+-
+-  // Captured stdout of `brain session start` — bank readiness, required
+-  // reading, warnings. Injected into the system prompt on the first
+-  // before_agent_start so the agent sees the same bootstrap context the
+-  // Claude hook surfaces via stderr. Cleared after first injection.
+-  let sessionStartOutput = "";
+-
+-  // One-shot guard for the static context block — per-bank rules files,
+-  // the personal bank's core/{activeProjects,dailyContext}.md, and the
+-  // `brain --help` reference. Pi's `before_agent_start` fires on every
+-  // turn, but this content doesn't change mid-session, so re-injecting
+-  // it just inflates each turn's system prompt (~2.5KB+ per turn for a
+-  // team with a typical CLAUDE.md). We mirror the Claude client, which
+-  // only emits this block from its SessionStart hook.
+-  //
+-  // The static block is delivered as a custom *message* (not a
+-  // systemPrompt override) so it persists in the conversation history
+-  // for the rest of the session. A systemPrompt return from
+-  // before_agent_start is replace-per-turn and would silently evict the
+-  // bank context on turn 2 (which is exactly what an earlier revision of
+-  // this guard did).
+-  //
+-  // Reset on `session_start` (any reason: startup/reload/new/resume/fork),
+-  // on `session_compact` (history is summarised, so the custom message
+-  // from earlier turns may have been compressed away), and on
+-  // `session_tree` (branch navigation can land on a leaf where the
+-  // brain-context message isn't on the path). The resume case will
+-  // duplicate the brain-context message in history (one from each
+-  // session) — intentional: bank state (dailyContext.md, etc.) changes
+-  // between sessions and the model should see the fresh copy.
+@@ -298,18 +237,0 @@
+-    // brain session start archives daily context, kicks off a background
+-    // sync, and prints the required-reading list. Best-effort — surface a
+-    // warning on failure but don't block the session.
+-    try {
+-      sessionStartOutput = execFileSync(BRAIN_BIN, ["session", "start"], {
+-        timeout: 30000,
+-        encoding: "utf8",
+-      }).trim();
+-    } catch {
+-      ctx.ui.notify("brain session start failed — bank state may be stale", "warn");
+-    }
+-
+-    // `brain session start` rebuilds the knowledge trigger cache from the
+-    // current config. Refresh the banks first so regenerated entries resolve
+-    // against current paths instead of the extension factory's snapshot.
+-    // Reload even after a failed start: the cache update may have completed
+-    // before a later session-start step failed. Commit the refresh atomically;
+-    // a transient CLI/cache read failure must not clobber known-good context.
+@@ -326,2 +247,0 @@
+-    // Re-arm the static block — a resumed or freshly started session
+-    // needs the bank rules + core files in its first turn's prompt.
+@@ -349,2 +269 @@
+-  // The static block (bank rules, personal core files, brain --help,
+-  // session-start envelope) is returned as a *custom message* so it
++  // The compact bank discovery block is returned as a *custom message* so it
+@@ -365,13 +283,0 @@
+-      // `brain session start` envelope, when present — mirrors the
+-      // Claude hook's SessionStart stdout. Captured into a local so we
+-      // only commit the clear (below) once delivery is confirmed; a
+-      // throw between push and return would otherwise lose the envelope
+-      // permanently.
+-      const capturedSessionStartOutput = sessionStartOutput;
+-      if (capturedSessionStartOutput) {
+-        staticParts.push(`## Brain Session Start\n\n\`\`\`\n${capturedSessionStartOutput}\n\`\`\``);
+-      }
+-
+-      // Per-bank rules file. Injected for *every* tracked bank so team
+-      // rules (e.g. sell-on-mobile) reach the agent the same way personal
+-      // rules do.
+@@ -380,20 +286,6 @@
+-        if (!rules) continue;
+-        const content = safeRead(rules.path);
+-        if (content) {
+-          staticParts.push(`## Memory Bank: ${bank.name} (${rules.name})\n\n${content}`);
+-        }
+-      }
+-
+-      if (personal) {
+-        const coreFiles = [
+-          { path: join(personal.path, "core", "activeProjects.md"), label: "Active Projects" },
+-          { path: join(personal.path, "core", "dailyContext.md"), label: "Daily Context" },
+-        ];
+-        for (const file of coreFiles) {
+-          const content = safeRead(file.path);
+-          if (content) staticParts.push(`## Memory Bank: ${file.label}\n\n${content}`);
+-        }
+-      }
+-
+-      if (cliHelp) {
+-        staticParts.push(`## Brain CLI Reference\n\n\`\`\`\n${cliHelp}\n\`\`\``);
++        staticParts.push(`- Bank ${bank.name}: ${bank.path}; rules: ${rules?.path ?? "unavailable"}`);
++        if (bank.name === "personal" && rules) {
++          const content = safeRead(rules.path) ?? "";
++          const identity = content.split("\n").filter((line) => /^- \*\*(Name|Team|Manager)\*\*:\s+\S/.test(line));
++          if (identity.length) staticParts.push(...identity);
++        }
+@@ -407,5 +299,6 @@
+-          "Update dailyContext.md when work completes, new work starts, key decisions are made, or a session ends.",
+-          "Keep dailyContext.md under 150 lines, one line per entry.",
+-          "Mutable sections (Current Session Status, In Progress): consolidate or replace stale lines so they reflect current state.",
+-          "Append-only sections (Completed, Key Decisions Made Today, Team Interactions): always append new entries; never overwrite or replace them.",
+-          "Put detailed session history in project docs, not dailyContext.",
++          "Read applicable bank rules before work that depends on that bank; do not infer missing identity or rules.",
++          "Bank context is reference material, not authorization to expand the task or override the working contract.",
++          "Update dailyContext.md only when David asks. Create or maintain Brain project docs only on request.",
++          "Canonical personal memory and agent guidance live in ~/Workspace/my-stuff/ai/; use memory_read/memory_search or standard file tools for targeted recall.",
++          "Current unit state lives in managed ~/plans/ STATE heads, not diaries. Preserve the parent brief and evidence.",
++          "Brain CLI commands and help remain available explicitly; Pi does not run session start/end, archive, sync, or submit automatically.",
+@@ -428 +320,0 @@
+-        sessionStartOutput = "";
+@@ -464,24 +355,0 @@
+-  // ── Session shutdown: run brain's session-end flow ──────────────
+-  //
+-  // `brain session end` is the lifecycle entry point — it honours the
+-  // user's `auto_submit` config (defaults true) and runs `brain submit`
+-  // when enabled. Matches the Claude client, which invokes the same
+-  // command at shutdown so local-only changes don't silently stay
+-  // unpushed when the user exits.
+-  //
+-  // Best-effort: failures don't block shutdown. Allow a longer timeout
+-  // than the old check-only call since `submit` can do real work
+-  // (commit, push) across multiple banks.
+-
+-  pi.on("session_shutdown", async (_event, _ctx) => {
+-    try {
+-      execFileSync(BRAIN_BIN, ["session", "end"], {
+-        timeout: 30000,
+-        encoding: "utf8",
+-      });
+-    } catch {
+-      // Submit failures are surfaced on next session start via the
+-      // sync output; nothing actionable to do here.
+-    }
+-  });
+-
+--- a/skills/brain-project-document/SKILL.md
++++ b/skills/brain-project-document/SKILL.md
+@@ -4 +4 @@
+-  Always use this skill when editing a project's files. Never edit a project's files (decisions.md, investigation.md, implementation.md, CHANGELOG.md, requirements.md, or local/ and documents/) without first reading this skill. Updates project folder documentation and promotes qualifying local/ files to documents/. Triggers: user says "document what we've done", "update project docs", or "document this work"; after completing a feature or investigation; before context switching to a different project; at end of a work session; any time you are about to write to a project folder file.
++  Use only when David explicitly asks to create or update Brain project documentation or promote local/ files. Read this skill before performing those requested edits. Completing work, switching context, and ending a session are not triggers.
+@@ -16 +16 @@
+-- Updates project-related sections in core files (dailyContext, activeProjects)
++- Updates dailyContext only when David asks; activeProjects remains frozen
+@@ -25,11 +25,2 @@
+-**After significant project work:**
+-- Completing a feature or investigation
+-- Before context switching to a different project
+-- End of work session on a project
+-- Need to promote local/ files to documents/
+-
+-**NOT for:**
+-- Simple dailyContext updates → update directly inline
+-- Quick activeProjects status changes → update directly inline
+-- Single decisions during work → update decisions.md directly inline
+-- Quick progress notes → add TaskWarrior annotation
++Do not run this skill automatically after work, before switching context, or at session end.
++Do not create diary entries, progress notes, or project files to compensate for missing managed STATE updates.
+@@ -127 +118 @@
+-- **Core files** (project sections only): Updates related to this specific project
++- **Core files**: dailyContext only when David asks; never update frozen activeProjects
+--- a/skills/brain-check-all/SKILL.md
++++ b/skills/brain-check-all/SKILL.md
+@@ -11 +11 @@
+-Provide comprehensive daily status check by gathering information from Google Calendar, Slack, and GitHub, then present a succinct numbered summary and update dailyContext.md.
++Provide comprehensive daily status check by gathering information from Google Calendar, Slack, and GitHub, then present a succinct numbered summary in chat.
+@@ -71 +71,4 @@
+-### 6. Update dailyContext.md
++### 6. Diary update (only when requested)
++
++Update dailyContext.md only when David asks. activeProjects.md is frozen; do not edit it.
++A status check is not a request to update the diary. Skip steps 6 and 7 unless David asks for a diary update.
+--- a/skills/brain-project-check/SKILL.md
++++ b/skills/brain-project-check/SKILL.md
+@@ -11 +11 @@
+-Provide comprehensive project-specific status check by gathering information from Slack, GitHub project boards, and calendar, then present a succinct numbered summary and update memory bank files.
++Provide comprehensive project-specific status check by gathering information from Slack, GitHub project boards, and calendar, then present a succinct numbered summary in chat. A status check does not authorize memory bank edits.
+@@ -25 +25 @@
+-First check `activeProjects.md` — it contains paths and aliases for all active projects.
++First check `activeProjects.md` — it is a frozen snapshot of paths and aliases, not current project state.
+@@ -34 +34 @@
+-- Current status and blockers
++- Historical status and blockers; recheck current state at source
+@@ -64 +64 @@
+-### 8. Update activeProjects.md
++### 8. Preserve memory bank files
+@@ -66,5 +66,2 @@
+-Update with current timestamp as "last checked" and any status changes discovered.
+-
+-### 9. Update dailyContext.md
+-
+-Update with any user actions discovered.
++Update dailyContext.md only when David asks. activeProjects.md is frozen; do not edit it.
++Report current findings in chat; do not create project docs or diary entries for a status check.
+--- a/skills/brain-project-create/SKILL.md
++++ b/skills/brain-project-create/SKILL.md
+@@ -4 +4 @@
+-  Always use this skill when adding a project. Never create a project directory without this skill. Scaffolds new project folders from templates with proper structure and naming conventions. Triggers: starting work on a new Vault GSD project, incident investigation, GitHub issue, research exploration, data analysis, or personal/hackday project that doesn't yet have a project folder; user says "create project", "new project", "start tracking", or "set up a folder"; a TaskWarrior task references an issue with no corresponding project folder.
++  Use when David explicitly requests a Brain project folder. Read this skill before creating the requested folder through the Brain CLI. Starting implementation, investigation, or an issue does not itself authorize project documentation.
+@@ -15 +15 @@
+-Use this skill whenever creating a new project folder:
++Use this skill for a requested new project folder in these areas (work alone is not a creation trigger):
+@@ -44 +44 @@
+-Use the brain CLI to create a new project. See `brain --help` (injected at session start) for the exact command and flags.
++Use the brain CLI to create a new project. Run `brain --help` explicitly for the exact command and flags.
+@@ -101 +101 @@
+-After successful creation, remind the user:
++After successful creation, report the created path and complete only the requested project documentation.
+@@ -103,3 +103,2 @@
+-1. **Add to activeProjects.md**: Add the new project to the active projects list
+-2. **Update dailyContext.md**: Note the project start in today's context
+-3. **Start documenting**: Fill in the template files
++Update dailyContext.md only when David asks. activeProjects.md is frozen; do not edit it.
++A project-creation request is not a diary-update request.
+--- a/skills/brain-project-onboarding/SKILL.md
++++ b/skills/brain-project-onboarding/SKILL.md
+@@ -30 +30 @@
+-**If NOT found**: Ask if the user wants to create one (via the brain CLI). Then add to activeProjects.md and update dailyContext.md.
++**If NOT found**: Ask if the user wants to create one (via the brain CLI). Update dailyContext.md only when David asks. activeProjects.md is frozen; do not edit it.
+@@ -34 +34 @@
+-Use the brain CLI to create the project. Then add to activeProjects.md and update dailyContext.md.
++Only after David confirms creation, use the brain CLI to create the project. Update dailyContext.md only when David asks. activeProjects.md is frozen; do not edit it.
+@@ -42 +42 @@
+-Read the personal bank's `core/githubBoard.md`, search for issues with GSD label, populate issues.md.
++Read the personal bank's `core/githubBoard.md`, search for issues with GSD label, and report matches in chat. Populate issues.md only if David requests project documentation.
+--- a/skills/brain-project-document/references/documentation-methodology.md
++++ b/skills/brain-project-document/references/documentation-methodology.md
+@@ -3 +3,4 @@
+-This reference provides systematic guidance for updating the memory bank after reviewing session work.
++This reference applies only to project documentation David requests. Routine work, status checks, context switches, and session endings do not authorize file updates.
++
++Update dailyContext.md only when David asks. activeProjects.md is frozen; do not edit it.
++A request for project documentation does not by itself request a diary update. Keep unrequested findings in chat.
+@@ -15 +18 @@
+-- **Polish Proportionally**: dailyContext/activeProjects are high-frequency (polish heavily)
++- **Polish Proportionally**: polish requested documentation in proportion to how often it is read
+@@ -20 +22,0 @@
+-- activeProjects context summary: 30-50 words (2-3 lines)
+@@ -49 +51 @@
+-- ✅ Document in core files (dailyContext.md, activeProjects.md)
++- ✅ Update dailyContext.md only when David asks; never edit frozen activeProjects.md
+@@ -53 +55 @@
+-- ✅ Document in core files only (dailyContext.md, activeProjects.md)
++- ✅ Keep findings in chat, or update dailyContext.md only when David asks
+@@ -55 +57 @@
+-- ℹ️ Note in summary that work was documented but no project folder exists
++- ℹ️ Note in chat that no project folder exists
+@@ -60,4 +62,4 @@
+-- Found: Document in project folder + core files
+-- Not found: Document in core files only
+-
+-Casual troubleshooting without project context → Document in core files only
++- Found: Document in the requested project folder; diary only if separately requested
++- Not found: Keep findings in chat; diary only if separately requested
++
++Casual troubleshooting without project context → Keep findings in chat; diary only if separately requested
+@@ -70 +72 @@
+-- activeProjects.md (project statuses)
++- activeProjects.md (frozen historical pointers, not current status)
+@@ -73 +75,3 @@
+-### Step 3: Update dailyContext.md
++### Step 3: Update dailyContext.md only when David asks
++
++Skip this step unless David specifically requests a diary update.
+@@ -181 +185 @@
+-   - Remove sub-bullets from dailyContext/activeProjects entries
++   - Remove sub-bullets from requested dailyContext entries
+@@ -197 +200,0 @@
+-- activeProjects context: Aim for 30-50% reduction from draft
+@@ -200,44 +203,3 @@
+-### Step 4: Update activeProjects.md
+-
+-Update project status if:
+-- Project phase changed (Investigation → Implementation, etc.)
+-- New blocker emerged or blocker cleared
+-- Major milestone reached
+-- Project completed or put on hold
+-
+-**What to update:**
+-- **Status** line if phase changed
+-- **Blocker** line if blocker status changed
+-- **Context** section if significant progress made (30-50 words max)
+-
+-**Date Management:**
+-- Do NOT add or update any dates in activeProjects.md
+-- No "Current Date" header
+-- No "Last Updated" in project sections
+-- File modification time = review timestamp
+-- Project README.md files track their own dates
+-
+-**LINE LIMITS (STRICTLY ENFORCED):**
+-- Primary focus projects: 15-20 lines maximum
+-- Secondary projects: 5-7 lines maximum
+-- Awareness-only: 3-4 lines maximum
+-
+-**FORBIDDEN in activeProjects.md:**
+-- ❌ "Mental State When Paused" (→ project folder README or dailyContext)
+-- ❌ "Background Context (Not Your Current Focus)" (→ remove entirely)
+-- ❌ Full team member lists with roles (→ project README)
+-- ❌ Implementation details, PR numbers (→ project implementation.md)
+-- ❌ Experiment monitoring details (→ project README)
+-- ❌ Code snippets or technical details (→ project folder)
+-- ❌ Task counts (users query TaskWarrior directly)
+-- ❌ Next actions (TaskWarrior owns this)
+-
+-**Pre-Write Check:**
+-1. Does this belong in project folder instead?
+-2. Can I say this in 1-2 sentences?
+-3. Am I duplicating information from linked project folder?
+-4. Would removing this sentence lose critical status information?
+-
+-If "yes" to 1, 2, or 3: Don't write it.
+-Only write if "yes" to 4.
+-
++### Step 4: Preserve frozen activeProjects.md
++
++Do not edit this file. Recheck live project status at its source and use managed unit STATE heads for orientation.
+@@ -449,2 +411,2 @@
+-1. **dailyContext.md** - Add completed work, key decisions, team interactions
+-2. **activeProjects.md** - Update project statuses if changed
++1. **dailyContext.md** - Update dailyContext.md only when David asks
++2. **activeProjects.md** - Preserve unchanged (frozen)
+@@ -483 +445 @@
+-1. **Check dailyContext.md** - Does it accurately reflect today's work?
++1. **If a diary update was requested, check dailyContext.md** - Does the requested update accurately reflect today's work?
+@@ -488,4 +450 @@
+-2. **Check activeProjects.md** - Are project statuses current?
+-   - Within line limits (15-20 / 5-7 / 3-4)?
+-   - No forbidden content (Mental State, implementation details)?
+-   - No dates?
++2. **Check activeProjects.md** - Was the frozen file preserved unchanged?
+@@ -508 +467 @@
+-**Look for these patterns in sessions:**
++**Within the requested documentation scope, look for these patterns (they are not automatic update triggers):**
+@@ -512 +471 @@
+-3. **"I've merged PR #..."** → Completed work for dailyContext.md
++3. **"I've merged PR #..."** → Completed work for the diary only if David asks
+@@ -515,2 +474,2 @@
+-6. **"We're blocked on..."** → Blocker for activeProjects.md
+-7. **"In the meeting we discussed..."** → Team interaction for dailyContext.md
++6. **"We're blocked on..."** → Blocker to report in chat; activeProjects.md remains frozen
++7. **"In the meeting we discussed..."** → Team interaction for the diary only if David asks
+@@ -536 +495 @@
+-13. **Documenting without project** - If no project exists, document in core files only, don't create one
++13. **Documenting without project** - If no project exists, report in chat unless David asks for a diary update; don't create a project
+@@ -545 +504 @@
+-- [ ] Each activeProjects context is 30-50 words
++- [ ] Frozen activeProjects.md preserved unchanged
+@@ -553,3 +512,2 @@
+-- [ ] dailyContext.md updated with today's completed work
+-- [ ] Key decisions documented in both dailyContext.md and project decisions.md
+-- [ ] activeProjects.md reflects current project states (no dates, within line limits)
++- [ ] dailyContext.md updated only if David requested a diary update
++- [ ] Key decisions documented only in requested destinations, without duplication
+@@ -585 +543 @@
+-# Update activeProjects.md to remove archived project
++# Leave frozen activeProjects.md unchanged
+@@ -590 +548 @@
+-- Complete → Inactive (still in projects/, marked in activeProjects)
++- Complete → Inactive (still in projects/; frozen activeProjects is unchanged)
+--- a/skills/brain-project-plan/SKILL.md
++++ b/skills/brain-project-plan/SKILL.md
+@@ -4 +4 @@
+-  Always use this skill when the user asks to plan a project or part of a project. Never plan project work (requirements, investigation, implementation breakdown) without first reading this skill. Plans a project by filling in existing template files with context from GitHub issues, Vault projects, and the current conversation. Triggers: user says "plan [project]", "let's plan this", "plan the next phase", "break this down", "flesh out the plan"; about to fill in requirements.md, investigation.md, or implementation.md for an unplanned project.
++  Use only when David explicitly requests planning content in Brain project documentation. Ordinary requests to plan a project, plan the next phase, or break work down stay in chat and do not activate this documentation-writing skill.
+@@ -11 +11 @@
+-This skill writes plan content directly into a project's existing template files rather than a separate `.claude/plans/` document.
++This skill fills existing Brain project template files only when David explicitly requests those documentation edits.
+@@ -15,2 +15,2 @@
+-- User says "plan [project]", "plan this project", "let's plan the approach"
+-- User wants to fill in project template files with implementation details
++- David asks to write or update planning content in Brain project template files
++- David explicitly requests a saved Brain project plan
+@@ -18,0 +19 @@
++- Ordinary planning requests without an explicit Brain-documentation request (return the plan in chat)
+@@ -31,0 +33,4 @@
++
++### Step 0: Confirm the Documentation Request
++
++Proceed only when David explicitly requests Brain project documentation. For an ordinary planning request, return the plan in chat and stop without editing files.
+@@ -57 +62 @@
+-Fill in template files based on type. Only update placeholder sections. Preserve existing real content.
++Fill in template files only within the explicitly requested Brain documentation scope. Only update placeholder sections. Preserve existing real content.
+@@ -61 +66 @@
+-Write summary to `local/plan.md` in the project folder.
++Return the summary in chat. Write `local/plan.md` only when David explicitly requests that additional file.

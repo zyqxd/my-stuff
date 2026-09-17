@@ -2,8 +2,8 @@
 name: worker
 description: Implementation agent for scoped briefs, approved plans, review fixes, and Figma design-to-code tasks
 aliases: developer, coder, implementer, develop, design-worker, figma-worker
-model: openai/gpt-6-astra
-fallbackModels: openai/gpt-5.6-sol
+model: openai/gpt-5.6-sol
+fallbackModels: anthropic/claude-opus-5
 thinking: high
 tools: read, grep, find, ls, bash, edit, write, contact_supervisor
 systemPromptMode: replace

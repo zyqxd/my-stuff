@@ -2,7 +2,7 @@
 name: researcher
 description: Read-only fact finder — maps a codebase area or runs focused web research, and returns a cited brief
 model: anthropic/claude-sonnet-5
-fallbackModels: anthropic/claude-opus-5
+fallbackModels: openai/gpt-5.6-luna
 thinking: high
 tools: read, grep, find, ls, bash, write, web_search, fetch_content, get_search_content
 systemPromptMode: replace

@@ -5,23 +5,24 @@ The shared contract owns behavioral boundaries; the table lives here.
 
 When a task calls for delegation — or an explicitly invoked bigpowers workflow
 references the "Agent tool" — use the `subagent` tool. Five agents, one per phase of
-the cycle (routing approved 2026-09-07; live evidence in
+the cycle (routing updated 2026-09-17; prior live evidence remains historical in
 `~/plans/pi-agent-orchestration/2026-09-07-astra-routing-verification.md`):
 
 | phase | agent | context | model:effort | writes | use when |
 |---|---|---|---|---|---|
-| ask → plan | `planner` (alias shaper) | fresh | fable-5-1:high → sol | plans; bigpowers specs only when invoked | the ask is vague; you want a scoped, decision-explicit plan before anyone codes |
-| know | `researcher` | fresh | sonnet-5:high → opus-5 | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
-| build | `worker` (alias design-worker) | fresh | gpt-6-astra:high → sol | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
-| check | `reviewer` | fresh | gpt-6-astra:high → opus-5 | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
-| judge | `oracle` | **fork** | fable-5-1:high → gemini-3.1-pro-preview | no | judge the trajectory with the whole transcript — see triggers |
+| ask → plan | `planner` (alias shaper) | fresh | fable-5-1:high → gpt-6-astra | plans; bigpowers specs only when invoked | the ask is vague; you want a scoped, decision-explicit plan before anyone codes |
+| know | `researcher` | fresh | sonnet-5:high → gpt-5.6-luna | brief only | facts from the repo (entry points, data flow, prior art) or the web (docs, specs, benchmarks) |
+| build | `worker` (alias design-worker) | fresh | gpt-5.6-sol:high → opus-5 | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
+| check | `reviewer` | fresh | opus-5:xhigh → gpt-5.6-sol:xhigh | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
+| judge | `oracle` | **fork** | gpt-6-astra:high → fable-5-1 | no | judge the trajectory with the whole transcript — see triggers |
 
-All five default to **high**; fallback models inherit that effort unless a suffix says
-otherwise. `sol` means `openai/gpt-5.6-sol`; exact provider-qualified pins live in the
-sibling agent files. These defaults target routine use without manual tuning, not a
-measured 95% success rate. Sol is worker's availability fallback, not its normal model.
-The pinned local pi-subagents package fixes the signed-Claude-fork effort downgrade;
-reload older parent sessions before relying on it. See Package pin below.
+Worker, researcher, planner, and oracle default to **high**; reviewer defaults to
+**xhigh**. Each role has one cross-provider fallback in the same tier: premium is
+Astra/Fable, high is Sol/Opus 5, and cheap is Luna/Sonnet. Each unsuffixed fallback
+inherits the role's effective effort, including per-run overrides. Exact
+provider-qualified pins live in the sibling agent files. These defaults target routine use without manual tuning, not a
+measured success rate. The pinned local pi-subagents package fixes the signed-Claude-fork
+effort downgrade; reload older parent sessions before relying on it. See Package pin below.
 
 Disabled builtins (settings.json): `scout` (merged into researcher), `delegate`
 (inherited the parent's fable at 2–2.5× worker's price and got worker/reviewer jobs),
@@ -31,10 +32,9 @@ Cadence: `worker → reviewer → worker → reviewer(scoped) …`, cap **3 fix 
 `oracle` ("wrong plan, noisy reviewer, or worker not reading?"), then David. First review
 covers the whole change; re-review briefs name the prior findings and the verify commands
 so the reviewer confirms and re-runs rather than re-explores. One reviewer per round by
-default. On a risky final gate, a second reviewer can use
-`reviewer[model=anthropic/claude-fable-5-1:high]` for a cross-provider check. Fresh-context
-Astra is the normal reviewer, including for Astra-authored code; a second model is not
-required on every change.
+default. Fresh-context Opus 5 at xhigh is the normal reviewer, including for
+Opus-authored code; its automatic Sol xhigh fallback covers availability. A second model
+is not required on every change.
 
 Oracle triggers, and only these: (1) before accepting a plan, (2) review-cycle cap hit,
 (3) before an irreversible action (force-push, closing/merging a PR, publishing),
@@ -42,17 +42,18 @@ Oracle triggers, and only these: (1) before accepting a plan, (2) review-cycle c
 to compare), never as the end gate (reviewer, fresh). Cost is O(parent transcript).
 
 Per-run overrides: `agent[model=provider/model:level]`, or a tool-call `model` field with
-the same qualified string. A suffix such as `:medium` overrides the agent's high effort;
-a model-only override retains high. Do not use the top-level `thinking` tool parameter
-for dispatch; it is a watchdog-management setting.
+the same qualified string. A suffix such as `:medium` overrides the role's authored
+effort; a model-only override retains that effort. Do not use the top-level `thinking`
+tool parameter for dispatch; it is a watchdog-management setting.
 
-## Delegation trial (approved 2026-09-12)
+## Delegation trial (approved 2026-09-12; child routing superseded 2026-09-17)
 
-Trial the shared contract's five parent rules before changing model capabilities.
-Main, worker, and reviewer remain Astra high; researcher remains Sonnet high;
-planner/oracle remain Fable high. All fallbacks, tools, contexts, and gates stay unchanged.
-Pi's global startup default is standard Astra below; existing sessions and project
-settings can retain a different route.
+The trial began by testing the shared contract's five parent rules before changing model
+capabilities. Main, worker, and reviewer were Astra high; researcher was Sonnet high;
+planner/oracle were Fable high. The current table supersedes those child routes while
+keeping the trial's tools, contexts, and gates unchanged. Main and Pi's global startup
+default remain standard Astra high; existing sessions and project settings can retain a
+different route.
 
 At a self-contained phase boundary, use the existing managed STATE for continuity;
 add a handoff artifact only when needed. Preserve the goal, decisions, refs, evidence,
@@ -63,31 +64,34 @@ the managed updater is unavailable.
 
 Evaluate total unique main-plus-child cost, including retries, review, and repairs,
 against accepted scope, defects, missed constraints, and rework. Do not treat reduced
-main-context size or child count as success alone. No model downgrade or automatic
-session migration is part of this trial.
+main-context size or child count as success alone. The original trial made no model
+downgrade or automatic session migration.
 
 Installation evidence and guarded rollback:
 `~/plans/pi-agent-orchestration/cost-optimizations/inbox/2026-09-12-trial-installation.md`.
 
 ## Conditional Astra 1M routing
 
-Use `openai/gpt-6-astra:high` by default: its registered context window is **272000**
-tokens. The orchestrator—not David—selects `openai-1m/gpt-6-astra:high` only when the
-required instructions, evidence, output reserve, and expected tool results cannot fit
-that window, and narrowing the brief would lose necessary evidence. It is the same
-model with a **1000000**-token window, not a quality escalation. Do not globally expand
-Astra through `models.json`.
+Main remains on `openai/gpt-6-astra:high`, whose registered context window is **272000**
+tokens. For any Astra run, the orchestrator—not David—selects
+`openai-1m/gpt-6-astra:high` only when the required instructions, evidence, output
+reserve, and expected tool results cannot fit that window, and narrowing the brief would
+lose necessary evidence. It is the same model with a **1000000**-token window, not a
+quality escalation. Do not globally expand Astra through `models.json`.
 
 Check the current model registry before the exceptional launch. The 1M provider comes
 from the Shopify proxy extension; a stale process may not have it. If unavailable,
 reload/restart and re-check rather than silently sending oversized work to standard
-Astra. The stock harness does not promote overflow to 1M automatically. Worker still
-has a 272K Sol fallback: it cannot rescue work that genuinely needs more context.
-Inspect the actual fallback result and re-route such work; do not shrink away evidence.
+Astra. The stock harness does not promote overflow to 1M automatically. Planner's
+base-provider Astra fallback also stays at 272K. When oracle's required fork context
+cannot fit 272K, select `openai-1m/gpt-6-astra:high` before launch; context overflow does
+not trigger its Fable fallback. Inspect the actual result and re-route oversized work
+rather than dropping evidence.
 
-Fable planner/oracle and Sonnet have 1M cards. Fable avoids Astra's price increase above
-272K for the routinely large oracle transcript. For exact current prices use the model
-registry, not the abbreviated table above.
+Fable, Sonnet, and Opus 5 have 1M cards. Astra, Luna, and Sol have 272K cards. A fallback
+therefore does not guarantee the primary's context capacity: researcher, reviewer, and
+planner can fall back to a narrower window, while worker and oracle have larger Claude
+fallbacks. For exact current prices use the model registry, not the abbreviated table above.
 
 Return concise findings and decisive evidence in chat by default; no per-child inbox
 file is required. If the runtime needs output artifacts, use temporary paths outside
@@ -171,9 +175,10 @@ loading and verification; the contract separates parent duties from all-agent ru
 Run `node --test ai/agents/tests/routing.test.mjs` for the portable roster checks. From
 inside Pi, `node --test ai/agents/tests/*.test.mjs` also checks the installed runtime,
 settings precedence, suffixes, context preferences, model cards, and fallback rules.
-The routing baseline passed 16 checks against the configured patched package, including
-signature removal and effort preservation. The same signed-fork assertion fails against
-stock 0.64.0. Contract inheritance now has its own portable assertion; `ai/tests/` adds
+The routing suite checks the configured patched package, including signature removal,
+effort preservation, supported effort levels, and provider/tier pairs. The same
+signed-fork assertion fails against stock 0.64.0. Contract inheritance has its own
+portable assertion; `ai/tests/` adds
 actual installed loader and resolved child-prompt rewrite checks, separate from behavior
 evals. See `ai/README.md` for commands and explicit skip conditions.
 

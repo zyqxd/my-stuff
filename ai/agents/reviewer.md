@@ -1,9 +1,9 @@
 ---
 name: reviewer
 description: Versatile review specialist for code diffs, plans, proposed solutions, codebase health, and PR/issue validation
-model: openai/gpt-6-astra
-fallbackModels: anthropic/claude-opus-5
-thinking: high
+model: anthropic/claude-opus-5
+fallbackModels: openai/gpt-5.6-sol
+thinking: xhigh
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true

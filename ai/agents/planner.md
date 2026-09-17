@@ -3,7 +3,7 @@ name: planner
 description: Scoping and planning agent for ambiguous work — produces a scoped, decision-explicit plan before implementation; uses bigpowers only on explicit user invocation
 aliases: shaper, scoper
 model: anthropic/claude-fable-5-1
-fallbackModels: openai/gpt-5.6-sol
+fallbackModels: openai/gpt-6-astra
 thinking: high
 systemPromptMode: replace
 inheritProjectContext: true

@@ -3,11 +3,11 @@ import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 
 const expected = {
-  planner: ['anthropic/claude-fable-5-1', 'openai/gpt-5.6-sol'],
-  researcher: ['anthropic/claude-sonnet-5', 'anthropic/claude-opus-5'],
-  worker: ['openai/gpt-6-astra', 'openai/gpt-5.6-sol'],
-  reviewer: ['openai/gpt-6-astra', 'anthropic/claude-opus-5'],
-  oracle: ['anthropic/claude-fable-5-1', 'google/gemini-3.1-pro-preview'],
+  planner: {model: 'anthropic/claude-fable-5-1', fallback: 'openai/gpt-6-astra', thinking: 'high', tier: 'premium'},
+  researcher: {model: 'anthropic/claude-sonnet-5', fallback: 'openai/gpt-5.6-luna', thinking: 'high', tier: 'cheap'},
+  worker: {model: 'openai/gpt-5.6-sol', fallback: 'anthropic/claude-opus-5', thinking: 'high', tier: 'high'},
+  reviewer: {model: 'anthropic/claude-opus-5', fallback: 'openai/gpt-5.6-sol', thinking: 'xhigh', tier: 'high'},
+  oracle: {model: 'openai/gpt-6-astra', fallback: 'anthropic/claude-fable-5-1', thinking: 'high', tier: 'premium'},
 };
 
 function agent(name) {
@@ -19,16 +19,35 @@ function agent(name) {
   }));
 }
 
-for (const [name, [model, fallback]] of Object.entries(expected)) {
-  test(`${name} pins its approved provider, model, high effort and availability fallback`, () => {
+for (const [name, route] of Object.entries(expected)) {
+  test(`${name} pins its approved provider, model, effort and availability fallback`, () => {
     const config = agent(name);
-    assert.equal(config.model, model);
-    assert.equal(config.thinking, 'high');
-    assert.equal(config.fallbackModels, fallback);
+    assert.equal(config.model, route.model);
+    assert.equal(config.thinking, route.thinking);
+    assert.equal(config.fallbackModels, route.fallback);
     assert.equal(config.extensions, undefined);
     assert.equal(config.output, undefined);
   });
 }
+
+test('every configured route has one cross-provider same-tier fallback', () => {
+  const expectedTierPairs = {
+    premium: new Set(['anthropic/claude-fable-5-1', 'openai/gpt-6-astra']),
+    high: new Set(['anthropic/claude-opus-5', 'openai/gpt-5.6-sol']),
+    cheap: new Set(['anthropic/claude-sonnet-5', 'openai/gpt-5.6-luna']),
+  };
+  for (const [name, route] of Object.entries(expected)) {
+    const config = agent(name);
+    const fallback = config.fallbackModels.replace(/:(?:high|xhigh)$/, '');
+    assert.notEqual(config.model.split('/')[0], fallback.split('/')[0]);
+    assert.deepEqual(new Set([config.model, fallback]), expectedTierPairs[route.tier]);
+  }
+});
+
+test('reviewer stores one unsuffixed fallback so effective effort can be inherited', () => {
+  assert.equal(agent('reviewer').thinking, 'xhigh');
+  assert.equal(agent('reviewer').fallbackModels, 'openai/gpt-5.6-sol');
+});
 
 test('all roles explicitly inherit the shared global contract and project context', () => {
   for (const name of Object.keys(expected)) {
@@ -38,9 +57,12 @@ test('all roles explicitly inherit the shared global contract and project contex
   }
 });
 
-test('oracle retains fork and read-only acceptance; worker stays fresh', () => {
+test('contexts, aliases and read-only acceptance remain unchanged', () => {
   assert.equal(agent('oracle').defaultContext, 'fork');
   assert.equal(agent('worker').defaultContext, 'fresh');
+  for (const name of ['planner', 'researcher', 'reviewer']) assert.equal(agent(name).defaultContext, undefined);
+  assert.equal(agent('planner').aliases, 'shaper, scoper');
+  assert.equal(agent('worker').aliases, 'developer, coder, implementer, develop, design-worker, figma-worker');
   for (const name of ['oracle', 'reviewer', 'researcher']) {
     assert.equal(agent(name).acceptanceRole, 'read-only');
     assert.equal(agent(name).completionGuard, 'false');

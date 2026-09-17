@@ -28,40 +28,65 @@ function configure(cwd, subagents) {
 
 test('custom pins survive different parent/provider/default effort settings', () => fixture((cwd) => {
   const agents = configure(cwd, {defaultModel:'google/gemini-3.1-pro-preview', defaultThinking:'low'});
-  const expected = {planner:'anthropic/claude-fable-5-1', researcher:'anthropic/claude-sonnet-5', worker:'openai/gpt-6-astra', reviewer:'openai/gpt-6-astra', oracle:'anthropic/claude-fable-5-1'};
-  for (const [name, model] of Object.entries(expected)) {
+  const expected = {
+    planner: ['anthropic/claude-fable-5-1', 'openai/gpt-6-astra', 'high'],
+    researcher: ['anthropic/claude-sonnet-5', 'openai/gpt-5.6-luna', 'high'],
+    worker: ['openai/gpt-5.6-sol', 'anthropic/claude-opus-5', 'high'],
+    reviewer: ['anthropic/claude-opus-5', 'openai/gpt-5.6-sol', 'xhigh'],
+    oracle: ['openai/gpt-6-astra', 'anthropic/claude-fable-5-1', 'high'],
+  };
+  for (const [name, [model, fallback, thinking]] of Object.entries(expected)) {
     const agent = agents.find((a) => a.name === name);
     assert.equal(agent.model, model);
-    assert.equal(agent.thinking, 'high');
+    assert.deepEqual(agent.fallbackModels, [fallback]);
+    assert.equal(agent.thinking, thinking);
+    assert.equal(agent.inheritGlobalContext, true);
+    assert.equal(agent.inheritProjectContext, true);
+    assert.equal(agent.inheritSkills, false);
   }
   assert.equal(resolveAgentName('shaper', agents).agent.name, 'planner');
   assert.equal(resolveAgentName('design-worker', agents).agent.name, 'worker');
 }));
 
 test('0.64 settings overrides beat custom frontmatter', () => fixture((cwd) => {
-  const agents = configure(cwd, {agentOverrides:{worker:{model:'openai/gpt-5.6-sol', thinking:'medium'}}});
+  const agents = configure(cwd, {agentOverrides:{worker:{model:'openai/gpt-6-astra', thinking:'medium'}}});
   const worker = agents.find((a) => a.name === 'worker');
-  assert.equal(worker.model, 'openai/gpt-5.6-sol');
+  assert.equal(worker.model, 'openai/gpt-6-astra');
   assert.equal(worker.thinking, 'medium');
 }));
 
-test('explicit model suffix wins over high; model-only override inherits high', () => {
-  assert.equal(applyThinkingSuffix('openai/gpt-5.6-sol:medium', 'high'), 'openai/gpt-5.6-sol:medium');
-  assert.equal(applyThinkingSuffix('openai/gpt-5.6-sol', 'high'), 'openai/gpt-5.6-sol:high');
-});
+test('reviewer primary and fallback inherit xhigh and ordinary per-run effort overrides', () => fixture((cwd) => {
+  const agents = configure(cwd, {defaultThinking:'low'});
+  const reviewer = agents.find((a) => a.name === 'reviewer');
+  const candidates = buildModelCandidates(reviewer.model, reviewer.fallbackModels, models);
+  assert.deepEqual(candidates, ['anthropic/claude-opus-5', 'openai/gpt-5.6-sol']);
+  assert.deepEqual(candidates.map((model) => applyThinkingSuffix(model, reviewer.thinking)), ['anthropic/claude-opus-5:xhigh', 'openai/gpt-5.6-sol:xhigh']);
+  assert.deepEqual(candidates.map((model) => applyThinkingSuffix(model, 'medium')), ['anthropic/claude-opus-5:medium', 'openai/gpt-5.6-sol:medium']);
+}));
 
-test('base Astra and Sol are 272K; Claude defaults are 1M; high remains supported', () => {
-  for (const [provider, id, window] of [['openai','gpt-6-astra',272000], ['openai','gpt-5.6-sol',272000], ['anthropic','claude-fable-5-1',1000000], ['anthropic','claude-sonnet-5',1000000]]) {
+test('all routed model cards support their authored efforts without silent clamping', () => {
+  const expected = [
+    ['openai','gpt-5.6-sol',272000,'high'],
+    ['openai','gpt-5.6-sol',272000,'xhigh'],
+    ['anthropic','claude-opus-5',1000000,'high'],
+    ['anthropic','claude-opus-5',1000000,'xhigh'],
+    ['anthropic','claude-sonnet-5',1000000,'high'],
+    ['openai','gpt-5.6-luna',272000,'high'],
+    ['anthropic','claude-fable-5-1',1000000,'high'],
+    ['openai','gpt-6-astra',272000,'high'],
+  ];
+  for (const [provider, id, window, thinking] of expected) {
     const model = runtime.getModel(provider, id);
     assert.ok(model, `${provider}/${id} is in the installed catalog`);
     assert.equal(model.contextWindow, window);
-    assert.equal(ai.clampThinkingLevel(model, 'high'), 'high');
+    assert.equal(ai.clampThinkingLevel(model, thinking), thinking);
   }
 });
 
-test('worker primary and fallback stay ordered; unavailable configured primary selects Sol', () => {
-  assert.deepEqual(buildModelCandidates('openai/gpt-6-astra', ['openai/gpt-5.6-sol'], models), ['openai/gpt-6-astra', 'openai/gpt-5.6-sol']);
-  assert.deepEqual(buildModelCandidates('openai/routing-test-unavailable-model', ['openai/gpt-5.6-sol'], models), ['openai/gpt-5.6-sol']);
+test('primary and fallback order stays configured before effort resolution', () => {
+  assert.deepEqual(buildModelCandidates('openai/gpt-5.6-sol', ['anthropic/claude-opus-5'], models), ['openai/gpt-5.6-sol', 'anthropic/claude-opus-5']);
+  assert.deepEqual(buildModelCandidates('anthropic/claude-opus-5', ['openai/gpt-5.6-sol'], models), ['anthropic/claude-opus-5', 'openai/gpt-5.6-sol']);
+  assert.deepEqual(buildModelCandidates('openai/routing-test-unavailable-model', ['anthropic/claude-opus-5'], models), ['anthropic/claude-opus-5']);
 });
 
 test('fallback retries eligible model failures, never task failures or completed tool execution', () => {
@@ -85,23 +110,25 @@ test('always-on models retain effort while off-capable and unknown models stay c
   }
 });
 
-test('signed Claude fork preserves requested effort without retaining unsafe signatures', async () => {
+test('signed Claude history preserves effort for oracle Astra primary and Fable fallback', async () => {
   const cwd = mkdtempSync(join(tmpdir(), 'pi-fork-effort-'));
   try {
     const parent = join(cwd, 'parent.jsonl');
-    const fork = join(cwd, 'fork.jsonl');
     writeFileSync(parent, 'exists');
     const entries = [{type:'session', id:'session', version:3}, {type:'message', id:'signed', parentId:null, message:{role:'assistant', provider:'anthropic', api:'anthropic-messages', model:'claude-fable-5-1', content:[{type:'thinking', thinking:'fixture', thinkingSignature:'signed-fixture'}, {type:'text', text:'constraint retained'}]}}];
-    const resolver = createForkContextResolver({getSessionFile:() => parent, getLeafId:() => 'signed'}, 'fork', {
-      openSession:() => ({createBranchedSession:() => {writeFileSync(fork, entries.map((e) => JSON.stringify(e)).join('\n')); return fork;}}),
-      forceThinkingOffForIndex:() => forkedChildRequiresThinkingOff('anthropic/claude-fable-5-1', models),
-    });
-    await resolver.prepareSessionForIndex(0);
-    assert.equal(resolver.thinkingOverrideForIndex(0), undefined);
-    const persisted = readFileSync(resolver.sessionFileForIndex(0), 'utf8');
-    assert.equal(persisted.includes('signed-fixture'), false);
-    assert.equal(persisted.includes('constraint retained'), true);
-    assert.equal(persisted.includes('thinking_level_change'), false);
+    for (const candidate of ['openai/gpt-6-astra', 'anthropic/claude-fable-5-1']) {
+      const fork = join(cwd, `${candidate.split('/')[1]}.jsonl`);
+      const resolver = createForkContextResolver({getSessionFile:() => parent, getLeafId:() => 'signed'}, 'fork', {
+        openSession:() => ({createBranchedSession:() => {writeFileSync(fork, entries.map((e) => JSON.stringify(e)).join('\n')); return fork;}}),
+        forceThinkingOffForIndex:() => forkedChildRequiresThinkingOff(candidate, models),
+      });
+      await resolver.prepareSessionForIndex(0);
+      assert.equal(resolver.thinkingOverrideForIndex(0), undefined, candidate);
+      const persisted = readFileSync(resolver.sessionFileForIndex(0), 'utf8');
+      assert.equal(persisted.includes('signed-fixture'), false, candidate);
+      assert.equal(persisted.includes('constraint retained'), true, candidate);
+      assert.equal(persisted.includes('thinking_level_change'), false, candidate);
+    }
     assert.equal(readFileSync(parent, 'utf8'), 'exists');
   } finally { rmSync(cwd, {recursive:true, force:true}); }
 });

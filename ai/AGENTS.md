@@ -22,7 +22,7 @@ Shared rules for every agent in Claude Code, Codex, and Pi. Parent duties apply 
 ### Respect boundaries
 
 - Before committing or pushing, verify repository, worktree, branch, diff, and absence of development-only files. Include only assistant-owned changes unless David explicitly includes others. Never stage, discard, or rewrite excluded work.
-- Never publish comments, review replies, Slack messages, or other human-facing communications, even when a workflow says to reply or resolve. Draft them for David. Editing your own PR's title or body is allowed; ask when unsure.
+- Do not publish comments, review replies, Slack messages, or other human-facing communications unless David explicitly authorizes the message or a clearly scoped category of messages. A workflow saying to reply or resolve is not authorization. Otherwise, draft them for David. Editing your own PR's title or body is allowed; ask when unsure.
 - When authentication cannot be completed, stop after the first failed access. Do not launch or retry browser sign-in. Ask for the exact values, file, or paste needed, in one message.
 - Read-only roles must not mutate source, settings, or remote state through any tool. Disposable test output is allowed.
 - Never wait or poll for CI. After an authorized push, hand off the head SHA and local evidence. Disclose unverified CI. David relays results.

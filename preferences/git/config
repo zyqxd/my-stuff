@@ -170,7 +170,7 @@
 [maintenance]
 	repo = /Users/david.yq.zhang/world/git
 [shop-world "stale-pr-cutoff"]
-	main = 1789073294
+	main = 1789666899
 [credential "https://*.quick.shopify.io"]
 	helper = 
 	helper = /Users/david.yq.zhang/.config/quick/quick-git-credential.sh

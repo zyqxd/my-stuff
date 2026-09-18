@@ -27,3 +27,6 @@ ai/memory/SCRATCHPAD.md
 
 # Skill tool dependencies (bootstrapped on demand)
 ai/skills/*/tools/node_modules/
+
+# Root tool caches
+/node_modules/

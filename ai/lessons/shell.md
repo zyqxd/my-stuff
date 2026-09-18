@@ -74,3 +74,25 @@ error names the ref, not the lock, so it reads like repo corruption.
 - Back the lock up (`/tmp/...bak`), remove it, then `git fsck --connectivity-only`.
 - Scope: the shared `~/world/git` store, so a stale lock blocks every worktree at
   once — the blast radius is the whole monorepo, not one branch.
+
+## Keep pasteable commands from closing the calling shell
+
+2026-09-15: David reported that my issue-creation snippet closed immediately.
+It started with top-level `set -euo pipefail`; a failed command can terminate the
+interactive shell and hide its error. The actual GitHub failure was not captured,
+so its underlying cause remains unknown. Read-only search found no matching issue
+and the draft file was readable.
+
+Prefer separate commands with explicit handled failures for simple pasteable work.
+David then reported an unclosed string in the replacement heredoc/nested substitution;
+its exact parsing failure was not captured. Removing that wrapper is clearer than
+adding more shell machinery. The two direct commands passed Bash and zsh syntax and
+mocked failure checks, including caller `set -e` enabled.
+
+For genuinely multi-stage scripts, isolate fail-fast options in a child process and
+handle its exit. Preserve stderr and print the issue URL before board addition.
+Retry only board addition if creation succeeded. Do not change the user's interactive
+shell options.
+
+Evidence: `~/plans/llc-incentive/design-doc/inbox/2026-09-15-main-issue-final-handoff.md`.
+Scope: interactive snippets, not a relaxation of script fail-fast or mutation guards.

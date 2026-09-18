@@ -81,3 +81,60 @@ restored both checkmarks, and verified the merged body at 24 completed checks.
   the write. On mismatch, stop and merge from the captured live body.
 - Keep before, concurrent, and after bodies until restoration is verified. Report any
   temporary overwrite rather than hiding it.
+
+## Main-issue data flows need named components and explicit handoffs
+
+2026-09-15: In LLC main issue #7903, “the claim reaches the program and then
+Core's mirror” forced David to ask whether that meant the ClaimCreated outbox.
+He requested a whole-issue ambiguity audit because this is the first input to
+many downstream steps. Size trimming had obscured an already-chosen mechanism.
+
+For this issue and its decomposition, use consistent system/event/store names and
+state sender → named contract/data → receiver → stored effect at important flow
+boundaries. Distinguish claim intent from verified partner conversion, app outbox
+from its still-undecided relay, incentives ledger from Core claim mirror, and the
+app's milestone projections from partner snapshots. A short name is fine once
+clearly defined; mechanically repeating every fully qualified name is not the goal.
+Known architecture must not disappear behind “reaches,” “feeds,” or “local.” Actual
+transport/owner gaps remain explicitly deferred to build rather than guessed.
+
+Review the live issue before editing and preserve David's concurrent wording.
+Evidence: #7903 User Flow7 clarification and `~/plans/llc-incentive/design-doc/inbox/2026-09-15-7903-language-review-brief.md`.
+
+David subsequently directed all further work to use the recovered raw draft, not
+the compressed issue. For LLC #7903 the active body is now
+`~/plans/llc-incentive/design-doc/inbox/2026-09-15-7903-raw-working-draft.md`;
+`2026-09-15-7903-first-raw-draft.md` stays an immutable source snapshot. Do not
+compress this local working document to the skill's 60K target. GitHub's actual
+body limit still applies to any later publication; publication or a split needs
+its own decision. Preserve current user decisions rather than reviving obsolete
+ones merely because they appear in the raw snapshot.
+
+On September 16 David explicitly authorized a condensed derivative, without changing
+the raw original: six sequential Astra passes on one new document, focused on build
+outcomes, code-only area references, succinct experiment wording, removal of due dates
+and source discrepancies, then Slack resolution of open questions. Use his specified
+effort per pass and a final Fable/high oracle gate. This is not permission to return
+to the older compressed issue as the source or create a separate draft per pass.
+Plan: `~/plans/llc-incentive/design-doc/inbox/2026-09-16-7903-condensation-plan.md`.
+
+For LLC brochure/admin UI, David subsequently requested one sub-area per surface,
+with the What allowed to be just a design pointer—no why/how exposition. He confirmed
+the September11 Product summary is current, but wants it summarized once under merchant
+surfaces with a design-in-progress callout. Designs remain fluid into build; do not
+turn every note into fixed UI behavior. The added high-effort client-surface pass
+excludes the 1P app. Design Decisions and Risks are removed in a preceding medium pass.
+This is a client-UI scoping preference, not permission to blur backend data contracts.
+
+## Bound issue-batch reviews by the unresolved change (2026-09-16)
+
+During #7903 publication, the metadata reviewer finished the issue mapping, dependency
+DAG and mocked driver checks, then identified an unconditional GitHub Priority-write
+race and was terminated before returning its report. David confirmed an exclusive
+Priority/Milestone editing window and asked to break reviews down so they are faster.
+For this batch, review only the new exclusive-window guard and milestone-only updater;
+do not repeat the accepted 30-body or graph review. Keep source-fidelity, metadata-graph,
+and write-safety checks as bounded review scopes when a full batch makes them slow.
+The exclusive window is a human coordination agreement, not a GitHub API lock; retain
+observed-conflict guards and stop on uncertain writes. This does not waive independent
+review or establish a universal reviewer-time limit.

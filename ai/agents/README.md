@@ -3,6 +3,13 @@
 Demoted from `ai/AGENTS.md` on 2026-09-01 — reference material, read on demand.
 The shared contract owns behavioral boundaries; the table lives here.
 
+Main (the orchestrator) runs on `anthropic/claude-fable-5-1:high`, Pi's global default
+since 2026-09-18 (`~/.pi/agent/settings.json`). It replaced Astra because main sessions
+are long and cache-dominated: 41% of Astra main messages exceeded 272K and were billed at
+the higher tier, and the same tokens at Fable's $0.25/M cache-read rate cost 61% less.
+Neutral quality is tied. Decision, local measurements, and sources:
+`~/plans/pi-agent-orchestration/2026-09-18-main-model-fable-vs-astra.md`.
+
 When a task calls for delegation — or an explicitly invoked bigpowers workflow
 references the "Agent tool" — use the `subagent` tool. Five agents, one per phase of
 the cycle (routing updated 2026-09-17; prior live evidence remains historical in
@@ -52,8 +59,8 @@ The trial began by testing the shared contract's five parent rules before changi
 capabilities. Main, worker, and reviewer were Astra high; researcher was Sonnet high;
 planner/oracle were Fable high. The current table supersedes those child routes while
 keeping the trial's tools, contexts, and gates unchanged. Main and Pi's global startup
-default remain standard Astra high; existing sessions and project settings can retain a
-different route.
+default were standard Astra high until 2026-09-18 and are now Fable 5.1 high; existing
+sessions and project settings can retain a different route.
 
 At a self-contained phase boundary, use the existing managed STATE for continuity;
 add a handoff artifact only when needed. Preserve the goal, decisions, refs, evidence,
@@ -72,8 +79,9 @@ Installation evidence and guarded rollback:
 
 ## Conditional Astra 1M routing
 
-Main remains on `openai/gpt-6-astra:high`, whose registered context window is **272000**
-tokens. For any Astra run, the orchestrator—not David—selects
+Main's Fable 5.1 card is 1M with flat pricing, so this section no longer applies to main.
+It applies to Astra children: oracle's primary and planner's fallback. Astra's registered
+context window is **272000** tokens. For any Astra run, the orchestrator—not David—selects
 `openai-1m/gpt-6-astra:high` only when the required instructions, evidence, output
 reserve, and expected tool results cannot fit that window, and narrowing the brief would
 lose necessary evidence. It is the same model with a **1000000**-token window, not a

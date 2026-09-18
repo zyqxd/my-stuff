@@ -22,6 +22,7 @@ the cycle (routing updated 2026-09-17; prior live evidence remains historical in
 | build | `worker` (alias design-worker) | fresh | gpt-5.6-sol:high → opus-5 | yes, single writer | scoped implementation; Figma via the `figma-design-to-code` skill with design context passed in the brief |
 | check | `reviewer` | fresh | opus-5:xhigh → gpt-5.6-sol:xhigh | no | judge an artifact: diff, plan, PR. Runs the verify commands itself |
 | judge | `oracle` | **fork** | gpt-6-astra:high → fable-5-1 | no | judge the trajectory with the whole transcript — see triggers |
+| learn (off-cycle) | `teacher` (alias tutor, explainer) | fresh | opus-5:high → gpt-5.6-sol | no | David wants to understand a subject, not ship it. Researches code, docs, and web, then explains in plain words. Continue the lesson with `subagent({action: "resume", id, message})`; the parent relays David's follow-ups verbatim |
 
 Worker, researcher, planner, and oracle default to **high**; reviewer defaults to
 **xhigh**. Each role has one cross-provider fallback in the same tier: premium is

@@ -8,6 +8,7 @@ const expected = {
   worker: {model: 'openai/gpt-5.6-sol', fallback: 'anthropic/claude-opus-5', thinking: 'high', tier: 'high'},
   reviewer: {model: 'anthropic/claude-opus-5', fallback: 'openai/gpt-5.6-sol', thinking: 'xhigh', tier: 'high'},
   oracle: {model: 'openai/gpt-6-astra', fallback: 'anthropic/claude-fable-5-1', thinking: 'high', tier: 'premium'},
+  teacher: {model: 'anthropic/claude-opus-5', fallback: 'openai/gpt-5.6-sol', thinking: 'high', tier: 'high'},
 };
 
 function agent(name) {
@@ -63,19 +64,21 @@ test('contexts, aliases and read-only acceptance remain unchanged', () => {
   for (const name of ['planner', 'researcher', 'reviewer']) assert.equal(agent(name).defaultContext, undefined);
   assert.equal(agent('planner').aliases, 'shaper, scoper');
   assert.equal(agent('worker').aliases, 'developer, coder, implementer, develop, design-worker, figma-worker');
-  for (const name of ['oracle', 'reviewer', 'researcher']) {
+  assert.equal(agent('teacher').aliases, 'tutor, explainer');
+  for (const name of ['oracle', 'reviewer', 'researcher', 'teacher']) {
     assert.equal(agent(name).acceptanceRole, 'read-only');
     assert.equal(agent(name).completionGuard, 'false');
   }
 });
 
-test('the five roles retain their tool boundaries', () => {
+test('the roles retain their tool boundaries', () => {
   const expectedTools = {
     planner: 'read, grep, find, ls, bash, write, contact_supervisor',
     researcher: 'read, grep, find, ls, bash, write, web_search, fetch_content, get_search_content',
     worker: 'read, grep, find, ls, bash, edit, write, contact_supervisor',
     reviewer: 'read, grep, find, ls, bash',
     oracle: 'read, grep, find, ls, bash',
+    teacher: 'read, grep, find, ls, bash, web_search, fetch_content, get_search_content, contact_supervisor',
   };
   for (const [name, tools] of Object.entries(expectedTools)) assert.equal(agent(name).tools, tools);
 });
